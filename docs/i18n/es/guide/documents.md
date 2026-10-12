@@ -2,7 +2,7 @@
 
 La interfaz de Libera Suite está en inglés: los menús y botones se citan aquí tal como aparecen en pantalla.
 
-## Abrir
+## Abrir {#open}
 
 ```sh
 libera                             # la ventana de inicio
@@ -24,6 +24,8 @@ libera ~/Documents/*.docx     # una ventana para cada uno
 ```
 
 También puedes abrir un documento desde el editor, con **File ▸ Open** o **File ▸ Open Recent**. Los dos abren una ventana nueva y no tocan el documento que ya tienes abierto.
+
+**Un documento que sueltas** sobre una ventana de Libera Suite, incluida la ventana de inicio, se abre en una ventana propia. Una imagen que sueltas sobre un documento se inserta en él.
 
 **File ▸ New** ofrece, desde cualquier ventana, un documento (Document), una hoja de cálculo (Spreadsheet) o una presentación (Presentation), cada uno en su propia ventana. En macOS, `⌘N` crea uno del mismo tipo que la ventana en primer plano. En el propio editor, **File ▸ Create New** te pregunta cuál de los tres quieres crear.
 
@@ -57,9 +59,22 @@ El conversor no sabe escribir todos los formatos que sabe leer. En particular, `
 
 Si buscas una entrada **Download As** en el menú File, no existe. Los editores la ocultan cuando funcionan como aplicación de escritorio sin conexión y ponen Save As en su lugar: la misma función, una entrada más arriba.
 
+### Desde la línea de comandos {#from-the-command-line}
+
+`libera --convert` hace lo mismo sin abrir ninguna ventana, para un documento o para cien. El formato se indica por su extensión, con `-t`, o se toma del nombre dado a `-o`:
+
+```sh
+libera --convert *.docx -t pdf             # informe.pdf junto a informe.docx, etc.
+libera --convert charla.pptx -o charla.odp # un solo documento, con nombre
+libera --convert *.xlsx -t ods --outdir ods/
+libera --convert informe.docx -t pdf -o - | lp   # a la salida estándar
+```
+
+Un archivo que ya tiene el nuevo nombre se reemplaza. El documento que se convierte nunca se sobrescribe, y dos documentos que acabarían con el mismo nombre se rechazan antes de convertir nada. Las opciones son las de pandoc, salvo `-f`: la extensión dice qué es un documento.
+
 ## La barra de menús
 
-En Linux y Windows la barra está dentro de la ventana: **File**, **Edit**, **View** y **Help**, este último con *Libera Help* y *About Libera Suite*. De lo que ofrece allí el menú se derivan tres diferencias. Ningún elemento tiene atajo de teclado, así que las teclas de abajo pertenecen al editor y funcionan en la página. **Open Recent** se construye al iniciar la aplicación: un documento que abres hoy aparece en él mañana. Nada se atenúa: Save sin nada que guardar no hace nada.
+En Linux y Windows la barra está dentro de la ventana: **File**, **Edit**, **View** y **Help**, este último con *Libera Help* y *About Libera Suite*. De lo que ofrece allí el menú se derivan tres diferencias. Ningún elemento muestra un atajo de teclado, pero Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Mayús-S, Ctrl-P y Ctrl-Z hacen allí lo que las teclas ⌘ de abajo hacen en un Mac. **Open Recent** se construye al iniciar la aplicación: un documento que abres hoy aparece en él mañana. Nada se atenúa: Save sin nada que guardar no hace nada.
 
 En macOS es una barra de menús de Mac de verdad, con los mismos elementos más **Window**. Los atajos habituales funcionan allí, tenga o no el foco el editor:
 
@@ -87,7 +102,7 @@ Elegir Don't Save no es definitivo. Libera Suite conserva lo que escribiste y te
 
 ## Imprimir
 
-**File ▸ Print**, o el botón de la impresora, genera un PDF del documento y lo abre en el visor de PDF de tu sistema, donde está el diálogo de impresión.
+**File ▸ Print**, o el botón de la impresora, genera un PDF del documento, pregunta dónde guardarlo (en la carpeta del documento, salvo que elijas otra) y lo abre en el visor de PDF de tu sistema, donde está el diálogo de impresión.
 
 Por ahora esa es la opción elegida: el visor que ya tienes te da intervalos de páginas, tamaño de papel, escala y vista previa, y nada de eso lo haríamos mejor en una primera versión.
 
@@ -99,13 +114,32 @@ Las imágenes incrustadas en un documento se conservan al abrir y al guardar. **
 
 Las faltas se subrayan; el clic derecho ofrece sugerencias. El diccionario que se usa depende del **idioma del documento**, que fijas en la **barra de estado** de la parte inferior de la ventana, documento a documento.
 
-Se incluyen diccionarios para cinco idiomas: inglés (de Estados Unidos y del Reino Unido), francés, alemán, español e italiano. Un idioma sin diccionario no es un error; sus palabras simplemente se consideran correctas. Las palabras que añades con *Add to dictionary* vuelven a aparecer subrayadas en la sesión siguiente, porque los diccionarios personales todavía no se guardan.
+Se incluyen diccionarios para cinco idiomas: inglés (de Estados Unidos y del Reino Unido), francés, alemán, español e italiano. Un idioma sin diccionario no es un error; sus palabras simplemente se consideran correctas. Las palabras que añades con *Add to dictionary* se conservan: desde ese momento son correctas en todos los documentos y en todos los idiomas.
 
 ## Tu nombre en los documentos {#your-name-in-documents}
 
 Los cambios registrados y los comentarios se atribuyen a una persona, cuyo nombre se escribe en el archivo guardado. Libera Suite lo toma de tu cuenta: tu nombre completo tal como lo conoce macOS, el nombre para mostrar de tu cuenta de Windows o el campo «nombre completo» de tu cuenta Unix en Linux, y si no hay ninguno, tu nombre de inicio de sesión.
 
-Todavía no hay ningún ajuste para cambiarlo. Si un documento tiene que salir con otro nombre, [dínoslo](../feedback.md).
+Para usar otro nombre, escríbelo en el archivo de configuración, y crea el archivo si no existe:
+
+```toml
+user_name = "Jeanne Dupont"
+```
+
+| | |
+| :--- | :--- |
+| Linux | `$XDG_CONFIG_HOME/libera/config.toml`, or `~/.config/libera/config.toml` |
+| Linux, Flatpak | `~/.var/app/eu.liberasuite.Libera/config/libera/config.toml` |
+| macOS | `~/Library/Application Support/Libera Suite/config.toml` |
+| Windows | `%USERPROFILE%\.config\libera\config.toml` |
+
+El nombre se aplica a las ventanas que se abran tras el siguiente inicio de Libera Suite. Los documentos ya guardados conservan el nombre con el que se guardaron.
+
+El mismo archivo desactiva la búsqueda diaria de una versión nueva, con una línea aparte:
+
+```toml
+check_updates = false
+```
 
 ## Dónde van tus archivos de trabajo
 

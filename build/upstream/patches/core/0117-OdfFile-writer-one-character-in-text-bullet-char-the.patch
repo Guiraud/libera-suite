@@ -1,0 +1,43 @@
+From 6c6536e690fc895212860a97b82fc207e5859592 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 16:16:10 +0200
+Subject: [PATCH 117/142] OdfFile writer: one character in text:bullet-char,
+ the rest as suffix
+
+set_bullet_char copied the whole OOXML level text into
+text:bullet-char, which the schema limits to one character. Level text
+can hold more, and x2t's own reader writes "\x2022 " for every
+bullet (Reader/Format/styles_list.cpp convert_bullet_char). The first
+character is now the bullet and the remainder becomes style:num-suffix,
+so nothing is dropped from the ODF.
+
+Found in 120 of LibreOffice's 3794 ODF test documents after a round
+trip, 469 list levels in all.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/odf_lists_styles_context.cpp | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/odf_lists_styles_context.cpp b/OdfFile/Writer/Format/odf_lists_styles_context.cpp
+index 4e10d15c4d..5b8c03f2cb 100644
+--- a/OdfFile/Writer/Format/odf_lists_styles_context.cpp
++++ b/OdfFile/Writer/Format/odf_lists_styles_context.cpp
+@@ -521,7 +521,13 @@ void odf_lists_styles_context::set_bullet_char(std::wstring val)
+ 	
+ 	wchar_t char_ = convert_bullet_char(val.at(0));
+ 	
+-	style_bullet_->text_list_level_style_bullet_attr_.text_bullet_char_ = val;//char_;
++	// text:bullet-char is exactly one character; OOXML level text can hold more, and
++	// "\x2022 " is common. The first character is the bullet, the rest its suffix.
++	// A surrogate pair is one character where wchar_t is 16 bits.
++	size_t first = (val.size() > 1 && val[0] >= 0xD800 && val[0] <= 0xDBFF) ? 2 : 1;
++	style_bullet_->text_list_level_style_bullet_attr_.text_bullet_char_ = val.substr(0, first);
++	if (val.size() > first)
++		style_bullet_->text_list_level_style_bullet_attr_.prefix_suffix_attlist_.style_num_suffix_ = val.substr(first);
+ }
+ void odf_lists_styles_context::set_bullet_image_size(double size)
+ {
+-- 
+2.55.0
+

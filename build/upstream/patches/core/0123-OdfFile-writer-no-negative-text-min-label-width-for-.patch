@@ -1,0 +1,37 @@
+From 599e168ac78202448358b1ee682f979adde876fe Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 19:28:57 +0200
+Subject: [PATCH 123/142] OdfFile writer: no negative text:min-label-width for
+ a positive indent
+
+A PPTX bullet level's label width was written as minus the paragraph's
+indent. That holds for a hanging indent, which is negative; for a positive
+one it wrote a negative length, which the schema rejects: 48 of
+LibreOffice's ODF test documents after the third batch. A positive indent
+leaves the label no width of its own, so the attribute is now left out.
+The reader ignores a label width that is not positive, so a round trip
+reads the same as before.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/ConvertDrawing.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Converter/ConvertDrawing.cpp b/OdfFile/Writer/Converter/ConvertDrawing.cpp
+index f4ca3ac5dc..f14f1e834d 100644
+--- a/OdfFile/Writer/Converter/ConvertDrawing.cpp
++++ b/OdfFile/Writer/Converter/ConvertDrawing.cpp
+@@ -1940,7 +1940,9 @@ void OoxConverter::convert_list_level(PPTX::Logic::TextParagraphPr	*oox_para_pro
+ 
+ 	if (oox_para_props->indent.IsInit() && level_props)
+ 	{
+-		level_props->text_min_label_width_	= odf_types::length(- oox_para_props->indent.get() / 12700., odf_types::length::pt);
++		// A hanging indent is negative and is the label's width; any other leaves the label none
++		if (oox_para_props->indent.get() < 0)
++			level_props->text_min_label_width_	= odf_types::length(- oox_para_props->indent.get() / 12700., odf_types::length::pt);
+ 		level_props->text_space_before_		= odf_types::length(1, odf_types::length::pt);
+ 			
+ 	}else
+-- 
+2.55.0
+

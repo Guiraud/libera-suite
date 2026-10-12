@@ -4,9 +4,11 @@
 fixture reaches into the package, so what is under test is what ships. Slow --
 one browser, session-scoped, for the whole directory.
 
-ponytail: raw Chromium, not Playwright. The editor photographs its own canvas
-and posts it to the host, so nothing here needs to drive the page; add
-Playwright the day we want to click a menu and assert what the host got.
+Nothing here drives the editor: it photographs its own canvas and posts it to
+the host, and the tests read what the host collected. Playwright launches the
+browser (`_launch`) and, once, asks the page to post what it still holds
+(`flush_reports`); tests that click and type are in host/, with their own
+server.
 """
 
 from __future__ import annotations
@@ -129,8 +131,46 @@ def wait_until_ready(calls: str) -> bool:
     return False
 
 
-def _launch(url: str):
-    """A headless page at `url`, and the Playwright handles to close it with.
+# Before any page script, in every frame: the bridge's reports, synchronous.
+# A report sent is then one the host has answered, so a flush is over when the
+# evaluate that asked for it returns, and no tick's report is ever half-way.
+# Nothing to track from Playwright, whose request events need not have arrived
+# by then.
+SYNC_REPORTS = """
+const open = XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open = function (method, url) {
+  if (!String(url).includes("/__host__/page-log")) return open.apply(this, arguments);
+  return open.call(this, method, url, false);
+};
+"""
+
+
+def flush_reports(page) -> None:
+    """Until the host has been told everything the page has seen so far.
+
+    The bridge posts what it saw on a one-second tick, from each frame, and a
+    report read after a fixed wait missed a tick that came late. So each frame
+    posts what it holds now; with SYNC_REPORTS in the page, each has been
+    answered when this returns, and no tick's is still on its way.
+
+    The page walks its own frames. Playwright's list is only as fresh as the
+    events it has processed, and the harness makes no Playwright call between
+    loading the page and this: the list held the top frame alone, and the
+    editor's frame, where the editor's errors are, went unflushed.
+    """
+    page.evaluate(
+        """() => {
+          const flush = (w) => {
+            if (w.__libera__) w.__libera__.sendReport();
+            for (let i = 0; i < w.frames.length; i++) flush(w.frames[i]);
+          };
+          flush(window);
+        }"""
+    )
+
+
+def _launch():
+    """A headless page, and the Playwright handles to close it with.
 
     **Through Playwright, not as a bare subprocess.** The same binary, spawned
     with the same flags by `subprocess.Popen`, starts on Linux and never
@@ -165,10 +205,8 @@ def _launch(url: str):
         play.stop()
         raise
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    # commit: return as soon as navigation starts. The editor is watched
-    # through the host's own report, not through the page.
-    page.goto(url, wait_until="commit")
-    return play, browser
+    page.add_init_script(SYNC_REPORTS)
+    return play, browser, page
 
 
 @contextlib.contextmanager
@@ -233,12 +271,15 @@ def running_editor(document: Path, work: Path) -> Iterator[Editor]:
         )
 
     try:
-        play, browser = _launch(url)
+        play, browser, page = _launch()
     except Exception as e:
         server.kill()
         pytest.fail(f"could not launch a browser: {e}")
+    # commit: return as soon as navigation starts. The editor is watched
+    # through the host's own report, not through the page.
+    page.goto(url, wait_until="commit")
 
-    calls = f"http://127.0.0.1:{port}/__host__/calls"
+    calls = f"http://127.0.0.1:{port}/__host__/report"
     try:
         if not wait_until_ready(calls):
             # What the host was asked for, before giving up. The stall is
@@ -261,12 +302,12 @@ def running_editor(document: Path, work: Path) -> Iterator[Editor]:
                 f"  media:     wanted {got.get('media_expected', [])}, "
                 f"served {got.get('media_served', [])}"
             )
-        # The bridge captures 1.5s after the editor signals ready, and the last
-        # report POST is in flight at the same moment.
+        # The bridge captures 1.5s after the editor signals ready, and what
+        # the page saw up to then may still be waiting for its tick.
         deadline = time.monotonic() + 30
         while not shot.exists() and time.monotonic() < deadline:
             time.sleep(1)
-        time.sleep(2)
+        flush_reports(page)
         with urllib.request.urlopen(calls, timeout=30) as r:
             captured = Editor(url, json.load(r), shot)
     finally:

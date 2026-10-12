@@ -71,6 +71,12 @@ class Toolkit(Protocol):
     def set_fullscreen(self, window: Window, on: bool) -> None:
         """A demonstration, on or off."""
 
+    def close_window(self, window: Window) -> None:
+        """Close it as its close button does: asking first about unsaved changes."""
+
+    def show_edited(self, window: Window, edited: bool) -> None:
+        """Mark the window's document as having unsaved edits, or not."""
+
     def ask(self, question: Question, parent: Window | None) -> Answer:
         """The question, drawn the toolkit's way."""
 
@@ -117,6 +123,24 @@ def set_fullscreen(window: Window, on: bool) -> None:
     """
     if window.native is not None:
         window.toggle_fullscreen()
+
+
+def close_window(window: Window) -> None:
+    """pywebview's destroy(), which on GTK emits delete-event and with it the
+    `closing` event `app.run` wired to confirm_close: the question about
+    unsaved changes comes by the same path as the title bar's button.
+    """
+    window.destroy()
+
+
+# The mark of unsaved edits in a title on Linux and Windows: gedit, Notepad.
+EDITED_MARK = "*"
+
+
+def show_edited(window: Window, edited: bool) -> None:
+    """A leading * in the title, the convention of both."""
+    base = window.title.removeprefix(EDITED_MARK)
+    window.set_title(f"{EDITED_MARK}{base}" if edited else base)
 
 
 def run_save_panel(

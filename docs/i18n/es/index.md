@@ -31,13 +31,14 @@ Tus documentos, nunca.
 
 Libera Suite no tiene **telemetría**, ni estadísticas de uso, ni informes de errores, ni cuentas: no nos envía nada sobre ti, tus documentos o tu forma de usarla. Si algún día se añadiera algo así, estaría desactivado hasta que tú lo activaras.
 
-Sí se conecta a nuestro servidor para descargar archivos. Hoy se trata de los editores, al instalar Libera Suite y de nuevo cuando una versión nueva necesita otros nuevos. Cuando Libera Suite empiece a buscar actualizaciones, te avisará de que hay una versión nueva y te pedirá permiso antes de descargarla. Como cualquier petición web, cada una de estas descargas muestra a nuestro servidor tu dirección IP, y nada más sobre ti.
+Sí se conecta a nuestro servidor para descargar archivos. Hoy se trata de los editores, al instalar Libera Suite y de nuevo cuando una versión nueva necesita otros nuevos. Como mucho una vez al día, comprueba también si ha salido una versión más reciente, y te lo dice una vez; no descarga nada, y te indica cómo actualizar. Como cualquier petición web, cada una de estas descargas muestra a nuestro servidor tu dirección IP, y nada más sobre ti.
 
 La tabla recoge cada conexión que la aplicación establece hoy, para que puedas comprobarlo. Cualquier conexión nueva, incluida la búsqueda de actualizaciones, aparecerá aquí con la versión que la introduzca.
 
 | | |
 | :--- | :--- |
 | **Los editores** | Se descargan de `cdn.abilian.com` al instalar Libera Suite, y de nuevo solo cuando una versión nueva necesita otros nuevos. Cada descarga se verifica con las huellas incluidas en la aplicación. |
+| **La búsqueda de actualizaciones** | Como mucho una vez al día, el número de la última versión, leído en `cdn.abilian.com`. Una versión más reciente se avisa una vez; no se descarga nada. Sin conexión, no ocurre nada. `check_updates = false` en el [archivo de configuración](guide/documents.md#your-name-in-documents) la desactiva. |
 | **El tráfico propio del editor** | Un servidor web en `127.0.0.1`, que forma parte de la aplicación y sirve el editor a una ventana de la misma máquina. No es accesible desde ningún otro lugar. |
 | **Los enlaces en los que haces clic** | La ayuda y similares se abren en *tu* navegador. Libera Suite no los descarga. |
 

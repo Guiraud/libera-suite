@@ -24,7 +24,7 @@ def repo_root() -> pathlib.Path:
 
 
 def build_roots() -> list[pathlib.Path]:
-    """Where a build tree might be, in `build/common.sh`'s own order.
+    """Where a build tree might be, in `build/engine/common.sh`'s own order.
 
     One definition, because two lists drift: the payload fallback in the root
     conftest and the dist lookup below both need it, and a fallback that fires
@@ -40,7 +40,7 @@ def build_roots() -> list[pathlib.Path]:
 
 
 def built_dist(version: str | None = None) -> pathlib.Path | None:
-    """The release artifacts `build/dist.sh` wrote, if this checkout has any.
+    """The release artifacts `build/engine/dist.sh` wrote, if this checkout has any.
 
     Found rather than declared. This used to want `LIBERA_DIST` pointing at
     `$BUILD_ROOT/out/dist/<version>`, so the one check that looks inside a

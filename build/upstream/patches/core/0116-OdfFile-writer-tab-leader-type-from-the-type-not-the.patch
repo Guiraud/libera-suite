@@ -1,0 +1,36 @@
+From 32a477a71de9dbeee5f554a7bc4c8eea22ffe53c Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 16:14:56 +0200
+Subject: [PATCH 116/142] OdfFile writer: tab leader type from the type, not
+ the style
+
+style_tab_stop::serialize wrote style:leader-type from
+style_leader_style_, so a dotted leader came out as
+leader-type="dotted" leader-style="dotted". Leader type is the number
+of lines (none, single, double), which the converter already sets in
+style_leader_type_ and nothing wrote.
+
+Found in 124 of LibreOffice's 3794 ODF test documents after a round
+trip, 3407 tab stops in all.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/style_paragraph_properties.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/style_paragraph_properties.cpp b/OdfFile/Writer/Format/style_paragraph_properties.cpp
+index 4463195d0e..8d6236a865 100644
+--- a/OdfFile/Writer/Format/style_paragraph_properties.cpp
++++ b/OdfFile/Writer/Format/style_paragraph_properties.cpp
+@@ -56,7 +56,7 @@ void style_tab_stop::serialize(std::wostream & strm)
+ 			CP_XML_ATTR_OPT(L"style:type",		style_type_);
+ 			CP_XML_ATTR_OPT(L"style:char",		style_char_);
+ 		    
+-			CP_XML_ATTR_OPT(L"style:leader-type",	style_leader_style_);
++			CP_XML_ATTR_OPT(L"style:leader-type",	style_leader_type_);
+ 			CP_XML_ATTR_OPT(L"style:leader-style",	style_leader_style_);
+ 			CP_XML_ATTR_OPT(L"style:leader-width",	style_leader_width_);
+ 			CP_XML_ATTR_OPT(L"style:leader-color",	style_leader_color_);
+-- 
+2.55.0
+

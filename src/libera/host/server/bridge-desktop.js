@@ -10,8 +10,8 @@
 // shims from bridge-page.js.
 
 ((M) => {
-  if (!M || M.w.__LIBERA_BRIDGE__) return;
-  M.w.__LIBERA_BRIDGE__ = true;
+  if (!M || M.desktop) return;
+  M.desktop = true;
   const w = M.w;
   const {
     TAG,
@@ -24,8 +24,9 @@
     postToHost,
     postToHostSync,
     report,
+    sendReport,
   } = M;
-  const { captureLater, spellChecker } = M.page;
+  const { addPersonalWord, captureLater, spellChecker } = M.page;
 
   // -- File > Create New -------------------------------------------------------
   //
@@ -40,15 +41,111 @@
   const ICONS = "/web-apps/apps/common/main/resources/img/doc-formats/large/";
 
   function createNew(type) {
-    const made = postToHostSync(`/__host__/new?type=${encodeURIComponent(type)}`);
+    const made = postToHostSync("/__host__/new", JSON.stringify({ type }));
     if (made.status !== 200) {
       // `libera --serve` has one window, and a new document of another kind
-      // cannot take the place of this one. The host says so; so does this.
-      w.alert(made.statusText || "Libera Suite could not create the document.");
+      // cannot take the place of this one. The host says so, in the body: the
+      // status line is Latin-1 only, so no explanation goes there.
+      w.alert(made.responseText || "Libera Suite could not create the document.");
       return;
     }
     if (openedHere(made)) w.top.location.reload();
   }
+
+  // File > Open and File > Close, from the editor's File tab or a key.
+  function openDocument() {
+    postToHost("/__host__/open-document", null, (xhr) => {
+      if (openedHere(xhr)) w.top.location.reload();
+    });
+  }
+
+  function closeWindow() {
+    postToHost("/__host__/close");
+  }
+
+  // -- Ctrl-N, Ctrl-O and Ctrl-W off macOS -------------------------------------
+  //
+  // No menu bar fires them there and the editor handles none of them, so the
+  // page runs what the editor's File tab would. The host says which keys
+  // (shortcuts.PAGE_RUNS) and sends none on macOS. Every frame installs its
+  // own, on the window and capturing, because a keydown in the editor's iframe
+  // never reaches the top document.
+  const PAGE_KEYS = w.LIBERA_PAGE_KEYS || {};
+  const RUNS = { new: () => createNew(""), open: openDocument, close: closeWindow };
+  w.addEventListener(
+    "keydown",
+    (e) => {
+      // A held key repeats, and each repeat would be another window.
+      if (!e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const key = (e.key || "").toLowerCase();
+      const action = Object.keys(PAGE_KEYS).find(
+        (name) => PAGE_KEYS[name].key === key && PAGE_KEYS[name].shift === e.shiftKey,
+      );
+      if (!action) return;
+      // Both, unlike bridge-page.js's Cmd-N: no menu waits for this key, and
+      // a webview left to it may act on Ctrl-N or Ctrl-W as a browser would.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      RUNS[action]();
+    },
+    true,
+  );
+
+  // -- files dropped on the window --------------------------------------------
+  //
+  // A page is told a dropped file's name and never its path, so the host is
+  // asked, before anything in the page handles the drop: it has the paths from
+  // the drag itself, opens the documents among them in windows of their own,
+  // and hands back the rest for GetDropFiles. Every frame installs its own, as
+  // for keys: a drop on the editor lands in its iframe.
+  //
+  // Every file drop is cancelled whatever the page does with it: left to the
+  // webview, it opens the file in place of the editor.
+  const IMAGE_FILE = /\.(png|jpe?g|gif|bmp|tiff?|svg|webp|emf|wmf)$/i;
+  let dropped = [];
+  const carriesFiles = (e) =>
+    !!e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files");
+  w.addEventListener(
+    "drop",
+    (e) => {
+      if (!carriesFiles(e)) return;
+      e.preventDefault();
+      // WebView2 hands the paths over only in this message, which pywebview
+      // posts from a drop handler of its own; there is none, so it is posted
+      // here, before the host is asked for them.
+      const webview2 = w.top.chrome && w.top.chrome.webview;
+      if (webview2 && webview2.postMessageWithAdditionalObjects) {
+        webview2.postMessageWithAdditionalObjects("FilesDropped", e.dataTransfer.files);
+      }
+      const names = Array.from(e.dataTransfer.files, (file) => file.name);
+      dropped =
+        answer(postToHostSync("/__host__/drop", JSON.stringify({ names }))).paths || [];
+    },
+    true,
+  );
+  // Every file drag is accepted, and it has to be said here, first, and made
+  // to stick. Over the canvas, sdkjs answers "none" on dragover for any file
+  // whose type is not an image's (CanDropFiles, isValidImageDragItem), and
+  // with "none" there is no drop at all: a document dropped on the page never
+  // arrived. A listener after it cannot undo that, because a handler on the
+  // body stops the event there. So "copy" now, and the property pinned for the
+  // rest of this event, which sdkjs then reads as "copy" too and shows where
+  // an image would go. "copy" is also the cue: the pointer shows the drop
+  // will be taken.
+  w.addEventListener(
+    "dragover",
+    (e) => {
+      if (!carriesFiles(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      Object.defineProperty(e.dataTransfer, "dropEffect", {
+        configurable: true,
+        get: () => "copy",
+        set: () => {},
+      });
+    },
+    true,
+  );
 
   function chooseNewKind(own) {
     const doc = w.top.document;
@@ -153,6 +250,21 @@
     preferred().focus();
   }
 
+  // -- the editor -------------------------------------------------------------
+  //
+  // Its API, where the editor's own code puts it.
+  const editorApi = () => (w.Asc && w.Asc.editor) || w.editor;
+
+  // `fn(api)` once the editor exists. Only a frame ever has one: the top
+  // window is api.js's page, which builds the editor's iframe and no editor,
+  // and a wait there polled forty times a second for the window's life.
+  function whenEditor(fn) {
+    if (TAG === "top") return;
+    const api = editorApi();
+    if (api && api.asc_registerCallback) fn(api);
+    else setTimeout(() => whenEditor(fn), 50);
+  }
+
   // -- host state -------------------------------------------------------------
   const DOC_DIR = "/doc"; // where Editor.bin + media/ live
   let saved = true;
@@ -174,7 +286,7 @@
     // The console shows it asked twice on every load, and the two handovers
     // were once blamed for the intermittent stall at "Loading document: 8%".
     // They were not its cause: that was a font request reset by the host's
-    // listen backlog -- see Server.request_queue_size in handler.py. Handing
+    // listen backlog -- see Server.request_queue_size in listener.py. Handing
     // the same bytes over twice cannot be right whatever the editor's reason
     // for asking, so this stays, as a contract rather than a workaround.
     LocalStartOpen: function () {
@@ -189,6 +301,15 @@
         return;
       }
       const payload = JSON.parse(opened);
+      // Someone else has the file open (their lock file says so). The editor's
+      // locked mode has to be on before the document is ready: it then marks
+      // the document read-only, says "locked for editing", and lets edits go
+      // to a copy -- the host sends a plain Save to Save As (plan_save).
+      // `true`: the host set it, so the editor does not report it back.
+      const api = editorApi();
+      if (w.LIBERA_LOCKED_BY && api && api.asc_setLocalRestrictions) {
+        api.asc_setLocalRestrictions(w.Asc.c_oAscLocalRestrictionType.Locked, true);
+      }
       setTimeout(() => {
         w.DesktopOfflineAppDocumentEndLoad(DOC_DIR, payload.b64, payload.len);
       }, 0);
@@ -202,6 +323,9 @@
     },
     onDocumentContentReady: function () {
       log("onDocumentContentReady", arguments);
+      // At once, not on the next one-second tick: it is the moment the
+      // document is on screen, and build/src/libera_build/bench.py times it.
+      sendReport();
       captureLater();
     },
     // The editor's own dirty flag, and the only reliable one: the change log
@@ -211,10 +335,19 @@
     onDocumentModifiedChanged: function (m) {
       saved = !m;
       log("onDocumentModifiedChanged", arguments);
-      postToHost("/__host__/modified", JSON.stringify({ modified: !!m }));
+      postToHost("/__host__/modified", JSON.stringify({ modified: !!m }), (xhr) => {
+        // Checked, as the change log is: a flag the host did not keep is a
+        // crash with nothing offered back on the next open.
+        if (xhr.status !== 204) {
+          report(
+            "error",
+            `the host did not keep the unsaved mark (HTTP ${xhr.status})`,
+          );
+        }
+      });
     },
 
-    // --- save (POC: acknowledge, write nothing)
+    // --- save
     LocalFileGetSaved: () => saved,
     LocalFileSetSaved: (v) => {
       saved = v;
@@ -259,6 +392,7 @@
           "&count=" +
           (count | 0),
         body,
+        "text/plain",
       );
       // An XHR answers a 500 without throwing. An edit the log did not take
       // is one no save will write, so say it as an error: the host offers a
@@ -282,7 +416,7 @@
     // --- files
     IsLocalFile: () => true,
     IsLocalFileExist: () => false,
-    IsImageFile: () => false,
+    IsImageFile: (path) => IMAGE_FILE.test(String(path || "")),
     LocalFileGetImageUrlCorrect: (p) => p,
     // The return value is discarded: web-apps calls this to *ask*, and expects
     // the answer through window.onupdaterecents, which is what the C++ host
@@ -344,7 +478,7 @@
     // a bridge exists the call is made -- "show from the beginning" was a
     // TypeError and an asc_onError -25 until this was here.
     SetFullscreen: (on) =>
-      postToHost("/__host__/fullscreen", on ? "1" : "0", null, "text/plain"),
+      postToHost("/__host__/fullscreen", JSON.stringify({ on: !!on })),
 
     // Insert > Audio and Insert > Video, in Slides and Words. Also unguarded,
     // and worse than SetFullscreen: sdkjs blocks the whole editor with
@@ -406,7 +540,14 @@
       String(p || "")
         .split(".")
         .pop(),
-    GetDropFiles: () => [],
+    // The paths of what the drop now being handled brought, which sdkjs asks
+    // for from its own drop handler (AscCommon.InitDragAndDrop) and inserts
+    // the images among. Once: the next drop starts from nothing.
+    GetDropFiles: () => {
+      const paths = dropped;
+      dropped = [];
+      return paths;
+    },
     PluginUninstall: () => false,
     IsCachedPdfCloudPrintFileInfo: () => false,
 
@@ -430,11 +571,25 @@
         w.asc_nativeOnSpellCheck && w.asc_nativeOnSpellCheck("clear");
         return;
       }
+      let request;
       try {
-        checker.command(JSON.parse(data));
+        request = JSON.parse(data);
       } catch (e) {
         report("error", `spellcheck: ${e}`);
+        return;
       }
+      // Add to dictionary. The worker handles only "spell" and "suggest" and
+      // dropped this, so an added word was flagged again next session. The
+      // editor re-checks the word itself straight after.
+      if (request.type === "add") {
+        (request.usrWords || []).forEach(addPersonalWord);
+        return;
+      }
+      // Clear the user's dictionary: sdkjs can send it, nothing in the editor
+      // does. Not the bare "clear" above, which abandons the queue; kept away
+      // from the worker, which does not know it either.
+      if (request.type === "clear") return;
+      checker.command(request);
     },
     SetAdvancedOptions: () => {},
     SaveQuestion: () => {},
@@ -459,7 +614,11 @@
         JSON.stringify({ fileType: 513, isPrint: true, params: "" }),
         (xhr) => {
           // Nothing in the editor waits for this, so a failure is ours to say.
-          if (answer(xhr).error !== 0) {
+          // 1 is the save dialog cancelled, which is the user's answer, not a
+          // failure: it alerted "could not print" all the same. No reply, or
+          // one without an error code, is a failure, as LocalFileSave reads it.
+          const error = answer(xhr).error;
+          if (error !== 0 && error !== 1) {
             w.alert("Libera Suite could not print this document.");
           }
         },
@@ -497,8 +656,8 @@
     // server waiting for the GUI thread).
     OpenFilenameDialog: function (filter, ismulti, callback) {
       log("OpenFilenameDialog", arguments);
-      const where = `/__host__/open?filter=${encodeURIComponent(filter || "")}`;
-      postToHost(where, null, (xhr) => {
+      const asked = JSON.stringify({ filter: String(filter || "") });
+      postToHost("/__host__/choose-file", asked, (xhr) => {
         // No path means cancelled, which is a normal answer.
         const path = answer(xhr).path || "";
         if (callback) callback(ismulti ? (path ? [path] : []) : path);
@@ -510,7 +669,12 @@
     // through g_oDocumentUrls. Returning the input path unchanged would produce
     // a URL nothing can serve.
     LocalFileGetImageUrl: (path) =>
-      answer(postToHostSync("/__host__/media-import", String(path || ""))).name || "",
+      answer(
+        postToHostSync(
+          "/__host__/media-import",
+          JSON.stringify({ path: String(path || "") }),
+        ),
+      ).name || "",
 
     // --- the catch-all channel web-apps uses for almost everything
     // web-apps talks to the host almost entirely through this one channel.
@@ -548,10 +712,11 @@
         } catch (_e) {
           /* not one we handle */
         }
-        if (action !== "file:open") return;
-        postToHost("/__host__/open-document", null, (xhr) => {
-          if (openedHere(xhr)) w.top.location.reload();
-        });
+        // File > Close. Ignored, it left the window open and only hid the
+        // menu, which is all Back does; the host closes the window the way
+        // its close button would, asking first about unsaved changes.
+        if (action === "file:close") closeWindow();
+        else if (action === "file:open") openDocument();
       }
     },
     CreateEditorApi: function () {
@@ -568,7 +733,7 @@
   // worst of the three possible outcomes.
   function mediaUnsupported(kind, file) {
     report("unsupported", `${kind} insertion is not implemented (${file || "?"})`);
-    const api = (w.Asc && w.Asc.editor) || w.editor;
+    const api = editorApi();
     const types = w.Asc || {};
     if (api && api.sync_EndAction && types.c_oAscAsyncActionType) {
       api.sync_EndAction(
@@ -637,12 +802,7 @@
   // Tell the host what the editor can do, so the menu bar can grey out an
   // item that would decline. Pushed, not asked for: a menu is validated on the
   // GUI thread, and asking the editor from there would deadlock.
-  (function watchEditorState() {
-    const api = (w.Asc && w.Asc.editor) || w.editor;
-    if (!api || !api.asc_registerCallback) {
-      setTimeout(watchEditorState, 50);
-      return;
-    }
+  whenEditor((api) => {
     const send = (what) => (value) => {
       const state = {};
       state[what] = !!value;
@@ -650,22 +810,18 @@
     };
     api.asc_registerCallback("asc_onCanUndo", send("undo"));
     api.asc_registerCallback("asc_onCanRedo", send("redo"));
-  })();
+  });
 
   // The editor reports document trouble through its own asc_onError event and
   // a modal, not through a JS exception -- so a run can look clean to
   // window.onerror while the user is staring at "An error occurred during the
   // work with the document". Hook it. asc_registerCallback is a quoted export,
   // so it survives minification.
-  (function watchEditorErrors() {
-    const api = (w.Asc && w.Asc.editor) || w.editor;
-    if (!api || !api.asc_registerCallback) {
-      return void setTimeout(watchEditorErrors, 50);
-    }
+  whenEditor((api) => {
     api.asc_registerCallback("asc_onError", (code, level) => {
       report("asc_onError", `code=${code} level=${level}`);
     });
-  })();
+  });
 
   console.log(`[libera:${TAG}] bridge installed`);
 })(window.__libera__);

@@ -12,27 +12,20 @@ test_desktop_open_url.py beside it.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from libera.host import desktop, server
+from libera.host.server.api import Refused, Request
+from libera.host.session import Session
 
 
-class FakeHandler:
-    """Just enough of the request handler for open_url."""
-
-    def __init__(self, body: bytes):
-        self._body = body
-        self.status = None
-        self.opened = False
-
-    def read_body(self) -> bytes:
-        return self._body
-
-    def send_error(self, code):
-        self.status = code
-
-    def send_no_content(self):
-        self.status = 204
+def request(url: object) -> Request:
+    """What open_url reads: the URL, in the body. It reads no session."""
+    body = json.dumps({"url": url}).encode()
+    return Request(Session(payload=Path("payload"), work=Path("work")), body)
 
 
 @pytest.fixture
@@ -51,21 +44,21 @@ def launched(monkeypatch):
         "data:text/html,<script>x</script>",
         "  ",
         "https://example.com/ with space",
+        "https://example.com/\n",
         "ssh://box/x",
+        None,
     ],
 )
 def test_refuses_anything_but_http(url, launched):
-    h = FakeHandler(url.encode())
-    server.open_url(h)
-    assert h.status == 400
+    with pytest.raises(Refused) as refused:
+        server.open_url(request(url))
+    assert refused.value.status == 400
     assert launched == []
 
 
 @pytest.mark.parametrize("url", ["https://example.com/x", "http://example.com/"])
 def test_opens_http(url, launched):
-    h = FakeHandler(url.encode())
-    server.open_url(h)
-    assert h.status == 204
+    assert server.open_url(request(url)).status == 204
     assert launched == [url]
 
 
@@ -76,8 +69,4 @@ def test_the_page_is_told_nothing_when_the_desktop_refuses(monkeypatch):
     page content a way to probe what the machine has installed.
     """
     monkeypatch.setattr(desktop, "open_url", lambda _url: False)
-    h = FakeHandler(b"https://example.com/x")
-
-    server.open_url(h)
-
-    assert h.status == 204
+    assert server.open_url(request("https://example.com/x")).status == 204

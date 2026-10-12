@@ -1,0 +1,44 @@
+From a7b0726bb60b32602ff8cbf372af8f3f4c8fd470 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 16:16:44 +0200
+Subject: [PATCH 118/142] OdfFile writer: validation help message before the
+ error message
+
+table_content_validation wrote its children in the order the XLSX
+converter added them, error message first. The schema wants
+table:help-message, then table:error-message or the error macro.
+
+Found in 99 of LibreOffice's 3794 ODF test documents after a round
+trip.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/table.cpp | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/table.cpp b/OdfFile/Writer/Format/table.cpp
+index 1a9d92afa2..8b36c9968c 100644
+--- a/OdfFile/Writer/Format/table.cpp
++++ b/OdfFile/Writer/Format/table.cpp
+@@ -992,9 +992,17 @@ void table_content_validation::serialize(std::wostream & _Wostream)
+ 			CP_XML_ATTR_OPT(L"table:allow-empty-cell", table_allowempty_cell_);
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"table:base-cell-address", table_base_cell_address_);
+ 			
++			// The schema wants table:help-message before the error message or macro,
++			// whichever order the converter added them in.
+ 			for (size_t i = 0; i < content_.size(); i++)
+ 			{
+-				content_[i]->serialize(CP_XML_STREAM());
++				if (content_[i]->get_type() == typeTableHelpMassage)
++					content_[i]->serialize(CP_XML_STREAM());
++			}
++			for (size_t i = 0; i < content_.size(); i++)
++			{
++				if (content_[i]->get_type() != typeTableHelpMassage)
++					content_[i]->serialize(CP_XML_STREAM());
+ 			}
+ 		}
+ 	}
+-- 
+2.55.0
+

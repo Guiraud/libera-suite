@@ -1,0 +1,40 @@
+From 376d15063d78cc9ed8a4134ff0c9af033a6bc15a Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 08:56:53 +0200
+Subject: [PATCH 139/142] OdfFile writer: a combo box writes its items after
+ its properties
+
+form:combobox wrote its form:item list first, then form:properties and
+office:event-listeners. The schema wants properties, event listeners,
+then the items, so every combo box with a list was invalid: 13 of
+LibreOffice's ODF test documents after the sixth batch, mostly Word
+drop-down form fields.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/office_forms.cpp | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/office_forms.cpp b/OdfFile/Writer/Format/office_forms.cpp
+index 641f08aa68..b93938856e 100644
+--- a/OdfFile/Writer/Format/office_forms.cpp
++++ b/OdfFile/Writer/Format/office_forms.cpp
+@@ -438,11 +438,12 @@ void form_combobox::serialize(std::wostream & _Wostream)
+ 			CP_XML_ATTR_OPT(L"form:source-cell-range",	source_cell_range_);
+ 			CP_XML_ATTR_OPT(L"form:list-source",		list_source_);
+ 
+-			for (size_t i = 0; i < items_.size(); i++)
+-				items_[i]->serialize(CP_XML_STREAM());
+-			
++			// The schema's order: properties, event listeners, then the items
+ 			if (properties_) properties_->serialize(CP_XML_STREAM());
+ 			if (office_event_listeners_) office_event_listeners_->serialize(CP_XML_STREAM());
++
++			for (size_t i = 0; i < items_.size(); i++)
++				items_[i]->serialize(CP_XML_STREAM());
+ 		}
+ 	}
+ }
+-- 
+2.55.0
+

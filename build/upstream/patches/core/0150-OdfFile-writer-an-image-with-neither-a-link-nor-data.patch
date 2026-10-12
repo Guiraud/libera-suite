@@ -1,0 +1,38 @@
+From 82590b0fbc8a6660b59d75334b0f323e76bfe67c Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 18:32:42 +0200
+Subject: [PATCH 150/156] OdfFile writer: an image with neither a link nor data
+ is not written
+
+When the source's image cannot be had (a StarView metafile x2t does not
+convert, an OLE object without a preview, a link to nothing), the writer
+still wrote draw:image with neither xlink:href nor office:binary-data,
+which the schema rejects: 21 of LibreOffice's ODF test documents after
+the eighth batch, 181 errors. Such an image is now left out and its
+frame kept. x2t's reader drops the empty frame on the next trip, where
+it used to carry the empty image across; nothing it held is lost.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/draw_frame.cpp | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/OdfFile/Writer/Format/draw_frame.cpp b/OdfFile/Writer/Format/draw_frame.cpp
+index 0abe6307a7..96a9d37bba 100644
+--- a/OdfFile/Writer/Format/draw_frame.cpp
++++ b/OdfFile/Writer/Format/draw_frame.cpp
+@@ -71,6 +71,11 @@ const wchar_t * draw_image::name	= L"image";
+ 
+ void draw_image::serialize(std::wostream & _Wostream)
+ {
++	// With neither a link nor data there is no image, only an element the schema rejects, as
++	// when the source's image could not be converted; the frame is written without it.
++	if (!office_binary_data_ && content_.empty() &&
++		(!common_xlink_attlist_.href_ || common_xlink_attlist_.href_->empty())) return;
++
+ 	CP_XML_WRITER(_Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+-- 
+2.55.0
+

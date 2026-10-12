@@ -21,10 +21,8 @@ nothing outside the package calls it.
 from __future__ import annotations
 
 from libera.payload.installer import (
-    DEFAULT_ORIGIN,
     can_fetch,
     install,
-    read_bundled_manifest,
     safe_extract,
 )
 from libera.payload.locate import (
@@ -32,7 +30,6 @@ from libera.payload.locate import (
     NoPayloadError,
     Payload,
     PayloadError,
-    get_config_file,
     get_current_platform,
     get_data_dir,
     get_installed_dir,
@@ -43,13 +40,11 @@ from libera.payload.locate import (
 )
 
 __all__ = [
-    "DEFAULT_ORIGIN",
     "PAYLOAD_VERSION",
     "NoPayloadError",
     "Payload",
     "PayloadError",
     "can_fetch",
-    "get_config_file",
     "get_current_platform",
     "get_data_dir",
     "get_installed_dir",
@@ -57,7 +52,6 @@ __all__ = [
     "get_state_dir",
     "install",
     "is_complete",
-    "read_bundled_manifest",
     "resolve",
     "safe_extract",
 ]

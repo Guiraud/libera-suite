@@ -1,0 +1,148 @@
+From e7072902018b1c0ce3fa419a0da5861d1bcbf9f2 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 19:24:01 +0200
+Subject: [PATCH 157/159] OdfFile: a page's fill goes in a drawing-page style,
+ as ODF 1.3 has it
+
+The writer put a page's fill, draw:fill and the rest, on
+style:page-layout-properties, which is LibreOffice's extension and not
+valid ODF: 35 of LibreOffice's ODF test documents after the ninth batch,
+105 errors. ODF 1.3 has the fill in a drawing-page style that the master
+page names with draw:style-name, which LibreOffice writes and reads as
+well. The writer now moves each layout's fill there when it writes the
+styles, with draw:background-size="full", and keeps fo:background-color
+on the layout, where it is valid.
+
+The reader takes a page's fill from the layout, as before, and otherwise
+from the master page's drawing-page style, so the fill survives the
+round trip: solid colours, gradients and bitmaps come back the same.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Format/office_body.cpp         | 26 ++++++++++++++
+ .../Writer/Format/odf_page_layout_context.cpp | 35 +++++++++++++++++++
+ .../Writer/Format/odf_page_layout_context.h   |  1 +
+ 3 files changed, 62 insertions(+)
+
+diff --git a/OdfFile/Reader/Format/office_body.cpp b/OdfFile/Reader/Format/office_body.cpp
+index 8467823274..1ff90cdf13 100644
+--- a/OdfFile/Reader/Format/office_body.cpp
++++ b/OdfFile/Reader/Format/office_body.cpp
+@@ -32,6 +32,8 @@
+ 
+ #include "odfcontext.h"
+ #include "draw_common.h"
++#include "styles.h"
++#include "style_presentation.h"
+ 
+ namespace cpdoccore { 
+ 
+@@ -148,6 +150,28 @@ void office_body::docx_convert(oox::docx_conversion_context & Context)
+ 				}
+ 			}
+ 		}
++		// ODF 1.3 keeps a page's fill in a drawing-page style that the master page names, where
++		// LibreOffice's extension has it on the page layout; the layout's comes first.
++		const odf_types::common_draw_fill_attlist * masterPageFill = NULL;
++		{
++			std::vector<style_master_page*> & masterPages = pgContainer.master_pages();
++			for (size_t i = 0; i < masterPages.size() && !masterPageFill; ++i)
++			{
++				if (!masterPages[i] || !masterPages[i]->attlist_.draw_style_name_) continue;
++				const std::wstring lpName = masterPages[i]->attlist_.style_page_layout_name_.get_value_or(L"");
++				if (backgroundLayout && lpName != backgroundLayout->name()) continue;
++
++				style_instance * drawingPage = Context.root()->odf_context().styleContainer().style_by_name(
++					*masterPages[i]->attlist_.draw_style_name_, style_family::DrawingPage, true);
++				style_drawing_page_properties * props = (drawingPage && drawingPage->content()) ?
++					drawingPage->content()->get_style_drawing_page_properties() : NULL;
++				if (props && props->content().common_draw_fill_attlist_.draw_fill_)
++				{
++					masterPageFill = &props->content().common_draw_fill_attlist_;
++					if (!backgroundLayout) backgroundLayout = pgContainer.page_layout_by_name(lpName);
++				}
++			}
++		}
+ 		if (backgroundLayout)
+ 		{
+ 			if (style_page_layout_properties * layout_properties = backgroundLayout->properties())
+@@ -156,6 +180,8 @@ void office_body::docx_convert(oox::docx_conversion_context & Context)
+ 
+ 				Compute_GraphicFill(layout_properties->attlist_.common_draw_fill_attlist_,
+ 									layout_properties->style_background_image_, Context.root(), fill);
++				if (fill.type == 0 && masterPageFill)
++					Compute_GraphicFill(*masterPageFill, office_element_ptr(), Context.root(), fill);
+ 
+ 				if (layout_properties->attlist_.common_background_color_attlist_.fo_background_color_ || fill.type != 0)
+ 				{
+diff --git a/OdfFile/Writer/Format/odf_page_layout_context.cpp b/OdfFile/Writer/Format/odf_page_layout_context.cpp
+index ac5e17b657..bcf503fe91 100644
+--- a/OdfFile/Writer/Format/odf_page_layout_context.cpp
++++ b/OdfFile/Writer/Format/odf_page_layout_context.cpp
+@@ -34,6 +34,7 @@
+ 
+ #include "styles.h"
+ #include "style_page_layout_properties.h" 
++#include "style_presentation.h"
+ 
+ 
+ namespace cpdoccore {
+@@ -162,9 +163,43 @@ void odf_page_layout_context::process_master_styles(office_element_ptr root )
+ 
+ void odf_page_layout_context::process_automatic_for_styles(office_element_ptr root )
+ {
++	move_page_fills();
+ 	//local_style_context_->process_automatic_for_styles(root);
+ 	local_style_context_->process_automatic_styles(root);
+ }
++void odf_page_layout_context::move_page_fills()
++{
++	// The converter gathers a page's fill on its page layout, where ODF does not allow draw:fill
++	// and the rest (it is LibreOffice's extension). ODF 1.3 has it in a drawing-page style that
++	// the master page names; fo:background-color stays on the layout, where it is valid.
++	for (size_t i = 0; i < master_state_list_.size(); i++)
++	{
++		style_master_page* master = dynamic_cast<style_master_page*>(master_state_list_[i].get_root().get());
++		if (!master || master->attlist_.draw_style_name_ || !master->attlist_.style_page_layout_name_) continue;
++
++		style_page_layout_properties* props = NULL;
++		for (size_t j = 0; j < layout_state_list_.size() && !props; j++)
++		{
++			if (layout_state_list_[j].get_name() == *master->attlist_.style_page_layout_name_)
++				props = layout_state_list_[j].get_properties();
++		}
++		if (!props) continue;
++
++		odf_types::common_draw_fill_attlist& fill = props->attlist_.common_draw_fill_attlist_;
++		if (!fill.draw_fill_ && !fill.draw_fill_color_ && !fill.draw_fill_image_name_) continue;
++
++		local_style_context_->create_style(L"", style_family::DrawingPage, true, false, -1);
++		style* drawing_page = dynamic_cast<style*>(local_style_context_->last_state()->get_office_element().get());
++		if (!drawing_page) continue;
++
++		drawing_page_properties* page_props = &drawing_page->content_.add_get_style_drawing_page_properties()->content_;
++		page_props->common_draw_fill_attlist_ = fill;
++		page_props->draw_background_size_ = L"full"; // Word's page background covers the whole page
++
++		fill = odf_types::common_draw_fill_attlist();
++		master->attlist_.draw_style_name_ = local_style_context_->last_state()->get_name();
++	}
++}
+ void odf_page_layout_context::process_office_styles(office_element_ptr root )
+ {
+ 	local_style_context_->process_office_styles(root);
+diff --git a/OdfFile/Writer/Format/odf_page_layout_context.h b/OdfFile/Writer/Format/odf_page_layout_context.h
+index 0c076884c0..be84e264af 100644
+--- a/OdfFile/Writer/Format/odf_page_layout_context.h
++++ b/OdfFile/Writer/Format/odf_page_layout_context.h
+@@ -64,6 +64,7 @@ public:
+ 
+ 	void process_master_styles			(office_element_ptr root );
+ 	void process_automatic_for_styles	(office_element_ptr root );
++	void move_page_fills();
+ 	void process_office_styles			(office_element_ptr root );//images, fonts, ... for master pages and templates
+ 
+     odf_layout_state * last_layout();
+-- 
+2.55.0
+

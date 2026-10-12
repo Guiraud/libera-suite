@@ -9,7 +9,9 @@ The layers, innermost first, and nothing imports anything above it:
     session    one window: its files, its document, what the host knows of it
     hooks      the shell: what the host asks of whoever owns the windows
     desktop    reveal a file, open a URL, whose account this is
+    updates    once a day, whether a newer version is out
     instance   one running copy: a second launch hands its documents over
+    locking    lock files: a document open here, or open somewhere else
     convert    x2t: documents in, documents out
     saving     what a save request means, and carrying it out
     recents    the Recent list
@@ -19,7 +21,7 @@ The layers, innermost first, and nothing imports anything above it:
     menu       the menu bar
     app        run(): the server, the first windows, the menu
 
-`tests/a_unit/test_layering.py` checks that order against the real import
+`tests/a_unit/host/test_layering.py` checks that order against the real import
 graph, so this is a contract rather than a description. Two edges used to
 break it, both hidden behind function-level imports -- `server` and `window`
 reaching up to `menu`. `shortcuts` and `app` are where the things they were

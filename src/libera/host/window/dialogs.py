@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import webview
 
 from libera.host import saving
+from libera.host.convert import ConversionError
 from libera.host.session import SESSIONS, NotReadyError, Session
 from libera.host.window.portable import Answer, Question, pick_path
 from libera.host.window.windows import (
@@ -33,10 +34,11 @@ logger = logging.getLogger(__name__)
 def ask(question: Question) -> Answer:
     """A question, from whichever thread asks, on whichever toolkit is here.
 
-    The front window is its parent where the toolkit has a use for one.
+    The front window is its parent where the toolkit has a use for one, and
+    is looked up on the GUI thread too: asking AppKit which window is key is
+    as main-thread-only as the dialog.
     """
-    parent = find_front_window()
-    return native.run_on_gui_thread(lambda: native.ask(question, parent))
+    return native.run_on_gui_thread(lambda: native.ask(question, find_front_window()))
 
 
 def say(heading: str, detail: str) -> None:
@@ -52,8 +54,9 @@ def say(heading: str, detail: str) -> None:
     package a virtualenv may not see. Nothing here is worth failing over.
     """
     try:
-        parent = find_front_window()
-        native.run_on_gui_thread(lambda: native.tell(heading, detail, parent))
+        native.run_on_gui_thread(
+            lambda: native.tell(heading, detail, find_front_window())
+        )
     except (ImportError, ValueError):
         logger.warning("%s: %s", heading, detail)
 
@@ -125,7 +128,7 @@ def _save_or_say_why(session: Session, document: Path) -> bool:
     and says why.
     """
     # On the GUI thread, so a save that would ask where fails instead.
-    saved = saving.save_document(session, {"fileType": 0, "params": ""}, may_ask=False)
+    saved = saving.save_document(session, saving.PLAIN_SAVE, may_ask=False)
     if saved["error"] == saving.SaveOutcome.SAVED:
         return True
     say(
@@ -166,7 +169,7 @@ def reload(session: Session, port: int) -> None:
     """Rebuild the editor in that window, or say why it is left as it was."""
     try:
         native.run_on_gui_thread(lambda: reload_session(session, port))
-    except NotReadyError:
+    except (ConversionError, NotReadyError):
         say(
             "Libera Suite could not reload the document",
             "Your edits are still in the window. Save them with File ▸ Save, "
@@ -188,7 +191,10 @@ def ask_save_path(
     """
     if start_in is not None and not start_in.is_dir():
         start_in = None
-    return native.run_save_panel(suggested, formats, start_in, find_front_window())
+    # The parent is found on the GUI thread; the panel hands itself over and
+    # waits, so it must not be called from there.
+    parent = native.run_on_gui_thread(find_front_window)
+    return native.run_save_panel(suggested, formats, start_in, parent)
 
 
 def ask_open_path(_filter: str) -> str | None:
@@ -197,7 +203,7 @@ def ask_open_path(_filter: str) -> str | None:
     pywebview's own dialog on every platform: an open dialog wants no format
     popup, so pywebview's lacks nothing.
     """
-    window = find_front_window()
+    window = native.run_on_gui_thread(find_front_window)
     if window is None:
         return None
     return pick_path(window.create_file_dialog(webview.FileDialog.OPEN))

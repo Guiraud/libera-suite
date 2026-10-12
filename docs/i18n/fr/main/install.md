@@ -31,7 +31,7 @@ curl -fsSL https://cdn.abilian.com/libera/install.sh | sh
 
 Si votre machine dispose de Flatpak, cette commande installe Libera Suite sous forme de Flatpak, avec toutes ses dépendances, puis l'ajoute au menu des applications. Sinon, elle installe la commande `libera` ; au premier lancement, celle-ci indique les paquets système qui manquent à votre distribution et la commande exacte pour les installer.
 
-Elle fonctionne sous Ubuntu 22.04, Debian 12, Fedora 35, RHEL 9 et toute version plus récente. Sans Flatpak, il lui faut aussi Python 3.12 ou plus récent ; s'il manque, elle le signale avant de modifier quoi que ce soit.
+Elle fonctionne sous Ubuntu 22.04, Debian 12, Fedora 36, RHEL 9 et ses dérivées, et toute version plus récente. Sans Flatpak, il lui faut aussi Python 3.12 ou plus récent ; s'il manque, elle le signale avant de modifier quoi que ce soit.
 
 Si vous utilisez Homebrew sous Linux, la ligne Homebrew de la section macOS ci-dessous fonctionne aussi.
 
@@ -69,13 +69,13 @@ Seule, la commande `libera` ouvre la fenêtre de démarrage, où vous pouvez cr�
 
 La page suivante est [Travailler sur des documents](../guide/documents.md) : ouvrir, enregistrer, exporter et imprimer.
 
-## Mettre à jour
+## Mettre à jour {#update}
 
 Relancez le même installateur ou la même commande. La version installée est remplacée par la plus récente.
 
 Avec Homebrew, lancez `brew upgrade libera`. Si une nouvelle version a besoin de nouveaux éditeurs, Libera Suite propose de les télécharger à son lancement suivant.
 
-## Désinstaller
+## Désinstaller {#uninstall}
 
 - **Windows :** *Paramètres › Applications › Applications installées › Libera Suite › Désinstaller*.
 - **Linux, installée en Flatpak** (`flatpak list` affiche `eu.liberasuite.Libera`) :
@@ -108,7 +108,7 @@ Avec Homebrew, lancez `brew upgrade libera`. Si une nouvelle version a besoin de
 
 Vos documents ne sont jamais touchés. Les données que Libera Suite conserve d'une session à l'autre, comme la liste des documents récents et les sessions non enregistrées, restent en place : dans `~/Library/Application Support/Libera Suite` sous macOS et dans `~/.var/app/eu.liberasuite.Libera` pour le Flatpak. Supprimez ce dossier pour n'en laisser aucune trace.
 
-## En cas de problème
+## En cas de problème {#if-something-goes-wrong}
 
 Lancez ceci dans un terminal (sous Windows, dans PowerShell : `& "$env:LOCALAPPDATA\Programs\Libera Suite\libera-cli.exe" --diagnose`) :
 

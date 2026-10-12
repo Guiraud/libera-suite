@@ -1,0 +1,85 @@
+From 48fe30b139e9bcdbe37a885819b5be69c5d76efe Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:58:32 +0200
+Subject: [PATCH 132/142] OdfFile writer: a table cell writes its annotation
+ before its text
+
+A spreadsheet comment is added to its cell after the cell's text, and
+the cell wrote its children in that order. The schema wants
+office:annotation before the text, so every cell with a comment was
+invalid: 17 of LibreOffice's ODF test documents after the fifth batch.
+Cells, covered ones too, now write annotations first.
+
+OdfFile writer: an empty table cell stays self-closing
+
+The previous commit passed CP_XML_STREAM() to the cell's content writer
+unconditionally, and calling it closes the start tag, so every empty
+cell of every spreadsheet came out as an open and a close tag. The same
+XML, but larger files, and different bytes wherever a sheet has an
+empty cell. The content writer is now called only for a cell that has
+content, as the loop it replaced was.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/table.cpp | 31 +++++++++++++++++++++++--------
+ 1 file changed, 23 insertions(+), 8 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/table.cpp b/OdfFile/Writer/Format/table.cpp
+index 8b36c9968c..fdd3f19fba 100644
+--- a/OdfFile/Writer/Format/table.cpp
++++ b/OdfFile/Writer/Format/table.cpp
+@@ -575,6 +575,21 @@ void table_table_cell::create_child_element( const std::wstring & Ns, const std:
+ {
+ 	CP_CREATE_ELEMENT(content_);
+ }
++// A cell holds its annotation before its text, in the schema's order; a spreadsheet's comment
++// is added to the cell after the cell's text
++static void serialize_content(std::wostream & strm, const office_element_ptr_array & content)
++{
++	for (size_t i = 0; i < content.size(); i++)
++	{
++		if (content[i]->get_type() == typeOfficeAnnotation)
++			content[i]->serialize(strm);
++	}
++	for (size_t i = 0; i < content.size(); i++)
++	{
++		if (content[i]->get_type() != typeOfficeAnnotation)
++			content[i]->serialize(strm);
++	}
++}
+ void table_table_cell::add_child_element( const office_element_ptr & child_element)
+ {
+ 	content_.push_back(child_element);
+@@ -588,10 +603,10 @@ void table_table_cell::serialize(std::wostream & _Wostream)
+ 			attlist_.serialize(CP_GET_XML_NODE());
+ 			attlist_extra_.serialize(CP_GET_XML_NODE());
+ 				
+-			for (size_t i = 0; i < content_.size(); i++)
+-			{
+-				content_[i]->serialize(CP_XML_STREAM());
+-			}
++			// Not for an empty cell: CP_XML_STREAM() closes the start tag, and the cell would
++			// lose its self-closing form
++			if (false == content_.empty())
++				serialize_content(CP_XML_STREAM(), content_);
+ 		}
+ 	}	
+ }
+@@ -619,10 +634,10 @@ void table_covered_table_cell::serialize(std::wostream & _Wostream)
+         {
+ 			attlist_.serialize(CP_GET_XML_NODE());
+ 				
+-			for (size_t i = 0; i < content_.size(); i++)
+-			{
+-				content_[i]->serialize(CP_XML_STREAM());
+-			}
++			// Not for an empty cell: CP_XML_STREAM() closes the start tag, and the cell would
++			// lose its self-closing form
++			if (false == content_.empty())
++				serialize_content(CP_XML_STREAM(), content_);
+ 		}
+ 	}	
+ }
+-- 
+2.55.0
+

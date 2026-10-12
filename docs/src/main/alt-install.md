@@ -99,7 +99,7 @@ libera --launcher-remove     # to take it out again
 There is no ready-made one yet. From a source checkout you can build one for yourself:
 
 ```sh
-build/macos-app.sh          # builds build/out/Libera.app
+build/macos/macos-app.sh          # builds build/out/Libera.app
 open build/out/Libera.app
 ```
 

@@ -17,7 +17,7 @@ Libera Suite enthält Komponenten von [**Euro-Office**](https://github.com/Euro-
 
 Wir sind beiden dankbar. Das Schwierigste an einer Office-Suite sind die zwanzig Jahre, in denen man lernt, die `.docx`-Dateien anderer richtig zu lesen. Diesen Teil erben wir.
 
-## Zugehöriger Quellcode
+## Zugehöriger Quellcode {#corresponding-source}
 
 Die Editoren stehen unter der AGPL. Sie verlangt, dass Sie den Quellcode dessen erhalten können, was Sie ausführen, einschließlich unserer Änderungen daran.
 

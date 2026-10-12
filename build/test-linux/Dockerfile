@@ -72,7 +72,7 @@ RUN printf '%s\n' \
 # replace them with Linux ones and leave the Mac unable to run its own tests.
 # UV_PYTHON, because .python-version says 3.12 and trixie has 3.13: without it
 # every uv command prints "Using incompatible environment". It must be the
-# system interpreter in any case -- see build/test-linux.sh on PyGObject.
+# system interpreter in any case -- see build/src/libera_build/linux.py on PyGObject.
 ENV CHROMIUM=/usr/local/bin/chromium-container \
     UV_PROJECT_ENVIRONMENT=/venv \
     UV_PYTHON=/usr/bin/python3 \

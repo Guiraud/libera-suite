@@ -1,0 +1,124 @@
+From 2cac28de82a806eb266631f8565de738bf522197 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 21:54:43 +0200
+Subject: [PATCH 168/168] OdfFile reader: escape text in formulas, filters,
+ comments and fields
+
+Some text went into the OOXML unescaped, so an & or a < in it made the
+part not well-formed, and Word or Excel will not open such a file: an
+autofilter's value, a conditional format's formula, a covered cell's
+formula (other cells' were escaped), a presentation comment, and a
+Word field instruction such as REF with a bookmark name. 6 of
+LibreOffice's ODF test documents had one.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Converter/pptx_comments.cpp              | 2 +-
+ OdfFile/Reader/Converter/xlsx_conditionalFormatting.cpp | 8 ++++----
+ OdfFile/Reader/Converter/xlsx_table_state.cpp           | 2 +-
+ OdfFile/Reader/Format/paragraph_elements.cpp            | 4 ++--
+ OdfFile/Reader/Format/table_xlsx.cpp                    | 2 +-
+ 5 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/OdfFile/Reader/Converter/pptx_comments.cpp b/OdfFile/Reader/Converter/pptx_comments.cpp
+index 0a73328563..fd3df27a3f 100644
+--- a/OdfFile/Reader/Converter/pptx_comments.cpp
++++ b/OdfFile/Reader/Converter/pptx_comments.cpp
+@@ -61,7 +61,7 @@ public:
+ 						}
+ 						CP_XML_NODE(L"p:text")
+ 						{
+-							CP_XML_STREAM() << pptx_comment_[i].content_;
++							CP_XML_STREAM() << XmlUtils::EncodeXmlString(pptx_comment_[i].content_); // plain text
+ 						}
+ 					} 					
+ 				}
+diff --git a/OdfFile/Reader/Converter/xlsx_conditionalFormatting.cpp b/OdfFile/Reader/Converter/xlsx_conditionalFormatting.cpp
+index 5184191a96..91521bce61 100644
+--- a/OdfFile/Reader/Converter/xlsx_conditionalFormatting.cpp
++++ b/OdfFile/Reader/Converter/xlsx_conditionalFormatting.cpp
+@@ -202,14 +202,14 @@ public:
+ 								{
+ 									CP_XML_NODE(L"formula")
+ 									{
+-										CP_XML_CONTENT(*c.rules[j].formula);
++										CP_XML_CONTENT(XmlUtils::EncodeXmlString(*c.rules[j].formula));
+ 									}
+ 								}
+ 								if ((c.rules[j].formula2) && (!c.rules[j].formula2->empty()))
+ 								{
+ 									CP_XML_NODE(L"formula")
+ 									{
+-										CP_XML_CONTENT(*c.rules[j].formula2);
++										CP_XML_CONTENT(XmlUtils::EncodeXmlString(*c.rules[j].formula2));
+ 									}
+ 								}
+ 							}
+@@ -374,14 +374,14 @@ public:
+ 								{
+ 									CP_XML_NODE(L"formula")
+ 									{
+-										CP_XML_CONTENT(*c.rules[j].formula);
++										CP_XML_CONTENT(XmlUtils::EncodeXmlString(*c.rules[j].formula));
+ 									}
+ 								}
+ 								if ((c.rules[j].formula2) && (!c.rules[j].formula2->empty()))
+ 								{
+ 									CP_XML_NODE(L"formula")
+ 									{
+-										CP_XML_CONTENT(*c.rules[j].formula2);
++										CP_XML_CONTENT(XmlUtils::EncodeXmlString(*c.rules[j].formula2));
+ 									}
+ 								}
+ 							}
+diff --git a/OdfFile/Reader/Converter/xlsx_table_state.cpp b/OdfFile/Reader/Converter/xlsx_table_state.cpp
+index ab640a467c..bd142523b0 100644
+--- a/OdfFile/Reader/Converter/xlsx_table_state.cpp
++++ b/OdfFile/Reader/Converter/xlsx_table_state.cpp
+@@ -144,7 +144,7 @@ void xlsx_data_range::serialize_filterColumn(std::wostream& _Wostream, int index
+ 							case 17: // top values
+ 							case 5: CP_XML_ATTR(L"operator", L"greaterThanOrEqual"); break;
+ 							}
+-							CP_XML_ATTR(L"val", filter_conditions[i].value);
++							CP_XML_ATTR_ENCODE_STRING(L"val", filter_conditions[i].value);
+ 						}
+ 					}
+ 				}
+diff --git a/OdfFile/Reader/Format/paragraph_elements.cpp b/OdfFile/Reader/Format/paragraph_elements.cpp
+index 865b7dad49..eb14c726c5 100644
+--- a/OdfFile/Reader/Format/paragraph_elements.cpp
++++ b/OdfFile/Reader/Format/paragraph_elements.cpp
+@@ -74,7 +74,7 @@ void paragraph_content_element::docx_serialize_field(const std::wstring & field_
+ 			strm << L" w:fldLock=\"1\"";
+ 		}
+ 		strm << L"/></w:r>";
+-		strm << L"<w:r><w:instrText>" << field_name << L"</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>";
++		strm << L"<w:r><w:instrText>" << XmlUtils::EncodeXmlString(field_name) << L"</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>";
+ 	}
+ 
+ 	docx_serialize_run(text, Context);
+@@ -99,7 +99,7 @@ void paragraph_content_element::docx_serialize_field(const std::wstring& field_n
+ 			strm << L" w:fldLock=\"1\"";
+ 		}
+ 		strm << L"/></w:r>";
+-		strm << L"<w:r><w:instrText>" << field_name << L"</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>";
++		strm << L"<w:r><w:instrText>" << XmlUtils::EncodeXmlString(field_name) << L"</w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>";
+ 	}
+ 
+ 	docx_serialize_run(content, Context);
+diff --git a/OdfFile/Reader/Format/table_xlsx.cpp b/OdfFile/Reader/Format/table_xlsx.cpp
+index 24a75f760e..6254a72450 100644
+--- a/OdfFile/Reader/Format/table_xlsx.cpp
++++ b/OdfFile/Reader/Format/table_xlsx.cpp
+@@ -1382,7 +1382,7 @@ void table_covered_table_cell::xlsx_convert(oox::xlsx_conversion_context & Conte
+                         {
+                             CP_XML_NODE(L"f")
+                             {
+-                                CP_XML_CONTENT(xlsxFormula);
++                                CP_XML_CONTENT(XmlUtils::EncodeXmlString(xlsxFormula)); // as for any other cell
+                             }
+                         }
+                     }
+-- 
+2.55.0
+

@@ -1,0 +1,80 @@
+From ded780c03557e72ca53d1e042dcb1f77ed20c73e Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 16:14:23 +0200
+Subject: [PATCH 115/142] OdfFile writer: chart properties first in a style
+
+style_content::serialize wrote style:chart-properties after the
+graphic and paragraph properties. Every family's schema is ordered,
+and for chart styles it is chart, graphic, paragraph, text. Moving
+chart properties up to follow the table-cell properties satisfies
+every family at once, since no other family takes both.
+
+Found in 414 of LibreOffice's 3794 ODF test documents after a round
+trip (209 and 205, two forms of the same message).
+
+OdfFile writer: chart wall before floor
+
+chart_plot_area wrote its children in the order they were added, and
+the converter adds chart:floor before chart:wall. The schema ends a
+plot area with chart:wall?, chart:floor?, so the wall is now held
+back and written just before the floor, both after everything else.
+
+Found in 209 of LibreOffice's 3794 ODF test documents after a round
+trip.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/office_chart.cpp | 10 +++++++++-
+ OdfFile/Writer/Format/styles.cpp       |  4 +++-
+ 2 files changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/office_chart.cpp b/OdfFile/Writer/Format/office_chart.cpp
+index 99ff52e7dc..d37143c30f 100644
+--- a/OdfFile/Writer/Format/office_chart.cpp
++++ b/OdfFile/Writer/Format/office_chart.cpp
+@@ -262,10 +262,18 @@ void chart_plot_area::serialize(std::wostream & _Wostream)
+         {
+ 			chart_plot_area_attlist_.serialize(CP_GET_XML_NODE());
+ 
++			// The schema closes a plot area with chart:wall, then chart:floor; they
++			// arrive in either order, so they are held back and written last.
++			office_element_ptr wall, floor;
+ 			for (size_t i = 0; i < content_.size(); i++)
+ 			{
+-				content_[i]->serialize(CP_XML_STREAM());
++				ElementType type = content_[i]->get_type();
++				if (type == typeChartWall)			wall = content_[i];
++				else if (type == typeChartFloor)	floor = content_[i];
++				else content_[i]->serialize(CP_XML_STREAM());
+ 			}
++			if (wall)	wall->serialize(CP_XML_STREAM());
++			if (floor)	floor->serialize(CP_XML_STREAM());
+ 		}
+ 	}
+ }
+diff --git a/OdfFile/Writer/Format/styles.cpp b/OdfFile/Writer/Format/styles.cpp
+index d64a5ad8ac..f51e06aa0b 100644
+--- a/OdfFile/Writer/Format/styles.cpp
++++ b/OdfFile/Writer/Format/styles.cpp
+@@ -247,7 +247,10 @@ void style_content::create_child_element( const std::wstring & Ns, const std::ws
+ }
+ void style_content::serialize(std::wostream & strm)
+ {
++	// One order that suits every family's schema: table-cell and chart properties come
++	// before graphic, graphic before paragraph, paragraph before text.
+ 	if (style_table_cell_properties_)	style_table_cell_properties_->serialize(strm);
++    if (style_chart_properties_)		style_chart_properties_->serialize(strm);
+ 	if (style_graphic_properties_)		style_graphic_properties_->serialize(strm);
+ 	if (style_paragraph_properties_)	style_paragraph_properties_->serialize(strm);
+     if (style_section_properties_)		style_section_properties_->serialize(strm);
+@@ -255,7 +258,6 @@ void style_content::serialize(std::wostream & strm)
+     if (style_table_properties_)		style_table_properties_->serialize(strm);
+     if (style_table_column_properties_)	style_table_column_properties_->serialize(strm);
+     if (style_table_row_properties_)	style_table_row_properties_->serialize(strm);
+-    if (style_chart_properties_)		style_chart_properties_->serialize(strm);
+ 	if (style_drawing_page_properties_)	style_drawing_page_properties_->serialize(strm);
+ 	if (style_text_properties_)			style_text_properties_->serialize(strm);
+ }
+-- 
+2.55.0
+

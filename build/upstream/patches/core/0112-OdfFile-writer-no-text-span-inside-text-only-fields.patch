@@ -1,0 +1,41 @@
+From e9652d3e08cfd355efde14769a8161c84d898d33 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 21:24:52 +0200
+Subject: [PATCH 112/142] OdfFile writer: no text:span inside text-only fields
+
+A DOCX field result is a sequence of runs, and each run opened a
+text:span inside the field element: <text:page-number><text:span>5
+</text:span></text:page-number>. Every element start_field makes holds
+text only, so the schema rejects it. start_span now declines inside a
+field level; end_span already pops only a span, so the pairing holds.
+
+The cost: the formatting of the result runs, a bold page number say, is
+not kept. Valid ODF can carry it only on a span around the field, and
+a complex field is opened before its first run's span, so keeping it
+means reordering start_run, which this does not attempt.
+
+Found in 86 of LibreOffice's 3794 ODF test documents after a round trip.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/odf_text_context.cpp | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/OdfFile/Writer/Format/odf_text_context.cpp b/OdfFile/Writer/Format/odf_text_context.cpp
+index 0919c7124a..3c07be421f 100644
+--- a/OdfFile/Writer/Format/odf_text_context.cpp
++++ b/OdfFile/Writer/Format/odf_text_context.cpp
+@@ -385,6 +385,10 @@ int odf_text_context::get_last_level()
+ void odf_text_context::start_span(bool styled)
+ {
+ 	if (styles_context_ == NULL || single_paragraph_)return;
++	// Every element start_field makes (text:page-number, text:date, text:bookmark-ref, ...)
++	// holds text only, and the runs of a field result would otherwise each become a span
++	// inside it. Skipping the span is safe: end_span pops only a span.
++	if (false == current_level_.empty() && current_level_.back().type == 3) return;
+ 
+ 	office_element_ptr span_elm;
+ 	create_element(L"text", L"span", span_elm, odf_context_);
+-- 
+2.55.0
+

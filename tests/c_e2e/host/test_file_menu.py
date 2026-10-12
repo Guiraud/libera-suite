@@ -36,3 +36,25 @@ def test_the_file_menu_offers_save_as_not_download_as(editor_with, tmp_path, nam
 
     assert SAVE_AS in items, f"no Save As in {items}"
     assert DOWNLOAD_AS not in items
+
+
+def test_file_close_closes_the_window(editor_with, monkeypatch):
+    """The editor's own File > Close sends editor:event file:close, which the
+    bridge ignored: the menu hid itself, as Back does, and the window stayed.
+    It reaches the host now, which closes the window the way its close button
+    does, asking first about unsaved changes."""
+    from support import ScriptedShell
+
+    from libera.host import hooks
+
+    editor = editor_with([])
+    closed: list[str] = []
+    monkeypatch.setattr(
+        hooks, "shell", ScriptedShell(close_window=lambda s: closed.append(s.id))
+    )
+
+    visible_file_menu(editor)
+    with editor.answered("close"):
+        editor.frame.click("#fm-btn-exit")
+
+    assert closed == ["0"]

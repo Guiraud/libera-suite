@@ -1,0 +1,103 @@
+From 587ac46a52949c9aa4a3f78d41c445126a1a2401 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 23:38:18 +0200
+Subject: [PATCH 113/142] OdfFile writer: declare ODF 1.3
+
+Every part of the package declared ODF 1.2 while the writer emits 1.3
+constructs: style:header-first and style:footer-first (305 of
+LibreOffice's 3794 ODF test documents after a round trip) and
+number:min-decimal-places (126). A 1.2 validator rejects them; a 1.2
+reader may ignore them. LibreOffice itself has written 1.3 by default
+since 7.0.
+
+The six places the version is written now share one constant.
+
+Builds on fix/odf-package-version-attributes, which added two of them.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/object_package.cpp | 10 +++++-----
+ OdfFile/Writer/Format/odf_rels.cpp       |  2 +-
+ OdfFile/Writer/Format/odf_rels.h         |  4 ++++
+ 3 files changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/object_package.cpp b/OdfFile/Writer/Format/object_package.cpp
+index a91613a50e..028072738f 100644
+--- a/OdfFile/Writer/Format/object_package.cpp
++++ b/OdfFile/Writer/Format/object_package.cpp
+@@ -346,7 +346,7 @@ namespace odf_writer
+ 				CP_XML_NODE(L"manifest:manifest")
+ 				{  
+ 					CP_XML_ATTR(L"xmlns:manifest", L"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0");
+-					CP_XML_ATTR(L"manifest:version", L"1.2");
++					CP_XML_ATTR(L"manifest:version", ODF_VERSION);
+ 
+ 					rels_.serialize(CP_XML_STREAM());
+ 				}
+@@ -376,7 +376,7 @@ namespace odf_writer
+ 					CP_XML_ATTR(L"xmlns:smil", L"urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0");
+ 					CP_XML_ATTR(L"xmlns:anim", L"urn:oasis:names:tc:opendocument:xmlns:animation:1.0");
+ 					CP_XML_ATTR(L"xmlns:chartooo", L"http://openoffice.org/2010/chart");
+-					CP_XML_ATTR(L"office:version", L"1.2");
++					CP_XML_ATTR(L"office:version", ODF_VERSION);
+ 
+ 					CP_XML_NODE(L"office:meta")
+ 					{
+@@ -603,7 +603,7 @@ namespace odf_writer
+ 						CP_XML_ATTR(L"xmlns:anim", L"urn:oasis:names:tc:opendocument:xmlns:animation:1.0");
+ 						CP_XML_ATTR(L"xmlns:officeooo", L"http://openoffice.org/2009/office");
+ 						CP_XML_ATTR(L"xmlns:chartooo", L"http://openoffice.org/2010/chart");
+-						CP_XML_ATTR(L"office:version", L"1.2");
++						CP_XML_ATTR(L"office:version", ODF_VERSION);
+ 
+ 
+ 						if ((content_) && (content_->styles_.rdbuf()->in_avail() != 0))
+@@ -674,7 +674,7 @@ namespace odf_writer
+ 					CP_XML_ATTR(L"xmlns:formx",			L"urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0" );
+ 					CP_XML_ATTR(L"xmlns:loext",			L"urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0" ); 
+ 					CP_XML_ATTR(L"xmlns:css3t",			L"http://www.w3.org/TR/css3-text/" );
+-					CP_XML_ATTR(L"office:version",		L"1.2");		
++					CP_XML_ATTR(L"office:version",		ODF_VERSION);		
+ 					
+ 					if ((content_) && (content_->content().rdbuf()->in_avail() != 0))
+ 					{
+@@ -696,7 +696,7 @@ namespace odf_writer
+ 			{
+ 				CP_XML_NODE(L"office:document-settings")
+ 				{  
+-					CP_XML_ATTR(L"office:version",	L"1.2" );
++					CP_XML_ATTR(L"office:version",	ODF_VERSION );
+ 					CP_XML_ATTR(L"xmlns:ooo",		L"http://openoffice.org/2004/office" );
+ 					CP_XML_ATTR(L"xmlns:config",	L"urn:oasis:names:tc:opendocument:xmlns:config:1.0" ); 
+ 					CP_XML_ATTR(L"xmlns:xlink",		L"http://www.w3.org/1999/xlink" ); 
+diff --git a/OdfFile/Writer/Format/odf_rels.cpp b/OdfFile/Writer/Format/odf_rels.cpp
+index 6972d8113b..1352b458fd 100644
+--- a/OdfFile/Writer/Format/odf_rels.cpp
++++ b/OdfFile/Writer/Format/odf_rels.cpp
+@@ -42,7 +42,7 @@ void relationship::serialize(std::wostream & _Wostream)
+ 
+ 			if (target_ == L"/")
+ 			{
+-				CP_XML_ATTR(L"manifest:version", L"1.2");
++				CP_XML_ATTR(L"manifest:version", ODF_VERSION);
+ 			}
+             CP_XML_ATTR(L"manifest:media-type", type_);
+ 			
+diff --git a/OdfFile/Writer/Format/odf_rels.h b/OdfFile/Writer/Format/odf_rels.h
+index 45beb13ecb..4f3bd84f0f 100644
+--- a/OdfFile/Writer/Format/odf_rels.h
++++ b/OdfFile/Writer/Format/odf_rels.h
+@@ -33,6 +33,10 @@
+ namespace cpdoccore { 
+ namespace odf_writer {
+ 
++// The ODF version every part of the package declares. 1.3, because the writer
++// emits 1.3 constructs (style:header-first, number:min-decimal-places).
++static const wchar_t ODF_VERSION[] = L"1.3";
++
+ class relationship /*: public xml::element_impl<relationship>*/
+ {
+ public:
+-- 
+2.55.0
+

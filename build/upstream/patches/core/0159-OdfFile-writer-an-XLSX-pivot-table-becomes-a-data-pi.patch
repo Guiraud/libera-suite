@@ -1,0 +1,344 @@
+From 15265c292e3ead7ec7e9b1e6bad22037f80b727f Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 19:24:01 +0200
+Subject: [PATCH 159/159] OdfFile writer: an XLSX pivot table becomes a data
+ pilot table
+
+The converter wrote a pivot table as table:data-pilot-table with its
+name and nothing else, no target range, source or fields, which the
+schema rejects and LibreOffice cannot use: 37 of LibreOffice's ODF test
+documents after the ninth batch. It now writes the target range from
+the pivot's location, the source range from its cache, and its fields:
+page fields, row and column fields (with the data layout field where
+Excel has field -2), data fields with their function, and the cache's
+other fields as hidden. A page field's selection is not carried yet:
+it shows every page. A pivot table without a target or a field is not
+written. x2t's reader already turns a data pilot table into an XLSX
+pivot table, so the pivot table now survives the round trip.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/XlsxConverter.cpp    | 114 ++++++++++++++----
+ .../Writer/Format/ods_conversion_context.cpp  |   8 ++
+ .../Writer/Format/ods_conversion_context.h    |   3 +
+ OdfFile/Writer/Format/ods_table_context.cpp   |  54 ++++++++-
+ OdfFile/Writer/Format/ods_table_context.h     |   4 +
+ .../Writer/Format/table_data_pilot_tables.cpp |   4 +-
+ 6 files changed, 155 insertions(+), 32 deletions(-)
+
+diff --git a/OdfFile/Writer/Converter/XlsxConverter.cpp b/OdfFile/Writer/Converter/XlsxConverter.cpp
+index 98ad37ff0b..9b60dcc673 100644
+--- a/OdfFile/Writer/Converter/XlsxConverter.cpp
++++ b/OdfFile/Writer/Converter/XlsxConverter.cpp
+@@ -43,6 +43,7 @@
+ #include "../../../OOXML/XlsxFormat/ExternalLinks/ExternalLinks.h"
+ #include "../../../OOXML/XlsxFormat/ExternalLinks/ExternalLinkPath.h"
+ #include "../../../OOXML/XlsxFormat/Pivot/PivotTable.h"
++#include "../../DataTypes/tablefunction.h"
+ #include "../../../OOXML/XlsxFormat/Pivot/PivotCacheDefinition.h"
+ #include "../../../OOXML/XlsxFormat/Pivot/PivotCacheRecords.h"
+ #include "../../../OOXML/XlsxFormat/Worksheets/Sparkline.h"
+@@ -554,48 +555,109 @@ void XlsxConverter::convert(OOX::Spreadsheet::CPivotTableFile *oox_pivot_table)
+ 		convert(oox_pivot_table->m_oPivotTableDefinition.GetPointer(), oPivotCache->m_oPivotCashDefinition.GetPointer());
+ 	}
+ }
++// A sheet and an XLSX range, A1:C20, as an ODF cell range address, with the sheet quoted.
++static std::wstring odf_pivot_range(std::wstring sheet, const std::wstring & ref)
++{
++	XmlUtils::replace_all(sheet, L"'", L"''");
++	const std::wstring prefix = L"'" + sheet + L"'.";
++	const size_t colon = ref.find(L':');
++	if (colon == std::wstring::npos) return prefix + ref;
++	return prefix + ref.substr(0, colon) + L":" + prefix + ref.substr(colon + 1);
++}
+ void XlsxConverter::convert(OOX::Spreadsheet::CPivotTableDefinition *oox_pivot_table, OOX::Spreadsheet::CPivotCacheDefinition* oox_pivot_cache)
+ {
+ 	if (!oox_pivot_table || !oox_pivot_cache) return;
+ 
+ 	ods_context->start_pivot_table(oox_pivot_table->m_oName.IsInit() ? *oox_pivot_table->m_oName : L"");
+ 
+-	convert(oox_pivot_table->m_oLocation.GetPointer());
+-	if (oox_pivot_table->m_oPivotFields.IsInit())
++	// Where it goes, what it reads, and its fields in the order ODF gives them meaning: page,
++	// row, column and data fields, then the source's other fields as hidden. The writer used to
++	// write the name alone, which the schema rejects and LibreOffice cannot use.
++	const std::wstring sheet = ods_context->current_table()->office_table_name_;
++	std::wstring target, source;
++	if (oox_pivot_table->m_oLocation.IsInit() && oox_pivot_table->m_oLocation->m_oRef.IsInit())
++		target = odf_pivot_range(sheet, *oox_pivot_table->m_oLocation->m_oRef);
++	if (oox_pivot_cache->m_oCacheSource.IsInit() && oox_pivot_cache->m_oCacheSource->m_oWorksheetSource.IsInit())
+ 	{
+-		for (size_t i = 0; i < oox_pivot_table->m_oPivotFields->m_arrItems.size(); i++)
++		const OOX::Spreadsheet::CWorksheetSource & worksheet = oox_pivot_cache->m_oCacheSource->m_oWorksheetSource.get();
++		if (worksheet.m_oRef.IsInit())
++			source = odf_pivot_range(worksheet.m_oSheet.IsInit() ? *worksheet.m_oSheet : sheet, *worksheet.m_oRef);
++	}
++	ods_context->set_pivot_table_ranges(target, source);
++
++	std::vector<std::wstring> names;
++	if (oox_pivot_cache->m_oCacheFields.IsInit())
++	{
++		for (size_t i = 0; i < oox_pivot_cache->m_oCacheFields->m_arrItems.size(); i++)
+ 		{
+-			convert(oox_pivot_table->m_oPivotFields->m_arrItems[i]);
++			OOX::Spreadsheet::CPivotCacheField *field = oox_pivot_cache->m_oCacheFields->m_arrItems[i];
++			names.push_back(field && field->m_oName.IsInit() ? *field->m_oName : L"");
+ 		}
+ 	}
+-	//if (oox_pivot_table->m_oDataFields.IsInit())
+-	//{
+-	//	for (size_t i = 0; i < oox_pivot_table->m_oDataFields->m_arrItems.size(); i++)
+-	//	{
+-	//		convert(oox_pivot_table->m_oDataFields->m_arrItems[i]);
+-	//	}
+-	//}
+-	//if (oox_pivot_table->m_oColFields.IsInit())
+-	//{
+-	//	for (size_t i = 0; i < oox_pivot_table->m_oColFields->m_arrItems.size(); i++)
+-	//	{
+-	//		convert(oox_pivot_table->m_oColFields->m_arrItems[i]);
+-	//	}
+-	//}
+-	//if (oox_pivot_table->m_oRowFields.IsInit())
+-	//{
+-	//	for (size_t i = 0; i < oox_pivot_table->m_oRowFields->m_arrItems.size(); i++)
+-	//	{
+-	//		convert(oox_pivot_table->m_oRowFields->m_arrItems[i]);
+-	//	}
+-	//}
++	std::vector<bool> used(names.size(), false);
++	typedef odf_types::table_orientation orientation;
++
+ 	if (oox_pivot_table->m_oPageFields.IsInit())
+ 	{
+ 		for (size_t i = 0; i < oox_pivot_table->m_oPageFields->m_arrItems.size(); i++)
+ 		{
+-			convert(oox_pivot_table->m_oPageFields->m_arrItems[i]);
++			OOX::Spreadsheet::CPageField *field = oox_pivot_table->m_oPageFields->m_arrItems[i];
++			if (!field || !field->m_oFld.IsInit() || *field->m_oFld < 0 || *field->m_oFld >= (int)names.size()) continue;
++			ods_context->add_pivot_table_field(names[*field->m_oFld], orientation::page, -1, false);
++			used[*field->m_oFld] = true;
+ 		}
+ 	}
++	for (int axis = 0; axis < 2; axis++)
++	{
++		nullable<OOX::Spreadsheet::CColumnRowFields> & fields = axis == 0 ? oox_pivot_table->m_oRowFields : oox_pivot_table->m_oColFields;
++		if (!fields.IsInit()) continue;
++		for (size_t i = 0; i < fields->m_arrItems.size(); i++)
++		{
++			OOX::Spreadsheet::CField *field = fields->m_arrItems[i];
++			if (!field || !field->m_oX.IsInit()) continue;
++			const orientation::type where = axis == 0 ? orientation::row : orientation::column;
++			if (*field->m_oX == -2) // the values of several data fields, side by side
++				ods_context->add_pivot_table_field(L"", where, odf_types::table_function::Auto, true);
++			else if (*field->m_oX >= 0 && *field->m_oX < (int)names.size())
++			{
++				ods_context->add_pivot_table_field(names[*field->m_oX], where, -1, false);
++				used[*field->m_oX] = true;
++			}
++		}
++	}
++	if (oox_pivot_table->m_oDataFields.IsInit())
++	{
++		for (size_t i = 0; i < oox_pivot_table->m_oDataFields->m_arrItems.size(); i++)
++		{
++			OOX::Spreadsheet::CDataField *field = oox_pivot_table->m_oDataFields->m_arrItems[i];
++			if (!field || !field->m_oFld.IsInit() || field->m_oFld->GetValue() >= names.size()) continue;
++
++			int function = odf_types::table_function::sum;
++			if (field->m_oSubtotal.IsInit())
++			{
++				switch (field->m_oSubtotal->GetValue())
++				{
++				case SimpleTypes::Spreadsheet::functionAverage:		function = odf_types::table_function::average;		break;
++				case SimpleTypes::Spreadsheet::functionCount:		function = odf_types::table_function::count;		break;
++				case SimpleTypes::Spreadsheet::functionCountNums:	function = odf_types::table_function::countnums;	break;
++				case SimpleTypes::Spreadsheet::functionMaximum:		function = odf_types::table_function::max;			break;
++				case SimpleTypes::Spreadsheet::functionMinimum:		function = odf_types::table_function::min;			break;
++				case SimpleTypes::Spreadsheet::functionProduct:		function = odf_types::table_function::product;		break;
++				case SimpleTypes::Spreadsheet::functionStdDev:		function = odf_types::table_function::stdev;		break;
++				case SimpleTypes::Spreadsheet::functionStdDevP:		function = odf_types::table_function::stdevp;		break;
++				case SimpleTypes::Spreadsheet::functionVariance:	function = odf_types::table_function::var;			break;
++				case SimpleTypes::Spreadsheet::functionVarP:		function = odf_types::table_function::varp;			break;
++				default:																								break;
++				}
++			}
++			ods_context->add_pivot_table_field(names[field->m_oFld->GetValue()], orientation::data, function, false);
++			used[field->m_oFld->GetValue()] = true;
++		}
++	}
++	for (size_t i = 0; i < names.size(); i++)
++	{
++		if (!used[i]) ods_context->add_pivot_table_field(names[i], orientation::hidden, -1, false);
++	}
+ 
+ 	ods_context->end_pivot_table();
+ }
+diff --git a/OdfFile/Writer/Format/ods_conversion_context.cpp b/OdfFile/Writer/Format/ods_conversion_context.cpp
+index 5c073cd49d..3bb9388dee 100644
+--- a/OdfFile/Writer/Format/ods_conversion_context.cpp
++++ b/OdfFile/Writer/Format/ods_conversion_context.cpp
+@@ -365,6 +365,14 @@ void ods_conversion_context::start_pivot_table(const std::wstring &name)
+ {
+ 	return table_context_.start_pivot_table(name);
+ }
++void ods_conversion_context::set_pivot_table_ranges(const std::wstring &target, const std::wstring &source)
++{
++	table_context_.set_pivot_table_ranges(target, source);
++}
++void ods_conversion_context::add_pivot_table_field(const std::wstring &name, odf_types::table_orientation::type orientation, int function, bool data_layout)
++{
++	table_context_.add_pivot_table_field(name, orientation, function, data_layout);
++}
+ void ods_conversion_context::end_pivot_table()
+ {
+ 	table_context_.end_pivot_table();
+diff --git a/OdfFile/Writer/Format/ods_conversion_context.h b/OdfFile/Writer/Format/ods_conversion_context.h
+index fca6703d0e..09abc607ba 100644
+--- a/OdfFile/Writer/Format/ods_conversion_context.h
++++ b/OdfFile/Writer/Format/ods_conversion_context.h
+@@ -26,6 +26,7 @@
+ 
+ #include "odf_conversion_context.h"
+ #include "ods_table_context.h"
++#include "../../DataTypes/tableorientation.h"
+ 
+ namespace cpdoccore { 
+ namespace odf_writer {
+@@ -120,6 +121,8 @@ public:
+ 	void add_table_part_column(std::wstring name);
+ 
+ 	void start_pivot_table(const std::wstring &name);
++	void set_pivot_table_ranges(const std::wstring &target, const std::wstring &source);
++	void add_pivot_table_field(const std::wstring &name, odf_types::table_orientation::type orientation, int function, bool data_layout);
+ 	void end_pivot_table();
+ 
+ 	void start_conditional_formats();
+diff --git a/OdfFile/Writer/Format/ods_table_context.cpp b/OdfFile/Writer/Format/ods_table_context.cpp
+index 58cee0cc9c..6190187e97 100644
+--- a/OdfFile/Writer/Format/ods_table_context.cpp
++++ b/OdfFile/Writer/Format/ods_table_context.cpp
+@@ -210,8 +210,6 @@ void ods_table_context::add_autofilter(std::wstring ref)
+ }
+ void ods_table_context::start_pivot_table(const std::wstring &name)
+ {
+-	if (!table_pivots_.root) create_element(L"table", L"data-pilot-tables", table_pivots_.root, &context_);
+-
+ 	office_element_ptr elm;
+ 	create_element(L"table", L"data-pilot-table", elm, &context_);
+ 	table_data_pilot_table *pilot_table = dynamic_cast<table_data_pilot_table*>(elm.get());
+@@ -219,13 +217,61 @@ void ods_table_context::start_pivot_table(const std::wstring &name)
+ 	if (!pilot_table) return;
+ 
+ 	pilot_table->table_name_ = name;
+-
+-	table_pivots_.root->add_child_element(elm);
++	current_pivot_ = elm;
+ 
+ 	state()->start_pilot_table(elm);
+ }
++void ods_table_context::set_pivot_table_ranges(const std::wstring &target, const std::wstring &source)
++{
++	table_data_pilot_table *pilot_table = dynamic_cast<table_data_pilot_table*>(current_pivot_.get());
++	if (!pilot_table) return;
++
++	if (!target.empty()) pilot_table->table_target_range_address_ = target;
++	if (!source.empty())
++	{
++		office_element_ptr elm;
++		create_element(L"table", L"source-cell-range", elm, &context_);
++		table_source_cell_range *range = dynamic_cast<table_source_cell_range*>(elm.get());
++		if (!range) return;
++
++		range->table_cell_range_address_ = source;
++		pilot_table->add_child_element(elm);
++	}
++}
++void ods_table_context::add_pivot_table_field(const std::wstring &name, table_orientation::type orientation, int function, bool data_layout)
++{
++	table_data_pilot_table *pilot_table = dynamic_cast<table_data_pilot_table*>(current_pivot_.get());
++	if (!pilot_table) return;
++
++	office_element_ptr elm;
++	create_element(L"table", L"data-pilot-field", elm, &context_);
++	table_data_pilot_field *field = dynamic_cast<table_data_pilot_field*>(elm.get());
++	if (!field) return;
++
++	field->table_source_field_name_ = name;
++	field->table_orientation_ = table_orientation(orientation);
++	if (function >= 0)
++		field->table_function_ = table_function((table_function::type)function);
++	if (data_layout)
++		field->table_is_data_layout_field_ = Bool(true);
++	if (orientation == table_orientation::page)
++	{
++		// A page field needs a selected page; LibreOffice's flag shows every page instead
++		field->table_selected_page_ = L"";
++		field->loext_ignore_selected_page_ = Bool(true);
++	}
++	pilot_table->add_child_element(elm);
++}
+ void ods_table_context::end_pivot_table()
+ {
++	// Written only with what the schema requires of it: where it goes, and a field
++	table_data_pilot_table *pilot_table = dynamic_cast<table_data_pilot_table*>(current_pivot_.get());
++	if (pilot_table && pilot_table->table_target_range_address_ && !pilot_table->fields_.empty())
++	{
++		if (!table_pivots_.root) create_element(L"table", L"data-pilot-tables", table_pivots_.root, &context_);
++		table_pivots_.root->add_child_element(current_pivot_);
++	}
++	current_pivot_.reset();
+ 	state()->end_pilot_table();
+ }
+ bool ods_table_context::start_data_validation( const std::wstring &strRef, int type)
+diff --git a/OdfFile/Writer/Format/ods_table_context.h b/OdfFile/Writer/Format/ods_table_context.h
+index d854dfc436..21e4652b95 100644
+--- a/OdfFile/Writer/Format/ods_table_context.h
++++ b/OdfFile/Writer/Format/ods_table_context.h
+@@ -26,6 +26,7 @@
+ 
+ #include <string>
+ #include "ods_table_state.h"
++#include "../../DataTypes/tableorientation.h"
+ 
+ namespace cpdoccore {
+ namespace odf_writer {
+@@ -75,6 +76,8 @@ public:
+ 	void end_data_validation();
+ 
+ 	void start_pivot_table(const std::wstring &name);
++	void set_pivot_table_ranges(const std::wstring &target, const std::wstring &source);
++	void add_pivot_table_field(const std::wstring &name, odf_types::table_orientation::type orientation, int function, bool data_layout);
+ 	void end_pivot_table();
+ private:
+ 
+@@ -86,6 +89,7 @@ private:
+ 	table_additional_elements_state	table_database_ranges_;
+ 	table_additional_elements_state	table_content_validations_;
+ 	table_additional_elements_state	table_pivots_;
++	office_element_ptr				current_pivot_;
+ 
+ 	size_t count_validations_;
+ 
+diff --git a/OdfFile/Writer/Format/table_data_pilot_tables.cpp b/OdfFile/Writer/Format/table_data_pilot_tables.cpp
+index 9a148fb8ca..a1a0d68c95 100644
+--- a/OdfFile/Writer/Format/table_data_pilot_tables.cpp
++++ b/OdfFile/Writer/Format/table_data_pilot_tables.cpp
+@@ -162,12 +162,12 @@ void table_data_pilot_field::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         { 
+-			CP_XML_ATTR_OPT(L"table:source-field-name"		, table_source_field_name_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"table:source-field-name", table_source_field_name_);
+ 			CP_XML_ATTR_OPT(L"table:orientation"			, table_orientation_);
+ 			CP_XML_ATTR_OPT(L"table:used-hierarchy"			, table_used_hierarchy_);
+ 			CP_XML_ATTR_OPT(L"table:function"				, table_function_);
+ 			CP_XML_ATTR_OPT(L"loext:ignore-selected-page"	, loext_ignore_selected_page_);
+-			CP_XML_ATTR_OPT(L"table:selected-page"			, table_selected_page_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"table:selected-page", table_selected_page_);
+ 			CP_XML_ATTR_OPT(L"table:is-data-layout-field"	, table_is_data_layout_field_);
+ 			CP_XML_ATTR_OPT(L"tableooo:display-name"		, table_display_name_);
+ 
+-- 
+2.55.0
+

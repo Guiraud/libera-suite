@@ -1,0 +1,79 @@
+From bb2d1eb375fd706ab628729d829028e34962ecfb Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 07:00:23 +0200
+Subject: [PATCH 134/142] OdfFile writer: a DOCX grid column is as wide as it
+ says
+
+Upstream's fix for bug 51597 added 37 twips to every grid column
+narrower than 7 cm, to make up for cells that came back narrower after a
+round trip. The reader writes a column's width to the twip, so the
+addition widened every such column by 0.065 cm on every round trip: a
+3 cm column read back as 3.066, 3.131, 3.196 cm on three trips. That is
+drift in every document with a narrow table column; the fifth batch
+exposed it in tdf150149.fodt. The width is now taken as written.
+
+OdfFile writer: a zero-width grid column has no width
+
+A DOCX grid column of width 0 became style:column-width="0cm", which
+ODF does not allow. The 37 twips removed by the previous commit used to
+turn it into 0.065 cm; deleted_table.fodt, whose table is a tracked
+deletion, has one. It is now treated as a column without a width.
+
+OdfFile writer: a zero cell width does not set its column's width
+
+A DOCX cell of width 0 set its column's width to 0 when the grid gave
+none, and ODF has no zero-width column: deleted_table.fodt, a tracked
+table deletion, once the previous commit left its zero-width grid column
+without a width. A cell width that is not positive is now ignored.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/DocxConverter.cpp  | 16 +++++-----------
+ OdfFile/Writer/Format/odf_table_context.cpp |  1 +
+ 2 files changed, 6 insertions(+), 11 deletions(-)
+
+diff --git a/OdfFile/Writer/Converter/DocxConverter.cpp b/OdfFile/Writer/Converter/DocxConverter.cpp
+index 52d120f7ff..3356f68b53 100644
+--- a/OdfFile/Writer/Converter/DocxConverter.cpp
++++ b/OdfFile/Writer/Converter/DocxConverter.cpp
+@@ -4974,20 +4974,14 @@ void DocxConverter::convert(OOX::Logic::CTblGrid	*oox_table_grid, int columns_wi
+ 		if (oox_table_grid->m_arrGridCol[i] == NULL) continue;
+ 		double width = -1;
+ 
+-		const double pt_per_cm = 28.3464567;
+ 
+ 		if (oox_table_grid->m_arrGridCol[i]->m_oW.IsInit())
+ 		{
+-			if( oox_table_grid->m_arrGridCol[i]->m_oW->ToPoints() / pt_per_cm < 7.0 ) // check bug 51597
+-			{
+-				int twips = oox_table_grid->m_arrGridCol[i]->m_oW->ToTwips();
+-				const double points = (twips + 37) / 20.0;
+-				width = points;
+-			}
+-			else
+-			{
+-				width = oox_table_grid->m_arrGridCol[i]->m_oW->ToPoints();
+-			}
++			// As written. Bug 51597 added 37 twips to every column under 7 cm, to make up for cells
++			// that came back narrower; the reader writes a column's width exactly, so each round trip
++			// widened such a column by 0.065 cm instead
++			width = oox_table_grid->m_arrGridCol[i]->m_oW->ToPoints();
++			if (width <= 0) width = -1; // no width: ODF has no zero-width column
+ 		}
+ 
+ 		odt_context->add_table_column(width);
+diff --git a/OdfFile/Writer/Format/odf_table_context.cpp b/OdfFile/Writer/Format/odf_table_context.cpp
+index 9fa2e18ec4..0a0f7e4169 100644
+--- a/OdfFile/Writer/Format/odf_table_context.cpp
++++ b/OdfFile/Writer/Format/odf_table_context.cpp
+@@ -491,6 +491,7 @@ void odf_table_context::set_column_optimal(bool val)
+ void odf_table_context::change_current_column_width(double width)
+ {
+ 	if (impl_->empty()) return;
++	if (width <= 0) return; // a cell without a width says nothing of its column's
+ 	
+ 	int index = impl_->current_table().current_column ;
+ 	if (index < 0) return;	
+-- 
+2.55.0
+

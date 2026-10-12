@@ -1,0 +1,46 @@
+From 46de4cffcf831e5c0fc2f9e13538010cb9fc0998 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:59:21 +0200
+Subject: [PATCH 133/142] OdfFile reader: whitespace in a note body is not text
+
+note_body::add_text and add_space kept any text, whitespace included, as
+content of the note. In a flat ODF file, the indentation between
+text:note-body and its text:p became a DOCX run, and the note's
+paragraph was written inside that run; the writer then made a note
+without a body on the way back: 17 of LibreOffice's ODF test documents,
+16 of them .fodt, after the fifth batch. A note body holds paragraphs,
+lists and tables, so whitespace in it is dropped.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Format/note.cpp | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/OdfFile/Reader/Format/note.cpp b/OdfFile/Reader/Format/note.cpp
+index 692d3e4cdc..c7e22574d4 100644
+--- a/OdfFile/Reader/Format/note.cpp
++++ b/OdfFile/Reader/Format/note.cpp
+@@ -101,16 +101,18 @@ void note_body::add_child_element( xml::sax * Reader, const std::wstring & Ns, c
+     CP_CREATE_ELEMENT(content_);
+ }
+ 
++// A note body holds paragraphs, lists and tables, not text: whitespace between them is the
++// indentation of a flat ODF file, and made a DOCX run that held the note's paragraph
+ void note_body::add_text(const std::wstring & Text)
+ {
++    if (Text.find_first_not_of(L" \t\r\n") == std::wstring::npos) return;
++
+     office_element_ptr elm = text::create(Text) ;
+     content_.push_back( elm );
+ }
+ 
+ void note_body::add_space(const std::wstring & Text)
+ {
+-    office_element_ptr elm = text::create(Text) ;
+-    content_.push_back( elm );
+ }
+ void note_body::docx_convert(oox::docx_conversion_context & Context)
+ {
+-- 
+2.55.0
+

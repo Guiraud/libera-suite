@@ -1,0 +1,57 @@
+From eab7603a71c05d3678f46c6691a19fe9815e6c35 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 16:55:48 +0200
+Subject: [PATCH 147/148] OdfFile writer: a sheet name with a space is quoted
+ in a cell address
+
+A validation's and a named expression's table:base-cell-address gave
+the sheet name as it is. The schema, like the formula syntax, wants a
+name holding a dot, a space or a quote in quotes, with quotes doubled:
+6 of LibreOffice's ODF test documents after the seventh batch. Named
+ranges already quoted theirs.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/ods_table_context.cpp | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/ods_table_context.cpp b/OdfFile/Writer/Format/ods_table_context.cpp
+index 7f39042183..58cee0cc9c 100644
+--- a/OdfFile/Writer/Format/ods_table_context.cpp
++++ b/OdfFile/Writer/Format/ods_table_context.cpp
+@@ -45,6 +45,14 @@ namespace cpdoccore {
+ 
+ namespace odf_writer {
+ 
++// A sheet name in a cell address is quoted when it holds a dot, a space or a quote.
++static std::wstring address_sheet_name(std::wstring name)
++{
++	if (name.find_first_of(L". '") == std::wstring::npos) return name;
++	XmlUtils::replace_all(name, L"'", L"''");
++	return L"'" + name + L"'";
++}
++
+ std::wstring getColAddress(size_t col)
+ {
+     static const size_t r = (L'Z' - L'A' + 1);
+@@ -261,7 +269,7 @@ bool ods_table_context::start_data_validation( const std::wstring &strRef, int t
+ 
+ 	if (validation_state.refs.empty()) return false;
+ 
+-	validation->table_base_cell_address_	= state()->office_table_name_ + L"." + getCellAddress(validation_state.refs[0].col_start - 1, validation_state.refs[0].row_start - 1);
++	validation->table_base_cell_address_	= address_sheet_name(state()->office_table_name_) + L"." + getCellAddress(validation_state.refs[0].col_start - 1, validation_state.refs[0].row_start - 1);
+ 	validation->table_name_					= validation_state.name;
+ 
+ 	table_content_validations_.root->add_child_element(elm);
+@@ -570,7 +578,7 @@ void ods_table_context::add_defined_expression(const std::wstring & name, const
+ 	
+ 	if (sheet_id >=0 && sheet_id < table_state_list_.size())
+ 	{
+-		odf_base_cell = L"$" + table_state_list_[sheet_id]->office_table_name_ + L".$A$1";
++		odf_base_cell = L"$" + address_sheet_name(table_state_list_[sheet_id]->office_table_name_) + L".$A$1";
+ 		table_state_list_[sheet_id]->add_definded_expression(elm);
+ 		
+ 		if ( printable)
+-- 
+2.55.0
+

@@ -5,13 +5,13 @@ The payload is built from pinned upstream sources plus our patches, on your own 
 ## What you need
 
 ```sh
-make toolchain-install     # what it will install: build/toolchain.sh list
-make toolchain-check       # what is missing, and the line that installs it
+lb toolchain install              # what it will install: build/engine/toolchain.sh list
+lb toolchain check                # what is missing, and the line that installs it
 ```
 
 Debian, Fedora and Arch have measured package names. openSUSE is a best-effort mapping. On anything else `toolchain-check` names the tools and leaves the package manager to you. On **macOS** it comes to the Xcode command line tools plus CMake, Ninja and Node 20.
 
-Every payload target depends on `toolchain-check`. Each thing it looks for otherwise fails late and in somebody else's words: a missing `glib2-devel` stops V8's `gn gen` *after* depot_tools has fetched V8, which took 991 seconds on Fedora 43, and a missing `libstdc++-static` arrives as a message about namespaces. `build/toolchain.sh` holds the one list, which the container image checks against too.
+Every payload target depends on `toolchain-check`. Each thing it looks for otherwise fails late and in somebody else's words: a missing `glib2-devel` stops V8's `gn gen` *after* depot_tools has fetched V8, which took 991 seconds on Fedora 43, and a missing `libstdc++-static` arrives as a message about namespaces. `build/engine/toolchain.sh` holds the one list, which the container image checks against too.
 
 **A native build needs an old clang, which most distributions no longer have.** V8 8.9 does not compile under clang 16 or later, so `toolchain-check` refuses anything newer. Fedora 43 defaults to clang 21. It packages `clang15`, which is the newest V8 accepts, but no matching `lld15`, so there is no complete toolchain there to point the build at. Use the container, which pins clang 14 and is the release path anyway.
 
@@ -27,7 +27,7 @@ Fedora needs `perl-core`, because OpenSSL's `Configure` needs `FindBin` and `IPC
 
 `libstdc++-static` is split out on Fedora as well. Its absence looks like this: ICU's Linux configure line is `CXXFLAGS=-static-libstdc++ -static-libgcc` (`Common/3dParty/icu/nc-build.py`), Fedora ships `libstdc++.a` in a package of its own, and Debian's `g++` includes it. Without it the first C++ link in `configure` fails with `cannot find -lstdc++`. That link happens to be the namespace probe, so configure reports `Namespace support is required to build ICU`, which says nothing about static linking. The real error is in `config.log`, in the work tree.
 
-On **Linux arm64 only**, V8 8.9 demands clang **13 exactly** and aborts on anything else (`nc-build.py`, around the `targetarch == "arm64"` check). x86_64 has no version gate. Ubuntu 24.04 has no clang 13 at all; its packages start at 14. That is one of the two reasons the container base is 22.04, where `build/docker.sh` picks clang 13 for arm64 and 14 for x86_64 off one image.
+On **Linux arm64 only**, V8 8.9 demands clang **13 exactly** and aborts on anything else (`nc-build.py`, around the `targetarch == "arm64"` check). x86_64 has no version gate. Ubuntu 24.04 has no clang 13 at all; its packages start at 14. That is one of the two reasons the container base is 22.04, where `lb payload container` (`libera_build/buildbox.py`) picks clang 13 for arm64 and 14 for x86_64 off one image.
 
 Either way you also need time and disk. **V8 is built from source**, on every platform, and takes about half an hour in a build tree of several gigabytes. `Common/3dParty/v8/hashes.txt` lists cache keys for a Nextcloud store that wants credentials we do not have, so upstream's `ensure_dep` finds nothing and falls through to building it.
 
@@ -41,11 +41,11 @@ export BUILD_ROOT=/somewhere/with/room
 
 ## Does the Mac need V8?
 
-Maybe not. Two targets exist to find out:
+Maybe not. One script exists to find out:
 
 ```sh
-make doctrenderer-jsc          # build doctrenderer against macOS's JavaScriptCore
-make doctrenderer-jsc-check    # convert a document with each engine, and compare the PDF
+sh build/engine/doctrenderer-jsc.sh build    # build doctrenderer against macOS's JavaScriptCore
+sh build/engine/doctrenderer-jsc.sh check    # convert a document with each engine, and compare the PDF
 ```
 
 Upstream abstracts the JS engine behind `js_internal/js_base.h` and ships two implementations, `v8` and `jsc`. The second is Objective-C++ against Apple's JavaScriptCore framework, and upstream's own qmake build turns it on for macOS. The CMake port we use defaults it off, so we build V8 on the Mac too: half an hour, and five of the `core` patches.
@@ -57,18 +57,18 @@ None of this reaches Linux, where `jsc_base.mm` does not apply: it is Objective-
 ## The steps
 
 ```sh
-make payload-all       # the whole chain, ending in the smoke check
+make payload       # the whole chain, ending in the smoke check
 ```
 
-Take them one at a time the first time on a new machine: `payload-configure` surfaces missing tools and CMake gaps in minutes, before a forty-minute build reaches them:
+Take them one at a time the first time on a new machine: `configure` surfaces missing tools and CMake gaps in minutes, before a forty-minute build reaches them:
 
 ```sh
-make payload-fetch       # clone or reset to the pinned revisions, apply patches
-make payload-configure   # the fast diagnostic
-make payload-core        # x2t and the native libraries; the long one
-make payload-assemble    # sdkjs, web-apps, fonts, blanks, dictionaries, branding
-make smoke               # check the result converts a document
-make payload-dist        # the distributable tarballs and their manifest
+lb payload fetch                # clone or reset to the pinned revisions, apply patches
+lb payload configure            # the fast diagnostic
+lb payload core                 # x2t and the native libraries; the long one
+lb payload assemble             # sdkjs, web-apps, fonts, blanks, dictionaries, branding
+lb payload smoke                # check the result converts a document
+lb payload dist                 # the distributable tarballs and their manifest
 ```
 
 Each is a thin wrapper over the script of the same name in `build/`; run those directly when you want to pass something the target does not.
@@ -96,10 +96,10 @@ Of the 28 `core` patches, 21 are macOS work and 7 are Windows. All but one sit i
 
 ### In a container
 
-`ENGINE` picks the container engine, `docker` by default and `podman` if that is the only one installed:
+`ENGINE` picks the container engine. Without it, the first installed of `docker` then `podman` on macOS, and of `podman` then `docker` elsewhere:
 
 ```sh
-ENGINE=podman make payload-container
+ENGINE=podman lb payload container
 ```
 
 On Linux the choice has a consequence beyond taste. A bind mount passes uids through unchanged there, so a container running as root writes a build tree you cannot then delete without `sudo`. That is why `$BUILD_ROOT/linux-amd64` comes out owned by root on Fedora and by you on a Mac, where the daemon lives in a VM that maps ownership across the share. Rootless podman maps container root to your own uid through a user namespace, so the same build writes files you own.
@@ -115,32 +115,28 @@ glibc 2.38, and would not load on Debian 12 at all. musl is not glibc, so Alpine
 cannot run it whatever its version. The Flatpak sidesteps all of this, since the
 editors inside it run against the GNOME runtime's libraries.
 
-`build/docker.sh` runs the same scripts in an Ubuntu 22.04 image. It is how a Linux payload gets built from the Mac. It is also the reproducible way to build one anywhere: the host's toolchain stops being part of the answer.
+`lb payload container` runs the same scripts in an Ubuntu 22.04 image. It is how a Linux payload gets built from the Mac. It is also the reproducible way to build one anywhere: the host's toolchain stops being part of the answer.
+
+That is two commands, and either is useful alone:
 
 ```sh
-make payload-linux          # the whole thing: build in the container, install here
+lb payload container               # fetch, configure, core, payload, dist, smoke, in the image
+lb payload install                 # the artifacts out of the volume and installed on this machine
 ```
 
-That is two targets, and either is useful alone:
+`payload install` copies the tarballs out of the container's volume and installs them the way a user does, with every hash checked against `manifest.json`, so `make test` resolves the payload with nothing set in the environment. After a *native* `lb payload dist`, point it at that build instead: `lb payload install --from $BUILD_ROOT/out/dist/0.2`.
+
+Underneath, the same container takes one step at a time:
 
 ```sh
-make payload-container      # fetch, configure, core, payload, dist, smoke, in the image
-make payload-install        # the artifacts out of the volume and installed on this machine
+lb payload container --image                # build the image (about two minutes)
+lb payload container --versions             # what it is pinned to
+lb payload container dist.sh --fonts core   # one build/ script, in the container
+lb payload export                           # where the artifacts are; prints it
+lb payload container --shell                # poke around inside
 ```
 
-`payload-install` copies the tarballs out of the container's volume and installs them the way a user does, with every hash checked against `manifest.json`, so `make test` resolves the payload with nothing set in the environment. After a *native* `make payload-dist`, point the same target at that build instead: `make payload-install DIST=$BUILD_ROOT/out/dist/0.2`.
-
-Underneath, `build/docker.sh` takes the same steps one at a time:
-
-```sh
-build/docker.sh image       # build the image (about two minutes)
-build/docker.sh versions    # what it is pinned to
-build/docker.sh all         # fetch, configure, build, payload, dist, smoke
-build/docker.sh export      # the artifacts onto this machine; prints where
-build/docker.sh shell       # poke around inside
-```
-
-`export` writes to `$BUILD_ROOT/out/dist` and prints that directory on stdout, with everything else on stderr, which is how `payload-install` reads it. It copies through a tar pipe, so extraction runs as you and nothing lands owned by root. It also checks that the manifest and at least one tarball arrived, because the exit code of a pipeline comes from tar.
+`export` prints where the artifacts are on stdout, with everything else on stderr, which is how `payload install` reads it. The default build tree is already on this disk, so that is `$BUILD_ROOT/linux-<arch>/out/dist/<version>`. With `--volume` it copies them out first, into `$BUILD_ROOT/out/dist/<version>`, through a tar pipe, so extraction runs as you and nothing lands owned by root. The copy is extracted into a fresh directory and checked there, on both ends' exit statuses, since a pipeline's own is only tar's, and on content: an earlier export's files in the destination would otherwise pass for this one's. Either way it checks that the manifest and at least one tarball are there.
 
 Three things are pinned, as `ARG`s at the top of `build/docker/Dockerfile`, because each drifts on its own schedule. Moving the toolchain means bumping one of them by hand; nothing else in the file decides what gets installed.
 
@@ -161,32 +157,41 @@ Bumping it invalidates V8's object tree and **ninja will not notice**: it keys o
 
 The last layer checks the toolchain itself: every tool on `PATH`, `perl` with `FindBin` and `IPC::Cmd`, and a static C++ link. That last one is ICU's namespace probe, so a missing `libstdc++.a` fails here in a second, where a build takes twenty minutes to fail with a message about namespaces. The check earned its place on the first build, failing on `libtool`: Debian's package of that name ships only `libtoolize`; `/usr/bin/libtool` is in `libtool-bin`.
 
-`build/docker.sh versions` prints the pins and the compiler versions out of the finished image; `/etc/libera-build-packages.txt` inside it is every package and version.
+`lb payload container --versions` prints the pins and the compiler versions out of the finished image; `/etc/libera-build-packages.txt` inside it is every package and version.
 
 Two mounts:
 
-- **The build tree goes on a real disk**, at `$BUILD_ROOT/linux-<arch>`, beside the native one. It used to be a named Docker volume, which lives on the VM's disk (the Mac's internal one). A full build is around 30 GB: the first attempt died with `No space left on device` while `$BUILD_ROOT` had 295 GB free. `VOLUME=name` puts the old behaviour back. V8 needs a case-sensitive filesystem, which is why `$BUILD_ROOT` is an external volume on macOS in the first place.
+- **The build tree goes on a real disk**, at `$BUILD_ROOT/linux-<arch>`, beside the native one. It used to be a named Docker volume, which lives on the VM's disk (the Mac's internal one). A full build is around 30 GB: the first attempt died with `No space left on device` while `$BUILD_ROOT` had 295 GB free. `--volume NAME` puts the old behaviour back. V8 needs a case-sensitive filesystem, which is why `$BUILD_ROOT` is an external volume on macOS in the first place.
 - **`MIRROR=DIR` is optional and read-only.** It is a local clone to copy git objects from, which saves pulling 1.5 GB from GitHub; an existing `$BUILD_ROOT/src` serves. Without it the fetch clones from upstream and says so.
 
 ## Windows
 
-On a Windows machine, under Git Bash, after `build/windows-setup.ps1` has installed the tools (Inno Setup and the rest):
+The Windows machine is a builder like the Linux ones, reached over OpenSSH with Git Bash as its shell, and listed in `build/builders.toml` as `windows-x86_64`. From here:
 
 ```sh
-sh build/build.sh build && sh build/payload.sh && sh build/dist.sh   # the payload, core-windows-x86_64 included
-sh build/windows-app.sh                                              # the application and its installer
+lb on windows-x86_64 --update toolchain install --dry-run   # what it would install, changing nothing
+lb on windows-x86_64 toolchain install            # windows-setup.ps1: Visual Studio's C++ tools, the SDK, Perl, NASM, Inno Setup
+lb on windows-x86_64 toolchain check              # in a new session, which sees the new PATH
+lb on windows-x86_64 payload all                  # fetch, configure, core, assemble, dist, smoke: hours, V8 about one
+lb on windows-x86_64 app windows                  # the application and its installer
 ```
+
+**Smart App Control must be off.** It blocks unsigned programs and DLLs it does not know, and a build makes and runs its own: V8's tools, the converter, and Strawberry Perl's modules, where it shows first as *"An Application Control policy has blocked this file"*. In evaluation mode it starts enforcing on its own, which is how a machine that built on Monday stops on Friday. `toolchain check` reads its state and says so; turning it off is by hand, in Windows Security ▸ App & browser control, and on some versions of Windows it cannot be turned back on without a reset.
+
+Every item is checked on the file the build uses, whoever installed it, so a machine another tool set up (an Ansible playbook, Chocolatey) gets only what it lacks; the dry run lists that first. On the machine itself the same commands are `uv run lb …`. The ssh session of an administrator is elevated, which `windows-setup.ps1` needs; `toolchain install` runs it there, and `toolchain.sh` anywhere else.
 
 The first line takes hours, V8 alone about one, with OpenSSL from vcpkg. `windows-app.sh` refuses without its output: it wants the manifest and `core-windows-x86_64.tar.gz` under `$BUILD_ROOT/out/dist/<version>`. It writes the frozen application and `Libera-Suite-Setup-<version>.exe`, and copies the installer into `build/out/bundles/` with its SHA-256. Unlike the macOS `.app`, it embeds its own interpreter, because a Windows user has no Python.
 
-`make ship` does not build Windows, since no builder in `build/builders.toml` runs it. The installer is published from the Windows machine as well, before the release's `publish`:
+`make ship` builds Windows with the rest. Its `build` phase runs `payload all` there and `collect` fetches the core like any other; `bundles` runs `app windows` there and brings the installer and its `.sha256` here, into `build/out/bundles/`, where `publish` uploads them with the Flatpaks. The upload checks the hash first and each stored size after, and moves `bundles/latest-windows`, the version `install.ps1` installs, last, so the installer is on the origin before any user is sent to it.
+
+A Windows build that comes after the release's Flatpaks goes up on its own, from here:
 
 ```sh
-read -rs CDN_TOKEN && export CDN_TOKEN
-sh build/origin.sh windows      # the installer, its .sha256, and Libera-Suite-Setup.exe
+lb release ship bundles --only windows-x86_64   # the installer, made there and brought here
+lb release windows                              # the installer, its .sha256, and Libera-Suite-Setup.exe
 ```
 
-It checks the hash before uploading and each stored size after, and uploads nothing else. `install.ps1` installs the version named in `bundles/latest`, which the release's `publish` moves, so the installer is on the origin before any user is sent to it. On Windows, `windows` is the only publishing verb to run: `extras` also publishes `latest`, ahead of the Flatpak bundles it names, and `install.sh` from a Windows checkout, where Git for Windows once turned it to CRLF and broke `curl | sh` for everyone.
+The Flatpaks have their own pointer, `bundles/latest`, so either can go first. `lb release extras` refuses while `latest-windows` names no installer on the origin, unless it brings one itself. Neither verb is for the Windows machine: Git for Windows once turned `install.sh` to CRLF in a checkout there, and `extras` from it broke `curl | sh` for everyone.
 
 `.github/workflows/windows-probe.yml` still checks the toolchain and the patch queue on every push. See `notes/14-windows.md` in the development repository.
 
@@ -194,4 +199,4 @@ It checks the hash before uploading and each stored size after, and uploads noth
 
 **The pins are hashes, never branches.** A patch queue is only meaningful against a fixed base; "it built last week" has to stay reproducible. Bumping a pin is a decision, and may mean rebasing patches.
 
-**Check what the command wrote.** `build/smoke.sh` converts a document and then looks inside the result for an embedded font and text-drawing operators, because a PDF of the right size with no glyphs in it is the failure that looks like success.
+**Check what the command wrote.** `build/engine/smoke.sh` converts a document and then looks inside the result for an embedded font and text-drawing operators, because a PDF of the right size with no glyphs in it is the failure that looks like success.

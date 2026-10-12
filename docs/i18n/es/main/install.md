@@ -31,7 +31,7 @@ curl -fsSL https://cdn.abilian.com/libera/install.sh | sh
 
 Si tu máquina tiene Flatpak, esto instala Libera Suite como Flatpak, con todo lo que necesita, y la añade al menú de aplicaciones. Si no, instala el comando `libera`; la primera vez que lo ejecutas, indica los paquetes del sistema que le faltan a tu distribución y el comando exacto para instalarlos.
 
-Funciona en Ubuntu 22.04, Debian 12, Fedora 35, RHEL 9 y cualquier versión más reciente. Sin Flatpak necesita además Python 3.12 o posterior; si falta, el script lo avisa antes de cambiar nada.
+Funciona en Ubuntu 22.04, Debian 12, Fedora 36, RHEL 9 y sus derivadas, y cualquier versión más reciente. Sin Flatpak necesita además Python 3.12 o posterior; si falta, el script lo avisa antes de cambiar nada.
 
 Si usas Homebrew en Linux, la línea de Homebrew de la sección de macOS que viene a continuación también funciona allí.
 
@@ -69,13 +69,13 @@ Sin argumentos, `libera` abre la ventana de inicio, donde puedes crear un docume
 
 La página siguiente es [Trabajar con documentos](../guide/documents.md): abrir, guardar, exportar e imprimir.
 
-## Actualizar
+## Actualizar {#update}
 
 Vuelve a ejecutar el mismo instalador o el mismo comando. La versión instalada se sustituye por la más reciente.
 
 Con Homebrew, ejecuta `brew upgrade libera`. Si una versión nueva necesita editores nuevos, Libera Suite te ofrecerá descargarlos la próxima vez que se inicie.
 
-## Desinstalar
+## Desinstalar {#uninstall}
 
 - **Windows:** *Configuración › Aplicaciones › Aplicaciones instaladas › Libera Suite › Desinstalar*.
 - **Linux, instalada como Flatpak** (`flatpak list` muestra `eu.liberasuite.Libera`):
@@ -108,7 +108,7 @@ Con Homebrew, ejecuta `brew upgrade libera`. Si una versión nueva necesita edit
 
 Tus documentos nunca se tocan. Lo que Libera Suite guarda entre una sesión y otra, como la lista de documentos recientes y las sesiones sin guardar, se queda donde está: en `~/Library/Application Support/Libera Suite` en macOS, en `~/.var/app/eu.liberasuite.Libera` para el Flatpak. Borra esa carpeta para no dejar rastro.
 
-## Si algo sale mal
+## Si algo sale mal {#if-something-goes-wrong}
 
 Ejecuta esto en un terminal (en Windows, en PowerShell: `& "$env:LOCALAPPDATA\Programs\Libera Suite\libera-cli.exe" --diagnose`):
 

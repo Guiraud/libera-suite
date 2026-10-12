@@ -1,0 +1,35 @@
+From 03db8020c0a6e3c3195c7a19bc6376f78c95766c Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 21:54:40 +0200
+Subject: [PATCH 161/168] OdfFile reader: numFmts gives its count as count, not
+ formatCode
+
+xl/styles.xml wrote <numFmts formatCode="N">, where the attribute is
+count, and N was every format, including those not written for having
+no code. Every XLSX x2t wrote was invalid for it: 1 348 of LibreOffice's
+ODF test documents. It is now count, of the formats written.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Converter/xlsx_numFmts.cpp | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Reader/Converter/xlsx_numFmts.cpp b/OdfFile/Reader/Converter/xlsx_numFmts.cpp
+index f02b79496b..888135f0ec 100644
+--- a/OdfFile/Reader/Converter/xlsx_numFmts.cpp
++++ b/OdfFile/Reader/Converter/xlsx_numFmts.cpp
+@@ -170,7 +170,10 @@ void xlsx_num_fmts::Impl::serialize(std::wostream & strm) const
+     {
+         CP_XML_NODE (L"numFmts")
+         {
+-            CP_XML_ATTR (L"formatCode", arrFormats.size());
++            size_t count = 0; // the formats written: those with a code
++            for (size_t i = 0; i < arrFormats.size(); ++i)
++                if (false == arrFormats[i].code.empty()) count++;
++            CP_XML_ATTR (L"count", count);
+ 			
+ 			for (size_t i = 0; i < arrFormats.size(); ++i)
+ 			{
+-- 
+2.55.0
+

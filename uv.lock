@@ -6,6 +6,12 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+members = [
+    "libera",
+    "libera-build",
+]
+
 [[package]]
 name = "abilian-devtools"
 version = "0.9.4"
@@ -680,7 +686,7 @@ wheels = [
 
 [[package]]
 name = "libera"
-version = "0.3.3"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "pywebview" },
@@ -689,6 +695,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "abilian-devtools" },
+    { name = "libera-build" },
     { name = "mypy" },
     { name = "nox" },
     { name = "pre-commit" },
@@ -709,6 +716,7 @@ requires-dist = [{ name = "pywebview", specifier = ">=6.2.1" }]
 [package.metadata.requires-dev]
 dev = [
     { name = "abilian-devtools", specifier = ">=0.9.4" },
+    { name = "libera-build", editable = "build" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "nox", specifier = ">=2026.8.17" },
     { name = "pre-commit", specifier = ">=4.6.2" },
@@ -720,6 +728,17 @@ dev = [
     { name = "zensical", specifier = ">=0.0.60" },
 ]
 e2e = [{ name = "pytest-playwright", specifier = ">=0.9.0" }]
+
+[[package]]
+name = "libera-build"
+version = "0.1.0"
+source = { editable = "build" }
+dependencies = [
+    { name = "libera" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "libera", editable = "." }]
 
 [[package]]
 name = "librt"

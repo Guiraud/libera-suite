@@ -56,6 +56,6 @@ if __name__ == "__main__":
     _streams_for_a_windowed_process()
     _identify()
 
-    from libera import main
+    from libera.cli import main
 
     sys.exit(main())

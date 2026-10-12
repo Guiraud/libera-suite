@@ -9,6 +9,14 @@ icon in the taskbar for what the user thinks of as one application.
 So the running instance says where it is, in `instance.json` under the state
 directory, and a later `libera FILE...` posts the paths to it and exits.
 
+Saying where it is comes late -- the window has to exist first -- so two
+launches at once both find nobody to hand off to: Explorer starts a process
+per file of a multi-selection. One instance at a time is therefore claimed
+first, with a lock the operating system holds for the process and drops
+when it ends, however it ends. The others wait for the claimant to say where
+it is, and hand off to it. Two instances once shared a session directory, and
+each swept away the other's live sessions.
+
 The file carries a random token, and the endpoint wants it. The server is on
 127.0.0.1, where any web page the user visits can send it a POST; only a
 process running as this user can read the token.
@@ -24,10 +32,17 @@ import logging
 import os
 import secrets
 import sys
+import time
 import urllib.request
-from typing import TYPE_CHECKING
+from typing import IO, TYPE_CHECKING
 
+from libera.host.session import write_atomically
 from libera.payload import locate
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,6 +53,12 @@ logger = logging.getLogger(__name__)
 # -- a crash left it, and nothing listens on that port now -- costs a user
 # double-clicking a document no noticeable wait.
 HAND_OFF_TIMEOUT = 3.0
+
+# How long a launch that lost the claim waits for the claimant to say where
+# it is: as long as a first document takes to convert, and a dialog about it
+# to be answered.
+CLAIM_WAIT = 60.0
+CLAIM_POLL = 0.25
 
 TOKEN = secrets.token_urlsafe(32)
 
@@ -50,13 +71,57 @@ def announce(port: int) -> None:
     """Say where this instance is. Called once the server is listening."""
     target = get_path()
     target.parent.mkdir(parents=True, exist_ok=True)
-    staged = target.with_suffix(".tmp")
-    staged.write_text(
-        json.dumps({"port": port, "token": TOKEN, "pid": os.getpid()}),
-        encoding="utf-8",
+    write_atomically(
+        target, json.dumps({"port": port, "token": TOKEN, "pid": os.getpid()})
     )
-    staged.replace(target)
     logger.info("instance: announced on port %d", port)
+
+
+class BusyError(RuntimeError):
+    """Another launch holds the claim and has not said where it is."""
+
+
+def claim() -> IO[bytes] | None:
+    """The claim to be the instance, held for as long as the file stays open;
+    None when another process holds it."""
+    path = get_path().with_name("instance.lock")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    held = path.open("a+b")
+    try:
+        _lock(held)
+    except OSError:
+        held.close()
+        return None
+    return held
+
+
+def _lock(held: IO[bytes]) -> None:
+    """Lock the file without waiting, or raise OSError."""
+    if sys.platform == "win32":
+        # The first byte, whatever the position: every process must ask for
+        # the same one.
+        held.seek(0)
+        msvcrt.locking(held.fileno(), msvcrt.LK_NBLCK, 1)
+    else:
+        fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def become(documents: list[Path]) -> IO[bytes] | None:
+    """The claim, for this process to run as the instance; or None, once the
+    documents are with the instance that has it.
+
+    Raises BusyError when the claimant has neither said where it is nor ended
+    within CLAIM_WAIT.
+    """
+    deadline = time.monotonic() + CLAIM_WAIT
+    while (held := claim()) is None:
+        if hand_off(documents):
+            return None
+        if time.monotonic() > deadline:
+            msg = "another Libera Suite is starting and has not answered; try again"
+            raise BusyError(msg)
+        time.sleep(CLAIM_POLL)
+    return held
 
 
 def withdraw() -> None:
@@ -120,5 +185,5 @@ def _allow_foreground() -> None:
     # A block, not an early return: see desktop._start.
     if sys.platform == "win32":
         asfw_any = -1
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(OSError, AttributeError):
             ctypes.windll.user32.AllowSetForegroundWindow(asfw_any)

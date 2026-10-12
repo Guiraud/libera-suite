@@ -1,0 +1,125 @@
+From f2d5923565bcec4972fd9b8442a06dc07a1ea6ba Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 21:54:43 +0200
+Subject: [PATCH 167/168] OdfFile reader: a section's properties are written in
+ the schema's order
+
+w:sectPr's children come from several functions, each writing its own:
+columns and line numbering, then the section type, then the header and
+footer references, then page size and margins. The schema wants them
+interleaved, type after the references and before the page size:
+1 509 of LibreOffice's ODF test documents. They are now sorted by the
+schema's sequence once written.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Format/styles.cpp | 72 ++++++++++++++++++++++++++++++++
+ OdfFile/Reader/Format/styles.h   |  1 +
+ 2 files changed, 73 insertions(+)
+
+diff --git a/OdfFile/Reader/Format/styles.cpp b/OdfFile/Reader/Format/styles.cpp
+index d9c3e384fd..ca19bb5b37 100644
+--- a/OdfFile/Reader/Format/styles.cpp
++++ b/OdfFile/Reader/Format/styles.cpp
+@@ -23,6 +23,9 @@
+  *
+  */
+ #include <iostream>
++#include <algorithm>
++#include <sstream>
++#include <vector>
+ 
+ #include "styles.h"
+ 
+@@ -1638,7 +1641,76 @@ void style_page_layout_properties::xlsx_serialize(std::wostream & strm, oox::xls
+ 	}
+ }
+ 
++namespace {
++
++// The top-level elements of an XML fragment in the order a schema sequence gives their names;
++// elements not named keep their place after those that are. The children of w:sectPr come from
++// several functions, each writing its own, and the schema wants them interleaved.
++std::wstring in_schema_order(const std::wstring & fragment, const std::vector<std::wstring> & order)
++{
++	std::vector<std::pair<size_t, std::wstring>> children;
++	size_t pos = 0;
++	while (pos < fragment.size())
++	{
++		const size_t start = fragment.find(L'<', pos);
++		if (start == std::wstring::npos) break;
++		size_t name_end = fragment.find_first_of(L" />", start + 1);
++		if (name_end == std::wstring::npos) return fragment;
++		const std::wstring name = fragment.substr(start + 1, name_end - start - 1);
++		// the end of this element: its own "/>", or its end tag at the same depth
++		size_t end = fragment.find(L'>', start);
++		if (end == std::wstring::npos) return fragment;
++		if (fragment[end - 1] != L'/')
++		{
++			int depth = 1;
++			size_t scan = end + 1;
++			while (depth > 0)
++			{
++				const size_t next = fragment.find(L'<', scan);
++				if (next == std::wstring::npos) return fragment;
++				const size_t close = fragment.find(L'>', next);
++				if (close == std::wstring::npos) return fragment;
++				if (fragment[next + 1] == L'/') depth--;
++				else if (fragment[close - 1] != L'/') depth++;
++				scan = close + 1;
++			}
++			end = scan - 1;
++		}
++		size_t rank = order.size();
++		for (size_t i = 0; i < order.size(); i++)
++			if (order[i] == name) { rank = i; break; }
++		children.push_back(std::make_pair(rank, fragment.substr(start, end + 1 - start)));
++		pos = end + 1;
++	}
++	std::stable_sort(children.begin(), children.end(),
++		[](const std::pair<size_t, std::wstring> & a, const std::pair<size_t, std::wstring> & b) { return a.first < b.first; });
++	std::wstring result;
++	for (size_t i = 0; i < children.size(); i++) result += children[i].second;
++	return result;
++}
++
++}
++
+ void style_page_layout_properties::docx_serialize(std::wostream & strm, oox::docx_conversion_context & Context)
++{
++	static const std::vector<std::wstring> sectPr_order = {
++		L"w:headerReference", L"w:footerReference", L"w:footnotePr", L"w:endnotePr", L"w:type", L"w:pgSz",
++		L"w:pgMar", L"w:paperSrc", L"w:pgBorders", L"w:lnNumType", L"w:pgNumType", L"w:cols", L"w:formProt",
++		L"w:vAlign", L"w:noEndnote", L"w:titlePg", L"w:textDirection", L"w:bidi", L"w:rtlGutter", L"w:docGrid",
++		L"w:printerSettings", L"w:sectPrChange" };
++	std::wstringstream written;
++	docx_serialize_children(written, Context);
++	std::wstring children = written.str();
++	const std::wstring open = L"<w:sectPr>", close = L"</w:sectPr>";
++	if (children.compare(0, open.size(), open) == 0 && children.size() >= open.size() + close.size() &&
++		children.compare(children.size() - close.size(), close.size(), close) == 0)
++	{
++		children = open + in_schema_order(children.substr(open.size(), children.size() - open.size() - close.size()),
++			sectPr_order) + close;
++	}
++	strm << children;
++}
++void style_page_layout_properties::docx_serialize_children(std::wostream & strm, oox::docx_conversion_context & Context)
+ {
+ 	style_columns * columns = dynamic_cast<style_columns *>( style_columns_.get());
+ 
+diff --git a/OdfFile/Reader/Format/styles.h b/OdfFile/Reader/Format/styles.h
+index e35f374003..1087c49802 100644
+--- a/OdfFile/Reader/Format/styles.h
++++ b/OdfFile/Reader/Format/styles.h
+@@ -953,6 +953,7 @@ public:
+ 	bool docx_background_serialize(std::wostream & strm, oox::docx_conversion_context & Context, oox::_oox_fill & fill, int id);
+ 	
+     void docx_serialize(std::wostream & strm, oox::docx_conversion_context & Context);
++    void docx_serialize_children(std::wostream & strm, oox::docx_conversion_context & Context);
+ 	void xlsx_serialize(std::wostream & strm, oox::xlsx_conversion_context & Context);
+ 	void pptx_serialize(std::wostream & strm, oox::pptx_conversion_context & Context);
+ 
+-- 
+2.55.0
+

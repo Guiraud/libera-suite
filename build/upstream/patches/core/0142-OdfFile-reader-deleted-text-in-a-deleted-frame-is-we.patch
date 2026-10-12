@@ -1,0 +1,36 @@
+From 0313192625e58eec5cc43d5a44f489c24468756d Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 09:18:20 +0200
+Subject: [PATCH 142/142] OdfFile reader: deleted text in a deleted frame is
+ well-formed
+
+Text deleted inside a frame that is itself in a deletion was written as
+<w:del> into whatever run was open, then the run closed before </w:del>:
+<w:r><w:del><w:delText>..</w:delText></w:r></w:del>, which is not XML,
+and the writer lost every tracked change after it on the way back. The
+unique change ids of fix/odt-changed-region-unique-id exposed it: before, duplicate ids made
+the reader write the first region's text for every piece, so the frame
+was never reached, and its text silently replaced. The open run is now
+closed before the deletion starts its own.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Format/paragraph_elements.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/OdfFile/Reader/Format/paragraph_elements.cpp b/OdfFile/Reader/Format/paragraph_elements.cpp
+index adeea8a995..865b7dad49 100644
+--- a/OdfFile/Reader/Format/paragraph_elements.cpp
++++ b/OdfFile/Reader/Format/paragraph_elements.cpp
+@@ -209,6 +209,8 @@ void text::docx_convert(oox::docx_conversion_context & Context)
+ 		if (state.type == 2)
+ 		{
+ 			add_del_run = true;
++			// A run may be open: the deletion wraps a run of its own, or the tags cross
++			Context.finish_run();
+ 			Context.output_stream() << L"<w:del>";
+ 		}
+ 	}  
+-- 
+2.55.0
+

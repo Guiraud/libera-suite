@@ -7,10 +7,10 @@
 #
 # Two stages run on every push that could affect them:
 #
-#   toolchain   what the runner has, and what build/toolchain.sh makes of it
+#   toolchain   what the runner has, and what build/engine/toolchain.sh makes of it
 #   fetch       clone the pinned sources and apply the patch queue
 #
-# `fetch` is the Windows-specific one and it is cheap. build/patches/ is a wire
+# `fetch` is the Windows-specific one and it is cheap. build/upstream/patches/ is a wire
 # format whose context lines carry trailing whitespace, and a checkout with
 # core.autocrlf on would rewrite every one of them.
 #
@@ -92,7 +92,7 @@ jobs:
           df -h "/$drive/b"
 
       # Before any clone, including the ones build.sh makes. git's Windows
-      # default rewrites line endings on checkout, and build/patches/ does not
+      # default rewrites line endings on checkout, and build/upstream/patches/ does not
       # survive that: `git am --keep-cr` is applying a series whose context must
       # match byte for byte.
       - name: Stop git rewriting line endings
@@ -223,12 +223,12 @@ jobs:
           python -c "import shutil; print('python perl: ', shutil.which('perl'))"
           python -c "import shutil; print('python nmake:', shutil.which('nmake'))"
           python -c "import shutil; print('python cl:   ', shutil.which('cl'))"
-          sh build/toolchain.sh check
+          sh build/engine/toolchain.sh check
 
       - name: fetch
         run: |
           export PATH="$PERL_BIN:$PATH"
-          sh build/build.sh fetch
+          sh build/engine/build.sh fetch
 
       # The patch queue is the reason the fetch stage is worth running on its
       # own: if the series applied, Windows has not mangled it.
@@ -239,7 +239,7 @@ jobs:
         continue-on-error: true
         run: |
           export PATH="$PERL_BIN:$PATH"
-          sh build/check-patches.sh
+          sh build/engine/check-patches.sh
 
       # An hour of V8, kept between runs.
       #
@@ -265,7 +265,7 @@ jobs:
           # into a build using another. The workflow file is deliberately NOT
           # in it: every edit here would then cost an hour of V8, which is the
           # thing this exists to avoid.
-          key: 3rdparty-${{ runner.os }}-${{ hashFiles('build/pins.toml', 'build/patches/**', 'build/msvc-env.sh') }}
+          key: 3rdparty-${{ runner.os }}-${{ hashFiles('build/upstream/pins.toml', 'build/upstream/patches/**', 'build/windows/msvc-env.sh') }}
 
       # The third-party builder on its own, so one stuck component does not
       # hide the answer about the ones behind it.
@@ -294,7 +294,7 @@ jobs:
       - name: third party, minus OpenSSL
         run: |
           export PATH="$PERL_BIN:$PATH"
-          . build/msvc-env.sh && msvc_env
+          . build/windows/msvc-env.sh && msvc_env
           skip="${{ inputs.except || 'openssl' }}"
           echo "==> building third party, skipping: $skip"
           python "$BUILD_ROOT/src/core/Common/3dParty/build_3rdparty.py" \
@@ -306,7 +306,7 @@ jobs:
         # if: inputs.configure
         run: |
           export PATH="$PERL_BIN:$PATH"
-          sh build/build.sh configure
+          sh build/engine/build.sh configure
 
       # The question configure cannot answer.
       #
@@ -317,7 +317,7 @@ jobs:
       - name: build
         run: |
           export PATH="$PERL_BIN:$PATH"
-          sh build/build.sh build
+          sh build/engine/build.sh build
 
       # Whether the binaries convert a document, which is a different question
       # from whether they linked.
@@ -334,7 +334,7 @@ jobs:
       - name: smoke
         run: |
           export PATH="$PERL_BIN:$PATH"
-          sh build/smoke.sh
+          sh build/engine/smoke.sh
 
       - name: Keep the logs either way
         if: always()

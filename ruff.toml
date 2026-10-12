@@ -37,17 +37,21 @@ lint.extend-ignore = [
 ]
 
 [lint.extend-per-file-ignores]
-# stubs/ names what pyobjc names. NSMenuItem, callAfter and
-# setAssociatedObject are Objective-C spellings, and a stub that renamed them
-# would describe a module that does not exist.
+# stubs/ names what pyobjc and Bottle name. NSMenuItem, callAfter and
+# setAssociatedObject are Objective-C spellings, HTTPResponse is Bottle's, and a
+# stub that renamed them would describe a module that does not exist.
 "stubs/**/*.pyi" = [
     "N802", # callAfter -- pyobjc's name
     "N816", # setAssociatedObject -- likewise
+    "N818", # HTTPResponse -- Bottle's exception, without the Error suffix
 ]
 # The CLI imports the GUI in open_documents alone: pywebview and AppKit cost a third
-# of a second, and no other command opens a window.
+# of a second, and no other command opens a window. `--convert` expands `*.docx`
+# itself on Windows, where the shell does not, and the pattern is what the user
+# typed, absolute or not, which Path.glob refuses.
 "src/libera/cli/commands.py" = [
     "PLC0415", # libera.host.app, imported where a window is about to open
+    "PTH207",  # glob.glob on a pattern typed on the command line
 ]
 # payload.py runs allfontsgen out of the payload it just unpacked: that is the
 # job, and the generated font index cannot be built anywhere but the target.
@@ -76,6 +80,13 @@ lint.extend-ignore = [
     "S603",   # subprocess call -- argv form, no shell
     "S607",   # xwininfo and scrot come from the image, by name
     "PLC0415", # PIL is imported where it is used: only this path needs it
+]
+# manifest.py asks git which commit it stamps: the provenance a release
+# records, which the AGPL asks for.
+"src/libera/manifest.py" = [
+    "S404", # subprocess import
+    "S603", # subprocess call -- argv form, no shell
+    "S607", # git, by name, like every other tool here
 ]
 # desktop.py runs the system's own tools -- open, xdg-open, explorer -- and asks
 # the OS who you are: Foundation on macOS, secur32/netapi32 on Windows, pwd
@@ -114,6 +125,8 @@ lint.extend-ignore = [
 # here from 127.0.0.1 and an integer port read back from our own state file:
 # there is no scheme or host in it for anything else to choose.
 "src/libera/host/instance.py" = ["S310"]
+# urlopen on our own origin: https in production, file: in the tests.
+"src/libera/host/updates.py" = ["S310"]
 "src/libera/host/opening.py" = ["TC003"]
 "src/libera/host/recents.py" = ["TC003"]
 # session.py holds the registry and the thread binding, both module state by
@@ -124,25 +137,22 @@ lint.extend-ignore = [
 ]
 # server.py shells out to x2t for every open and save: that is the host's job.
 # The server package, one reason per module now that they are separate.
-"src/libera/host/server/get.py" = [
+"src/libera/host/server/api.py" = [
+    # Refused reads as what happened -- `raise Refused(404)` -- and an Error
+    # suffix would say less: it is a refusal, sent on purpose, not a fault.
+    "N818",
+]
+"src/libera/host/server/start_window.py" = [
     # payload is imported where it is used: `libera --payload-install` has to
     # work before there is a payload to import anything out of.
     "PLC0415",
 ]
-"src/libera/host/server/post.py" = [
-    "S404",   # subprocess import
-    "S603",   # subprocess call -- argv form, no shell, a path from our own tree
-    # The chooser and window-opener hooks are set once by whoever owns windows;
-    # the harness leaves them unset. Handing them to every caller instead would
-    # be worse, not better.
-    "PLW0603",
-]
-"src/libera/host/server/handler.py" = [
-    # Handler subclasses SimpleHTTPRequestHandler, and an override's parameter
-    # *names* are part of its contract: the base class is free to call them by
-    # keyword. log_request takes a `size` we ignore, and log_message a `format`
-    # that shadows the builtin -- both spellings are the standard library's.
-    "ARG002", # log_request(size), required by the override and unused here
+"src/libera/host/server/listener.py" = [
+    # QuietHandler subclasses wsgiref's WSGIRequestHandler, and an override's
+    # parameter *names* are part of its contract: the base class is free to
+    # call them by keyword. log_message takes a `format` that shadows the
+    # builtin, and arguments it ignores -- the standard library's spellings.
+    "ARG002", # log_message(*args), required by the override and unused here
     "A002",   # log_message(format), named by the base class
 ]
 # The payload package, one reason per module now that they are separate.
@@ -174,6 +184,7 @@ lint.extend-ignore = [
 # both halves: this module is read on every platform and they exist on one.
 "src/libera/host/window/windows.py" = [
     "TC003",   # pathlib is used at runtime, not only in annotations
+    "SLF001",  # webview.dom._dnd_state: the only place pywebview keeps dropped files' paths; test_drops checks its shape
 ]
 # The three toolkit modules answer the same calls, and some have no use for an
 # argument another needs: an AppKit alert is application-modal and has no
@@ -230,7 +241,10 @@ lint.extend-ignore = [
 ]
 # build/ scripts are tools, not shipped code: they run system utilities and
 # talk to Cocoa, and one pyobjc selector is simply longer than the line limit.
-"build/**/*.py" = [
+# The scripts only, by name: build/src is the libera_build package, a tested
+# package held to src's rules, with its own entry below. (A `*` here crosses
+# directories, so `build/*.py` would have taken it in too: measured.)
+"build/{macos/*.py,test-linux/*.py,windows/*.py,flatpak/*.py}" = [
     "INP001", # not a package
     "S404",   # subprocess import -- running iconutil is the job
     "S603",   # subprocess call -- argv form, no shell
@@ -251,7 +265,7 @@ lint.extend-ignore = [
 #
 # Tests
 #
-"tests/**/*.py" = [
+"{tests,build/tests}/**/*.py" = [
     "SLF001", # reaching into a module to check its wiring is the point
     "ARG001", # pytest matches hook parameters by name; they cannot be renamed
     "BLE001", #  blind-except
@@ -271,6 +285,30 @@ lint.extend-ignore = [
     "S603", # subprocess call -- argv form, no shell
     "S607", # desktop-file-validate comes from the image, by name
 ]
+# The build tooling runs scripts and git; so do its tests, as the builders do.
+"build/src/libera_build/**/*.py" = [
+    "S404", # subprocess import -- running build/'s scripts is the job
+    "S603", # subprocess call -- argv form, no shell, scripts from this tree
+    "S607", # sh, git, docker and podman, by name, like every script here
+]
+# The origin: urlopen on the CDN's own https URLs, and on PyPI's.
+"build/src/libera_build/origin/*.py" = [
+    "S310", # urlopen -- https, the origin this checkout publishes to, or PyPI
+]
+# Paths in scripts that run inside the test container, not on this machine.
+"build/src/libera_build/linux.py" = [
+    "S108", # /tmp/pycache, /tmp/sample.docx: the container's own /tmp
+]
+# A fake CDN for the origin's tests: http.server calls its handlers do_PUT,
+# do_GET and do_HEAD, and they cannot be named otherwise.
+"build/tests/b_integration/test_lb_origin_cdn.py" = [
+    "N802", # do_PUT, do_GET, do_HEAD
+]
+"build/tests/**/*.py" = [
+    "S404", # subprocess import
+    "S603", # subprocess call -- lb, or sys.executable, argv form, no shell
+    "S607", # git, by name, to make scratch repositories
+]
 # c_e2e runs the shipped CLI and a real browser as subprocesses, which is the
 # whole point of an end-to-end test: argv form, no shell, fixed executables.
 "tests/c_e2e/**/*.py" = [
@@ -281,6 +319,11 @@ lint.extend-ignore = [
 # to check that the probe and the in-process check ask the same question. That
 # is the comparison that was missing when the two disagreed, and it can only be
 # made by running one of them somewhere else.
+# test_manifest_stamp.py runs `python3 -m libera.manifest` the way dist.sh does.
+"tests/b_integration/test_manifest_stamp.py" = [
+    "S404", # subprocess import
+    "S603", # sys.executable, argv form, no shell
+]
 "tests/a_unit/test_gui_prereq.py" = [
     "S404", # subprocess import
     "S603", # sys.executable, argv form, no shell

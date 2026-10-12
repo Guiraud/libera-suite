@@ -11,14 +11,17 @@ from __future__ import annotations
 import csv
 import functools
 import logging
+import os
 import pathlib
 import re
 import shutil
 import subprocess
-import sys
+import tempfile
+import threading
 from typing import TYPE_CHECKING
 from xml.sax.saxutils import escape
 
+from libera.host.changelog import ChangeLog
 from libera.host.session import NotReadyError
 from libera.payload import locate
 
@@ -58,17 +61,34 @@ def choose_x2t_output(run: subprocess.CompletedProcess) -> str:
     return run.stdout.strip() or run.stderr.strip()
 
 
+class ConversionError(RuntimeError):
+    """x2t did not make the document it was asked for.
+
+    Raised, not returned: the callers that got a False turned it straight back
+    into an exception, under a name that meant something else, and the exit
+    status went no further than the log.
+    """
+
+
+# How many x2t may run at once. Each holds tens to hundreds of MB -- 71 MB
+# converting a 3 MB docx, 117 MB a 2.9 MB xlsx (measured 2026-10-04) -- and a
+# dozen documents opened together started a dozen. The rest wait their turn.
+X2T_AT_ONCE = max(2, (os.cpu_count() or 4) // 2)
+_X2T_SLOTS = threading.BoundedSemaphore(X2T_AT_ONCE)
+
+
 def run_x2t(session: Session, *args: str) -> subprocess.CompletedProcess:
     """Run x2t out of the payload, in the environment `locate.make_tool_env` gives."""
     logger.debug("x2t %s", " ".join(args))
-    return subprocess.run(
-        [str(session.x2t), *args],
-        capture_output=True,
-        text=True,
-        check=False,
-        env=locate.make_tool_env(session.payload / "bin"),
-        creationflags=locate.NO_WINDOW,
-    )
+    with _X2T_SLOTS:
+        return subprocess.run(
+            [str(session.layout.x2t), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=locate.make_tool_env(session.layout.bin),
+            creationflags=locate.NO_WINDOW,
+        )
 
 
 # x2t's own ids, from sdkjs's c_oAscEncodings and c_oAscCsvDelimiter.
@@ -79,7 +99,6 @@ CSV_SUFFIXES = {".csv", ".tsv"}
 TEXT_SUFFIXES = {*CSV_SUFFIXES, ".txt", ".md"}
 # The raw DOCY and XLSY streams the editor opens.
 CANVAS_WORD, CANVAS_SPREADSHEET = 8193, 8194
-BOM = b"\xef\xbb\xbf"
 
 
 def is_utf8(data: bytes) -> bool:
@@ -90,10 +109,12 @@ def is_utf8(data: bytes) -> bool:
     return True
 
 
-def write_job(session: Session, name: str, **fields: object) -> pathlib.Path:
-    """Write an x2t job file into the session, one element per field."""
+def write_job(
+    session: Session, name: str, into: pathlib.Path | None = None, **fields: object
+) -> pathlib.Path:
+    """Write an x2t job file, one element per field, into the session or `into`."""
     body = "".join(f"<{k}>{escape(str(v))}</{k}>" for k, v in fields.items())
-    path = session.work / name
+    path = (into or session.work) / name
     path.write_text(
         '<?xml version="1.0" encoding="utf-8"?>'
         f"<TaskQueueDataConvert>{body}</TaskQueueDataConvert>",
@@ -118,86 +139,6 @@ def read_csv(path: pathlib.Path) -> tuple[str, int, str]:
     except csv.Error:
         return text, encoding, ","  # one column: no delimiter to find
     return text, encoding, sniffed.delimiter
-
-
-# x2t's CSV reader drops the text it has read each time it passes this many
-# characters, and never looks at the first character after the cut.
-X2T_CSV_BLOCK = 500_000
-# The characters whose meaning is lost when x2t skips one; and the delimiter.
-_LOST_WHEN_SKIPPED = frozenset('"\r\n')
-_ASTRAL = re.compile(r"[\U00010000-\U0010ffff]")
-
-
-def find_misread_rows(path: pathlib.Path) -> list[int]:
-    """The rows x2t reads wrongly in this CSV, numbered as the sheet shows them.
-
-    Its reader keeps memory down by dropping the text it has read once it
-    passes 500,000 characters, and sets its index to 0 just before the loop
-    adds one: the first character after each cut is never looked at. A
-    letter there is harmless. A quote, a delimiter or a newline is not: a
-    quoted cell splits in two, two cells or two rows merge -- silently, and a
-    save writes it. Patch 0029 in build/patches/core fixes x2t, for payload
-    0.4; until then, this says where.
-    """
-    return _walk_like_x2t(*_text_as_x2t_reads_it(path))
-
-
-def _text_as_x2t_reads_it(path: pathlib.Path) -> tuple[str, str]:
-    """The copy write_csv_open_job hands x2t, as x2t indexes it, and the delimiter.
-
-    The byte-order mark and a `sep=` line removed first, as x2t does; and on
-    Windows, where x2t's wchar_t is UTF-16, a character outside the BMP counts
-    twice, so the cuts land where x2t's do.
-    """
-    text, _, delimiter = read_csv(path)
-    text = text.removeprefix("\ufeff")
-    if text.startswith("sep=") and len(text) > len("sep=,\r\n"):
-        delimiter, cut = text[4], len("sep=,")
-        for _ in range(2):  # x2t takes up to two line-break characters after it
-            if text[cut] not in "\r\n":
-                break
-            cut += 1
-        text = text[cut:]
-    if sys.platform == "win32":
-        text = _ASTRAL.sub("\ue000\ue000", text)
-    return text, delimiter
-
-
-def _walk_like_x2t(text: str, delimiter: str) -> list[int]:
-    """CSVReader's loop, skips included, recording each skip that loses meaning.
-
-    The skips have to be reproduced, not only noticed: a quote x2t never saw
-    leaves the rest of the cell unquoted, which moves every later boundary,
-    and with it the next cut.
-    """
-    lost = _LOST_WHEN_SKIPPED | {delimiter}
-    misread: list[int] = []
-    n = len(text)
-    base = index = cell = 0  # x2t's buffer start, its nIndex and its nStartCell
-    row = 1
-    quoted = False
-    while base + index < n:
-        at = base + index
-        char = text[at]
-        if char == '"':
-            if not quoted and cell == index and at + 1 < n:
-                quoted, cell = True, index + 1
-            elif quoted and at + 1 < n and text[at + 1] == '"':
-                index += 1  # a doubled quote, inside a quoted cell
-            elif quoted:
-                quoted = False
-        elif not quoted and (char == delimiter or char in "\r\n"):
-            if char == "\r" and at + 1 < n and text[at + 1] == "\n":
-                index, at = index + 1, at + 1
-            row += char != delimiter
-            if index + 1 > X2T_CSV_BLOCK:
-                base, index, cell = at + 1, 1, 0
-                if base < n and text[base] in lost:
-                    misread.append(row)
-                continue
-            cell = index + 1
-        index += 1
-    return misread
 
 
 def read_csv_options(target: pathlib.Path, like: pathlib.Path | None) -> dict[str, int]:
@@ -237,28 +178,20 @@ def write_csv_open_job(
         m_sFileFrom=copy,
         m_sFileTo=editor_bin,
         m_nFormatTo=CANVAS_SPREADSHEET,
-        m_sFontDir=session.sdkjs_common,
+        m_sFontDir=session.layout.sdkjs_common,
         m_nCsvTxtEncoding=UTF_16LE,
         m_nCsvDelimiter=DELIMITERS[delimiter],
     )
 
 
-def prepare_txt(session: Session, src: pathlib.Path) -> pathlib.Path:
-    """A .txt as x2t reads it to the end.
-
-    Given UTF-8 without a byte-order mark, its reader stops at the first
-    character outside the BMP, an emoji say, and a save then writes back only
-    what came before it. With the mark it reads the whole file.
-    """
-    data = src.read_bytes()
-    if data.startswith(BOM) or not is_utf8(data):
-        return src
-    copy = session.work / "open.txt"
-    copy.write_bytes(BOM + data)
-    return copy
+def convert_to_editor_bin(session: Session, src: pathlib.Path) -> None:
+    """Convert a document into the session's Editor.bin. See `_convert_in`."""
+    # It replaces the session's doc/ directory, change log included.
+    with session.lock:
+        _convert_in(session, src)
 
 
-def convert_to_editor_bin(session: Session, src: pathlib.Path) -> bool:
+def _convert_in(session: Session, src: pathlib.Path) -> None:
     """Convert a document into the session's Editor.bin, via x2t.
 
     The three-argument form is right here: it writes the raw DOCY stream the
@@ -288,29 +221,82 @@ def convert_to_editor_bin(session: Session, src: pathlib.Path) -> bool:
             m_sFileFrom=src,
             m_sFileTo=editor_bin,
             m_nFormatTo=CANVAS_WORD,
-            m_sFontDir=session.sdkjs_common,
+            m_sFontDir=session.layout.sdkjs_common,
             m_nCsvTxtEncoding=UTF_8,
         )
         run = run_x2t(session, str(markdown))
     else:
         run = run_x2t(
             session,
-            str(prepare_txt(session, src) if suffix == ".txt" else src),
+            str(src),
             str(editor_bin),
-            str(session.sdkjs_common / "font_selection.bin"),
+            str(session.layout.sdkjs_common / "font_selection.bin"),
         )
     if run.returncode != 0 or not editor_bin.is_file():
         logger.error("open failed rc=%s\n%s", run.returncode, choose_x2t_output(run))
         shutil.rmtree(staged, ignore_errors=True)
-        return False
+        msg = f"x2t could not convert {src.name} (exit status {run.returncode})"
+        raise ConversionError(msg)
     shutil.rmtree(session.doc, ignore_errors=True)
     staged.rename(session.doc)
-    return True
 
 
 def export(
     session: Session, staged: pathlib.Path, fmt: int, like: pathlib.Path | None
-) -> bool:
+) -> None:
+    """Write the document out as `fmt`, from the session's files as they stand.
+
+    x2t reads the change log the editor is still appending to, so the log is
+    read under the session's lock -- but only for as long as copying it takes.
+    Held for the whole conversion, it made every edit the editor posted during
+    a save wait for it, and the editor waits for each answer: frozen for 0.8 s
+    on a 3 MB document, 3.6 s while other windows held the converter (measured
+    2026-10-04). Edits made during the conversion are in the live log, for the
+    next save.
+    """
+    with session.lock:
+        snapshot = _take_snapshot(session)
+    try:
+        _export(session, snapshot, staged, fmt, like)
+    finally:
+        shutil.rmtree(snapshot, ignore_errors=True)
+
+
+def _take_snapshot(session: Session) -> pathlib.Path:
+    """The session's doc/ as it is now, in a directory of its own.
+
+    Editor.bin and the media are linked, not copied: neither is ever written
+    in place -- a new Editor.bin arrives as a new doc/ -- so a link stays what
+    it was. The change log is appended to, so it is copied.
+    """
+    snapshot = pathlib.Path(tempfile.mkdtemp(dir=session.work, prefix="export-"))
+    doc = snapshot / "doc"
+    shutil.copytree(
+        session.doc,
+        doc,
+        copy_function=_link_or_copy,
+        ignore=shutil.ignore_patterns("changes"),
+    )
+    changes = session.doc / "changes"
+    if changes.is_dir():
+        shutil.copytree(changes, doc / "changes")
+    return snapshot
+
+
+def _link_or_copy(src: str, dst: str) -> None:
+    try:
+        os.link(src, dst)
+    except OSError:  # a file system without hard links
+        shutil.copy2(src, dst)
+
+
+def _export(
+    session: Session,
+    snapshot: pathlib.Path,
+    staged: pathlib.Path,
+    fmt: int,
+    like: pathlib.Path | None,
+) -> None:
     """Merge Editor.bin and the change log into one file of format `fmt`.
 
     The contract is desktop-sdk's fileconverter.h: convert from Editor.bin, set
@@ -318,29 +304,36 @@ def export(
     index it opened with. A CSV is written the way `like`, the file that is
     open, was.
     """
-    from_changes = bool(session.change_log)
+    doc = snapshot / "doc"
+    from_changes = bool(ChangeLog(doc / "changes" / "changes0.json"))
     options = read_csv_options(staged, like)
     save = write_job(
         session,
         "save.xml",
-        m_sFileFrom=session.editor_bin,
+        snapshot,
+        m_sFileFrom=doc / "Editor.bin",
         m_sFileTo=staged,
         m_nFormatTo=fmt,
         m_bFromChanges=str(from_changes).lower(),
         m_bDontSaveAdditional="true",
-        m_sAllFontsPath=session.all_fonts,
-        m_sFontDir=read_font_dir(session.all_fonts),
+        # The index of filesystem paths. Not the browser's, which carries none:
+        # handed that one, x2t fails deep inside sdkjs with "Cannot read
+        # property 'length' of null".
+        m_sAllFontsPath=session.layout.all_fonts,
+        m_sFontDir=read_font_dir(session.layout.all_fonts),
         **options,
     )
     run = run_x2t(session, str(save))
-    if run.returncode != 0 or not staged.is_file():
+    # A file, and not an empty one: x2t's exit status has said 0 over nothing.
+    if run.returncode != 0 or not staged.is_file() or staged.stat().st_size == 0:
         logger.error(
             "export failed rc=%s fromChanges=%s\n%s",
             run.returncode,
             from_changes,
             choose_x2t_output(run),
         )
-        return False
+        msg = f"x2t could not write {staged.name} (exit status {run.returncode})"
+        raise ConversionError(msg)
     # x2t converts text to UTF-8 through a buffer sized one unit per character,
     # and a character outside the BMP, an emoji say, needs two. The conversion
     # fails, x2t falls back to one byte per character, Latin-1 in effect, and
@@ -356,5 +349,5 @@ def export(
             "it does when the text holds a character outside the BMP",
             staged.name,
         )
-        return False
-    return True
+        msg = f"x2t wrote {staged.name} in something other than UTF-8"
+        raise ConversionError(msg)

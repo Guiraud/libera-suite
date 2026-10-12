@@ -1,0 +1,71 @@
+From f2cc45d30f42d23909e52b9a4a75f4216334b57a Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 18:32:42 +0200
+Subject: [PATCH 153/156] OdfFile writer: each table closes its own header rows
+
+Whether rows were being added to table:table-header-rows was one flag
+for the whole document, cleared only when a normal row followed. A table
+whose last rows repeat as headers, as a page header's single-row table
+does, left it set; the next table's first row then closed header rows it
+never opened, which ended that table instead, and its rows were lost.
+A table nested in a header row had the same problem. The flag is now
+kept per table, and a table closes its header rows when it ends: 6 of
+LibreOffice's ODF test documents after the eighth batch had a table
+without rows for this reason. In TEST.odt the table's five rows and 13
+of its 28 words come back.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/odt_conversion_context.cpp | 16 ++++++++++++++++
+ OdfFile/Writer/Format/odt_conversion_context.h   |  1 +
+ 2 files changed, 17 insertions(+)
+
+diff --git a/OdfFile/Writer/Format/odt_conversion_context.cpp b/OdfFile/Writer/Format/odt_conversion_context.cpp
+index baceb2dc5e..0483f384dc 100644
+--- a/OdfFile/Writer/Format/odt_conversion_context.cpp
++++ b/OdfFile/Writer/Format/odt_conversion_context.cpp
+@@ -1742,6 +1742,10 @@ void odt_conversion_context::end_drop_cap()
+ ///////////////////////////////////////
+ void odt_conversion_context::start_table(bool styled)
+ {
++	// Each table has its own header rows: a table nested in a header row starts outside them
++	table_row_header_states_.push_back(table_row_header_state_);
++	table_row_header_state_ = false;
++
+ 	office_element_ptr elm;
+ 	create_element(L"table", L"table",elm,this);
+ 
+@@ -1885,6 +1889,18 @@ void odt_conversion_context::add_default_cell()
+ }
+ void odt_conversion_context::end_table()
+ {
++	// A table whose last rows are header rows, as a page header's often is, closes them here;
++	// left open, the next table's first row closed them and took the table's place.
++	if (table_row_header_state_)
++		end_table_header_rows();
++	if (!table_row_header_states_.empty())
++	{
++		table_row_header_state_ = table_row_header_states_.back();
++		table_row_header_states_.pop_back();
++	}
++	else
++		table_row_header_state_ = false;
++
+ 	table_context()->end_table();
+ 	text_context()->end_element();
+ }
+diff --git a/OdfFile/Writer/Format/odt_conversion_context.h b/OdfFile/Writer/Format/odt_conversion_context.h
+index 8523a5d672..c90f5a4ed6 100644
+--- a/OdfFile/Writer/Format/odt_conversion_context.h
++++ b/OdfFile/Writer/Format/odt_conversion_context.h
+@@ -270,6 +270,7 @@ private:
+ 	}text_changes_state_;
+ 
+ 	bool table_row_header_state_ = false;
++	std::vector<bool> table_row_header_states_; // of the tables that enclose the current one
+ 
+ 	struct _drop_cap_state
+ 	{
+-- 
+2.55.0
+

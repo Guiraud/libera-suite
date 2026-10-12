@@ -18,12 +18,14 @@ from typing import TYPE_CHECKING, Any
 from libera.host.window.portable import (
     Answer,
     Question,
+    close_window,
     complete_startup,
     find_key_window,
     prepare,
     run_on_gui_thread,
     run_save_panel,
     set_fullscreen,
+    show_edited,
 )
 
 if TYPE_CHECKING:
@@ -33,12 +35,14 @@ if TYPE_CHECKING:
 
 __all__ = [
     "ask",
+    "close_window",
     "complete_startup",
     "find_key_window",
     "prepare",
     "run_on_gui_thread",
     "run_save_panel",
     "set_fullscreen",
+    "show_edited",
     "tell",
 ]
 

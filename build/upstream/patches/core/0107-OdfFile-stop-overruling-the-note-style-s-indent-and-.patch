@@ -1,0 +1,73 @@
+From 12e20ebcf3f90c9e971830f892a531a1033e7307 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 09:55:52 +0200
+Subject: [PATCH 107/142] OdfFile: stop overruling the note style's indent and
+ line spacing
+
+Writing ODT, the converter stamps a 0.2cm hanging indent and a 100% line
+height onto the automatic style of every footnote and endnote body
+paragraph. An automatic style overrides the style:parent-style-name
+chain, so this silently replaces whatever the author's note style asks
+for, including the style the same conversion has just written correctly
+into styles.xml.
+
+Measured: a note style declaring fo:margin-left 2cm, fo:text-indent -2cm
+and fo:line-height 200% comes back as 0.2cm, -0.2cm and 100%. The
+intermediate DOCX is faithful on this point, carrying w:ind and w:spacing
+in the style with only a w:pStyle on the paragraph, and LibreOffice fed
+the identical file writes no automatic style at all and keeps the
+author's values.
+
+Two changes.
+
+The line height had no business here. Nothing about a hanging indent
+concerns line spacing, there was no test for it, and it fired as
+collateral whenever the indent default fired. Removed.
+
+The indent default now applies only when the paragraph names no style,
+so nothing in the style chain could supply one. The guard previously
+inspected the paragraph's direct w:pPr alone, which cannot see indent
+that arrives through w:pStyle, so it fired in the ordinary case where the
+paragraph carries nothing but a style reference.
+
+Note the consequence, which is a judgement call worth confirming: Word
+writes its footnote paragraphs with <w:pStyle w:val="FootnoteText"/> and
+no direct indent, so those now render flush rather than hanging. That is
+what LibreOffice produces from the same input, and Word itself does not
+show a hanging indent there, but it is a visible change for
+Word-sourced documents.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/DocxConverter.cpp | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/OdfFile/Writer/Converter/DocxConverter.cpp b/OdfFile/Writer/Converter/DocxConverter.cpp
+index 6afb61f79f..24653fc40d 100644
+--- a/OdfFile/Writer/Converter/DocxConverter.cpp
++++ b/OdfFile/Writer/Converter/DocxConverter.cpp
+@@ -1769,12 +1769,19 @@ void DocxConverter::convert(OOX::Logic::CParagraphProperty	*oox_paragraph_pr,
+ 
+ 	}
+ 
++	// A default hanging indent for note bodies, for documents that state none.
++	// It lands on an automatic style, which wins over the style chain, so it may
++	// only be applied when nothing in that chain could supply one: a paragraph
++	// that names a style inherits from it, and this must not overrule it.
++	// fo_line_height_ used to be set here too. It was collateral, nothing about
++	// a hanging indent concerns line spacing, and it silently replaced whatever
++	// spacing the note style asked for.
+ 	if (odt_context->notes_context()->is_started()	&& !paragraph_properties->fo_margin_left_ 
+-													&& !paragraph_properties->fo_text_indent_)
++													&& !paragraph_properties->fo_text_indent_
++													&& !oox_paragraph_pr->m_oPStyle.IsInit())
+ 	{
+ 		paragraph_properties->fo_margin_left_			= odf_types::length( 0.2, odf_types::length::cm);	
+ 		paragraph_properties->fo_text_indent_			= odf_types::length(-0.2, odf_types::length::cm);
+-		paragraph_properties->fo_line_height_			= odf_types::percent(100.); 
+ 		paragraph_properties->style_auto_text_indent_	= false;
+ 	}
+ 
+-- 
+2.55.0
+

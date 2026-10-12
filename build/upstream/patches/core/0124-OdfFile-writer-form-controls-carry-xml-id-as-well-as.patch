@@ -1,0 +1,33 @@
+From 005bb645654d3913f91a0320cda6d3d072ace7a8 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 19:30:49 +0200
+Subject: [PATCH 124/142] OdfFile writer: form controls carry xml:id as well as
+ form:id
+
+Every form control was written with form:id alone. ODF 1.2 deprecates
+form:id; the draw:control that places a control refers to it through an
+IDREF, which resolves against xml:id, so every reference was undefined:
+control1 in 48 and control2 in 27 of LibreOffice's ODF test documents
+after the third batch. The control's xml:id is now set to the same value,
+as LibreOffice writes it.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/odf_controls_context.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/OdfFile/Writer/Format/odf_controls_context.cpp b/OdfFile/Writer/Format/odf_controls_context.cpp
+index 5751333d2a..bfea09b795 100644
+--- a/OdfFile/Writer/Format/odf_controls_context.cpp
++++ b/OdfFile/Writer/Format/odf_controls_context.cpp
+@@ -153,6 +153,7 @@ std::wstring odf_controls_context::Impl::start_control(int type, bool items_set)
+ 
+ 	odf_context_->mediaitems()->count_control += 1;
+ 	form_element->id_ = L"control" + std::to_wstring(odf_context_->mediaitems()->count_control);
++	form_element->xml_id_ = form_element->id_; // draw:control refers to xml:id; form:id is deprecated
+ 	form_element->control_implementation_ = control_implementation;
+ 
+ 	odf_control_state state;
+-- 
+2.55.0
+

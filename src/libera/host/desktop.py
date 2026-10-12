@@ -11,6 +11,8 @@ import pathlib
 import subprocess
 import sys
 
+from libera.payload import locate
+
 logger = logging.getLogger(__name__)
 
 # Long enough to be sure a fast failure has happened (0.03s on the desktop this
@@ -161,15 +163,22 @@ def lookup_local_user() -> tuple[str, str]:
     saved after one tracked edit carries w:author="Chuk.Gek".
 
     The full name is what other people see, so prefer it; the login name is the
-    stable identity behind it.
+    stable identity behind it. `user_name` in config.toml comes before both,
+    for a document that has to go out under another name than the account's;
+    the id stays the login, which is what a lock file is recognised by.
     """
+    # Each lookup narrowed to how it says "no answer": a wider net would also
+    # catch a typo here, and sign every tracked change "user".
     login = "user"
-    with contextlib.suppress(Exception):
+    # OSError since 3.13; KeyError and ImportError from its pwd fallback before.
+    with contextlib.suppress(OSError, KeyError, ImportError):
         login = getpass.getuser()
 
-    full = ""
+    full = (locate.read_config_string("user_name") or "").strip()
+    if full:
+        return login, full
     if sys.platform == "darwin":
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(ImportError):
             import Foundation
 
             full = str(Foundation.NSFullUserName())
@@ -179,7 +188,7 @@ def lookup_local_user() -> tuple[str, str]:
     # exist there, so this used to run by way of a swallowed ModuleNotFoundError,
     # and a checker for win32 reports it as the unresolved attribute it is.
     if not full and sys.platform != "win32":
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(KeyError):
             import pwd
 
             # The gecos field is the full name on every Unix that sets one,
@@ -201,7 +210,9 @@ def _lookup_windows_full_name(login: str) -> str:
         import ctypes
         from ctypes import wintypes
 
-        with contextlib.suppress(Exception):
+        # OSError for a DLL that will not load, AttributeError for a function
+        # it does not export: how ctypes says either.
+        with contextlib.suppress(OSError, AttributeError):
             size = wintypes.ULONG(256)
             buf = ctypes.create_unicode_buffer(size.value)
             name_display = 3  # EXTENDED_NAME_FORMAT.NameDisplay
@@ -211,7 +222,7 @@ def _lookup_windows_full_name(login: str) -> str:
             if found and buf.value.strip():
                 return buf.value.strip()
 
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(OSError, AttributeError):
 
             class UserInfo10(ctypes.Structure):
                 _fields_ = [

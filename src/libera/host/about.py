@@ -2,7 +2,7 @@
 
 Three surfaces need the same sentences and used to hold their own copy: the
 editor's own About panel (through the theme's `attribution` token, which is
-build-time and lives in `build/theme/libera/meta/config.json`), the macOS About
+build-time and lives in `build/payload/theme/libera/meta/config.json`), the macOS About
 panel (through `NSHumanReadableCopyright`), and Help > About on Linux. A fourth,
 `--payload-status`, prints the revisions rather than the prose.
 
@@ -24,6 +24,10 @@ anything may read it.
 
 from __future__ import annotations
 
+import importlib.metadata
+
+from libera.payload import locate
+
 SOURCE_URL = "https://github.com/abilian/libera-suite"
 
 #: The one-paragraph notice. Names the original developer, says the components
@@ -44,9 +48,29 @@ COPYRIGHT = (
 )
 
 
+def app_version() -> str:
+    return importlib.metadata.version("libera")
+
+
+def format_version() -> str:
+    """The application, and the payload it wants: what `--version` prints and
+    every About says.
+
+    Both, because the two move independently -- a host fix should not force a
+    120 MB re-download, and a payload rebuilt from new upstream pins should not
+    need a host release. A bug report that names only one of them does not say
+    which halves were in play. `--diagnose` prints these and much more; this is
+    the line somebody pastes into an issue.
+    """
+    return f"libera {app_version()} (payload {locate.PAYLOAD_VERSION})"
+
+
 def format_notice() -> str:
-    """The attribution as a dialog body: the paragraph, then where to look."""
+    """The About dialog's body: which versions, then the attribution, then
+    where to look. The versions are what a bug report needs, and About said
+    only who wrote what."""
     return (
+        f"{format_version()}\n\n"
         f"{ATTRIBUTION}\n\n"
         "The host is Apache-2.0. Run `libera --payload-status` for the exact "
         "revisions of every upstream repository this payload was built from."

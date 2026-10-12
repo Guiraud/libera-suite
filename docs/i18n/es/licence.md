@@ -17,7 +17,7 @@ Libera Suite incluye componentes de [**Euro-Office**](https://github.com/Euro-Of
 
 Estamos agradecidos a ambos. Lo más difícil de una suite ofimática son los veinte años aprendiendo a leer bien los archivos `.docx` de los demás. Esa parte la heredamos.
 
-## Código fuente correspondiente
+## Código fuente correspondiente {#corresponding-source}
 
 Los editores tienen licencia AGPL, que exige que puedas obtener el código fuente de lo que ejecutas, incluidas nuestras modificaciones.
 

@@ -17,10 +17,13 @@ import platform
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypeVar
 
 import tomllib
 
-PAYLOAD_VERSION = "0.3"
+T = TypeVar("T")
+
+PAYLOAD_VERSION = "0.4"
 
 # The payload's executables are x2t.exe and tools\allfontsgen.exe on Windows.
 EXE = ".exe" if os.name == "nt" else ""
@@ -67,11 +70,12 @@ class NoPayloadError(PayloadError):
 
 
 @dataclass(frozen=True)
-class Payload:
-    """A usable payload directory, and how we came to be using it."""
+class Layout:
+    """Where each part of a payload is, under its root: the one place that
+    says. It was spelled out in four modules, the two AllFonts.js among them,
+    which are not interchangeable."""
 
     root: Path
-    origin: str  # "LIBERA_PAYLOAD", "config", "bundled", or "installed"
 
     @property
     def bin(self) -> Path:
@@ -81,8 +85,70 @@ class Payload:
     def x2t(self) -> Path:
         return self.bin / f"x2t{EXE}"
 
+    @property
+    def allfontsgen(self) -> Path:
+        return self.bin / "tools" / f"allfontsgen{EXE}"
+
+    @property
+    def doctrenderer_config(self) -> Path:
+        """Beside x2t, which is where x2t looks for it."""
+        return self.bin / "DoctRenderer.config"
+
+    @property
+    def all_fonts(self) -> Path:
+        """The AllFonts.js of filesystem paths, which x2t reads."""
+        return self.root / "AllFonts.js"
+
+    @property
+    def sdkjs(self) -> Path:
+        return self.root / "sdkjs"
+
+    @property
+    def sdkjs_common(self) -> Path:
+        return self.sdkjs / "common"
+
+    @property
+    def web_all_fonts(self) -> Path:
+        """The AllFonts.js of web ids, which the editor loads."""
+        return self.sdkjs_common / "AllFonts.js"
+
+    @property
+    def font_thumbnails(self) -> Path:
+        return self.sdkjs_common / "Images"
+
+    @property
+    def fonts(self) -> Path:
+        """The web fonts, which allfontsgen writes and the editor fetches:
+        obfuscated copies, under numbers."""
+        return self.root / "fonts"
+
+    @property
+    def fonts_src(self) -> Path:
+        """The fonts as shipped, which allfontsgen reads."""
+        return self.root / "fonts-src"
+
+    @property
+    def web_apps(self) -> Path:
+        return self.root / "web-apps"
+
+    @property
+    def blanks(self) -> Path:
+        """The empty documents File > New starts from, one per editor."""
+        return self.root / "empty"
+
+    @property
+    def record(self) -> Path:
+        return self.root / "payload.json"
+
+
+@dataclass(frozen=True)
+class Payload(Layout):
+    """A usable payload directory, and how we came to be using it."""
+
+    origin: str  # "LIBERA_PAYLOAD", "config", "bundled", or "installed"
+
     def read_record(self) -> dict:
-        f = self.root / "payload.json"
+        f = self.record
         return json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
 
 
@@ -143,21 +209,37 @@ def get_config_file() -> Path:
     return base / "libera" / "config.toml"
 
 
-def _read_configured_dir() -> Path | None:
+def read_config_string(key: str) -> str | None:
+    """One string from config.toml, or None when the file or the key is absent."""
+    return _read_config(key, str, "a string")
+
+
+def read_config_bool(key: str) -> bool | None:
+    """true or false from config.toml, or None when the file or the key is absent."""
+    return _read_config(key, bool, "true or false")
+
+
+def _read_config(key: str, kind: type[T], expected: str) -> T | None:
+    """A PayloadError like any other answer from here, so that every command --
+    --diagnose, the bug-report one, included -- says which file is wrong
+    rather than printing a traceback.
+    """
     f = get_config_file()
     if not f.is_file():
         return None
-    # A PayloadError like any other answer from here, so that every command --
-    # --diagnose, the bug-report one, included -- says which file is wrong
-    # rather than printing a traceback.
     try:
-        value = tomllib.loads(f.read_text(encoding="utf-8")).get("payload_dir")
+        value = tomllib.loads(f.read_text(encoding="utf-8")).get(key)
     except tomllib.TOMLDecodeError as e:
         msg = f"{f} is not valid TOML: {e}"
         raise PayloadError(msg) from e
-    if value is not None and not isinstance(value, str):
-        msg = f"payload_dir in {f} is not a path: {value!r}"
+    if value is not None and not isinstance(value, kind):
+        msg = f"{key} in {f} is not {expected}: {value!r}"
         raise PayloadError(msg)
+    return value
+
+
+def _read_configured_dir() -> Path | None:
+    value = read_config_string("payload_dir")
     return Path(value).expanduser() if value else None
 
 
@@ -195,7 +277,7 @@ def find_bundled_dir() -> Path | None:
     that actually matters -- is there a payload shipped alongside this
     installation -- and it is right for any prefix layout, which is what the
     `.dmg` will want. Counting parents would break the first time the package
-    moved; see notes/lessons-learned.md.
+    moved; see notes/lessons-learned/data-and-paths.md.
     """
     for parent in Path(__file__).resolve().parents:
         candidate = parent / "share" / "libera" / "payload"
@@ -206,14 +288,15 @@ def find_bundled_dir() -> Path | None:
 
 def is_complete(root: Path) -> bool:
     """Everything the host needs, including what install generates."""
+    layout = Layout(root)
     needed = [
-        root / "bin" / f"x2t{EXE}",
-        root / "bin" / "DoctRenderer.config",
-        root / "sdkjs",
-        root / "web-apps",
-        root / "empty" / "new.docx",
-        root / "AllFonts.js",
-        root / "fonts",
+        layout.x2t,
+        layout.doctrenderer_config,
+        layout.sdkjs,
+        layout.web_apps,
+        layout.blanks / "new.docx",
+        layout.all_fonts,
+        layout.fonts,
     ]
     return all(p.exists() for p in needed)
 
@@ -229,7 +312,7 @@ def resolve() -> Payload:
         if not is_complete(root):
             msg = (
                 f"LIBERA_PAYLOAD={root} is not a complete payload"
-                " (run build/payload.sh?)"
+                " (run build/engine/payload.sh?)"
             )
             raise PayloadError(msg)
         return Payload(root, "LIBERA_PAYLOAD")

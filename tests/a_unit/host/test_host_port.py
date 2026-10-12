@@ -28,7 +28,7 @@ def spare_port():
 
 
 def test_prefers_the_stable_port(monkeypatch, spare_port):
-    monkeypatch.setattr(server.handler, "PREFERRED_PORT", spare_port)
+    monkeypatch.setattr(server.listener, "PREFERRED_PORT", spare_port)
     assert server.find_free_port() == spare_port
 
 
@@ -40,7 +40,7 @@ def test_falls_back_when_the_stable_port_is_taken(monkeypatch):
     held.bind(("127.0.0.1", 0))
     held.listen(1)
     taken = int(held.getsockname()[1])
-    monkeypatch.setattr(server.handler, "PREFERRED_PORT", taken)
+    monkeypatch.setattr(server.listener, "PREFERRED_PORT", taken)
     try:
         port = server.find_free_port()
     finally:
@@ -56,12 +56,12 @@ def test_a_second_server_cannot_share_the_port():
     What SO_REUSEADDR allows on Windows, where it does not mean TIME_WAIT.
     """
     handler = http.server.BaseHTTPRequestHandler
-    with server.handler.Server(("127.0.0.1", 0), handler) as first:
+    with server.listener.Server(("127.0.0.1", 0), handler) as first:
         port = first.server_address[1]
         # The errno, not the message: that is the platform's own wording.
         refused: OSError | None = None
         try:
-            server.handler.Server(("127.0.0.1", port), handler).server_close()
+            server.listener.Server(("127.0.0.1", port), handler).server_close()
         except OSError as e:
             refused = e
     assert refused is not None, f"a second server bound {port}"

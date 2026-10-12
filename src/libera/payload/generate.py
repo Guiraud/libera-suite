@@ -18,6 +18,11 @@ from libera.payload.locate import PayloadError
 if TYPE_CHECKING:
     from pathlib import Path
 
+# What allfontsgen reads, and the thumbnail scales it draws: five sizes, each
+# for Latin and for East Asian names.
+FONT_SUFFIXES = {".ttf", ".otf", ".ttc", ".otc"}
+THUMBNAILS = 10
+
 
 def generate(root: Path) -> int:
     """Produce the files that cannot be shipped, because they hold local paths.
@@ -26,21 +31,22 @@ def generate(root: Path) -> int:
     beside x2t -- which is where x2t looks for it. Returns the font count,
     because allfontsgen exits 0 having found none and the caller reports it.
     """
-    allfontsgen = root / "bin" / "tools" / f"allfontsgen{locate.EXE}"
+    layout = locate.Layout(root)
+    allfontsgen = layout.allfontsgen
     if not allfontsgen.is_file():
         msg = f"no allfontsgen at {allfontsgen}: the core artifact is incomplete"
         raise PayloadError(msg)
 
-    fonts_src = root / "fonts-src"
+    fonts_src = layout.fonts_src
     if not fonts_src.is_dir():
         msg = f"no font sources at {fonts_src}"
         raise PayloadError(msg)
 
-    web = root / "fonts"
-    images = root / "sdkjs" / "common" / "Images"
+    web = layout.fonts
+    images = layout.font_thumbnails
     # allfontsgen treats an existing AllFonts.js as an up-to-date cache and
     # exits 0 without writing anything, leaving an empty font directory behind.
-    for stale in (root / "AllFonts.js", root / "sdkjs" / "common" / "AllFonts.js"):
+    for stale in (layout.all_fonts, layout.web_all_fonts):
         stale.unlink(missing_ok=True)
     # And it skips every thumbnail scale whose PNG exists, so a changed font set
     # would keep the pictures of the old one in the font menu.
@@ -58,16 +64,16 @@ def generate(root: Path) -> int:
             [
                 str(allfontsgen),
                 f"--input={fonts_src}",
-                f"--allfonts-web={root / 'sdkjs' / 'common' / 'AllFonts.js'}",
-                f"--allfonts={root / 'AllFonts.js'}",
+                f"--allfonts-web={layout.web_all_fonts}",
+                f"--allfonts={layout.all_fonts}",
                 f"--images={images}",
-                f"--selection={root / 'sdkjs' / 'common' / 'font_selection.bin'}",
+                f"--selection={layout.sdkjs_common / 'font_selection.bin'}",
                 f"--output-web={web}",
             ],
             check=False,
             capture_output=True,
             text=True,
-            env=locate.make_tool_env(root / "bin"),
+            env=locate.make_tool_env(layout.bin),
             creationflags=locate.NO_WINDOW,
         )
     except OSError as e:
@@ -77,22 +83,34 @@ def generate(root: Path) -> int:
         said = (run.stderr or run.stdout).strip() or "nothing"
         msg = f"allfontsgen failed (exit {run.returncode}) and said: {said}"
         raise PayloadError(msg)
-    # The count, not the exit code: allfontsgen exits 0 having found nothing when
-    # its directory walk has no live branch, and writes a well-formed AllFonts.js
-    # with an empty font list. An editor built on that renders every glyph as a box.
+    # The counts, not the exit code: allfontsgen exits 0 having found nothing
+    # when its directory walk has no live branch, and writes a well-formed
+    # AllFonts.js with an empty font list. An editor built on that renders every
+    # glyph as a box. The build checks the same two things (build/engine).
     found = len(list(web.iterdir()))
-    if found == 0:
-        msg = f"allfontsgen found no fonts in {fonts_src}"
+    sources = sum(1 for f in fonts_src.rglob("*") if f.suffix.lower() in FONT_SUFFIXES)
+    # ponytail: nine in ten, because allfontsgen passes over a source it cannot
+    # use (188 web fonts from 189 files, measured); a run that stopped partway
+    # is far below that. An exact rule needs allfontsgen's own list.
+    if found == 0 or found < sources * 9 // 10:
+        msg = f"allfontsgen made {found} web fonts from {sources} in {fonts_src}"
+        raise PayloadError(msg)
+    # And the thumbnails, which it draws last: on Windows it once stopped at
+    # the second, and the font menu showed blank names.
+    drawn = len(list(images.glob("fonts_thumbnail*.png")))
+    if drawn < THUMBNAILS:
+        msg = f"allfontsgen drew {drawn} of {THUMBNAILS} font thumbnails"
         raise PayloadError(msg)
 
-    xregexp = root / "web-apps" / "vendor" / "xregexp" / "xregexp-all-min.js"
-    (root / "bin" / "DoctRenderer.config").write_text(
+    xregexp = layout.web_apps / "vendor" / "xregexp" / "xregexp-all-min.js"
+    native = layout.sdkjs_common / "Native"
+    layout.doctrenderer_config.write_text(
         "<Settings>\n"
-        f"<file>{root / 'sdkjs' / 'common' / 'Native' / 'native.js'}</file>\n"
-        f"<file>{root / 'sdkjs' / 'common' / 'Native' / 'jquery_native.js'}</file>\n"
-        f"<allfonts>{root / 'AllFonts.js'}</allfonts>\n"
+        f"<file>{native / 'native.js'}</file>\n"
+        f"<file>{native / 'jquery_native.js'}</file>\n"
+        f"<allfonts>{layout.all_fonts}</allfonts>\n"
         f"<file>{xregexp}</file>\n"
-        f"<sdkjs>{root / 'sdkjs'}</sdkjs>\n"
+        f"<sdkjs>{layout.sdkjs}</sdkjs>\n"
         "</Settings>\n",
         encoding="utf-8",
     )

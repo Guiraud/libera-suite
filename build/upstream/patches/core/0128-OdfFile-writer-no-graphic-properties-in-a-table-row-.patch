@@ -1,0 +1,66 @@
+From 3512c10d6f1f8c5030127cfc9eba29394ec1c2b1 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:25:53 +0200
+Subject: [PATCH 128/142] OdfFile writer: no graphic properties in a table-row
+ style
+
+A presentation's table rows are started through the drawing context,
+which gives the style of every element it starts graphic properties. A
+table-row style takes table-row properties only, so every PPTX table
+with a row height came out with an invalid, empty
+style:graphic-properties: 20 of LibreOffice's ODF test documents after
+the fourth batch. A table-row style no longer serialises them.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/styles.cpp | 8 +++++---
+ OdfFile/Writer/Format/styles.h   | 2 +-
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/styles.cpp b/OdfFile/Writer/Format/styles.cpp
+index 498ea7f3f3..cfef448cfb 100644
+--- a/OdfFile/Writer/Format/styles.cpp
++++ b/OdfFile/Writer/Format/styles.cpp
+@@ -245,13 +245,13 @@ void style_content::create_child_element( const std::wstring & Ns, const std::ws
+         not_applicable_element(L"style-content",  Ns, Name);
+     }
+ }
+-void style_content::serialize(std::wostream & strm)
++void style_content::serialize(std::wostream & strm, bool with_graphic_properties)
+ {
+ 	// One order that suits every family's schema: table-cell and chart properties come
+ 	// before graphic, graphic before paragraph, paragraph before text.
+ 	if (style_table_cell_properties_)	style_table_cell_properties_->serialize(strm);
+     if (style_chart_properties_)		style_chart_properties_->serialize(strm);
+-	if (style_graphic_properties_)		style_graphic_properties_->serialize(strm);
++	if (style_graphic_properties_ && with_graphic_properties)	style_graphic_properties_->serialize(strm);
+ 	if (style_paragraph_properties_)	style_paragraph_properties_->serialize(strm);
+     if (style_section_properties_)		style_section_properties_->serialize(strm);
+     if (style_ruby_properties_)			style_ruby_properties_->serialize(strm);
+@@ -526,7 +526,9 @@ void style::serialize(std::wostream & strm)
+ 			CP_XML_ATTR(L"style:family",					style_family_);
+ 			CP_XML_ATTR(L"style:name", XmlUtils::EncodeXmlString(style_name_));
+ 			
+-			content_.serialize(CP_XML_STREAM());
++			// A presentation's table rows pass through the drawing context, which gives every style
++			// graphic properties; a table-row style takes table-row properties only
++			content_.serialize(CP_XML_STREAM(), style_family_.get_type() != odf_types::style_family::TableRow);
+ 		}
+ 	}
+ }
+diff --git a/OdfFile/Writer/Format/styles.h b/OdfFile/Writer/Format/styles.h
+index cb9b73cd86..e41dc16d5d 100644
+--- a/OdfFile/Writer/Format/styles.h
++++ b/OdfFile/Writer/Format/styles.h
+@@ -96,7 +96,7 @@ public:
+ 
+ 	void create_child_element	( const std::wstring & Ns, const std::wstring & Name);
+     void add_child_element		( const office_element_ptr & child);
+-	void serialize				(std::wostream & strm);
++	void serialize				(std::wostream & strm, bool with_graphic_properties = true);
+ //get 
+     graphic_format_properties*		get_graphic_properties();
+ 	paragraph_format_properties*	get_paragraph_properties();
+-- 
+2.55.0
+

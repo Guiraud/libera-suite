@@ -1,0 +1,46 @@
+From 84249cd9a106b89eb23a194fce164fd988095df8 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 16:55:47 +0200
+Subject: [PATCH 144/148] OdfFile writer: an axis writes its categories before
+ its grids
+
+chart:axis wrote its children in the order they were added, and the
+converter adds chart:categories after the grids. The schema wants the
+title, then the categories, then the grids: 7 of LibreOffice's ODF test
+documents after the seventh batch, category axes with gridlines.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/office_chart.cpp | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/office_chart.cpp b/OdfFile/Writer/Format/office_chart.cpp
+index 177542bc22..2862987118 100644
+--- a/OdfFile/Writer/Format/office_chart.cpp
++++ b/OdfFile/Writer/Format/office_chart.cpp
+@@ -363,9 +363,21 @@ void chart_axis::serialize(std::wostream & _Wostream)
+         {
+ 			chart_axis_attlist_.serialize(CP_GET_XML_NODE());
+ 
++			// The schema's order: title, then categories, then grids; the converter adds the
++			// categories after the grids
++			const ElementType order[] = { typeChartTitle, typeChartCategories };
++			for (size_t t = 0; t < sizeof(order) / sizeof(order[0]); t++)
++			{
++				for (size_t i = 0; i < content_.size(); i++)
++				{
++					if (content_[i]->get_type() == order[t])
++						content_[i]->serialize(CP_XML_STREAM());
++				}
++			}
+ 			for (size_t i = 0; i < content_.size(); i++)
+ 			{
+-				content_[i]->serialize(CP_XML_STREAM());
++				if (content_[i]->get_type() != typeChartTitle && content_[i]->get_type() != typeChartCategories)
++					content_[i]->serialize(CP_XML_STREAM());
+ 			}
+ 		}
+ 	}
+-- 
+2.55.0
+

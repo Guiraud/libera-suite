@@ -1,0 +1,98 @@
+"""The repository, and what git says about a checkout of it.
+
+Every function takes the checkout's root rather than assuming this one, so the
+tests can drive a scratch repository with them.
+"""
+
+from __future__ import annotations
+
+import os
+import platform
+from pathlib import Path
+
+from libera_build.process import capture
+from libera_build.report import RefusedError
+
+# Paths in a checkout, from its root: each is spelt here once.
+PAYLOAD_VERSION = Path("build", "payload", "payload.version")
+# The manifest the wheel ships, gitignored: whatever collect last stamped.
+MANIFEST = Path("src", "libera", "manifest.json")
+BUILDERS = Path("build", "builders.toml")
+PINS = Path("build", "upstream", "pins.toml")
+PATCHES = Path("build", "upstream", "patches")  # a directory per pinned repo
+
+
+def find_repo() -> Path:
+    """The repository root: the first directory up with build/payload/payload.version.
+
+    Walked to, never counted: this file moved once already, from build/lb.py to
+    build/src/libera_build/.
+    """
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / PAYLOAD_VERSION).is_file():
+            return parent
+    msg = f"no repository above {here}"
+    raise RuntimeError(msg)
+
+
+REPO = find_repo()
+
+# $BUILD_ROOT unset, by `platform.system()`: build/engine/common.sh's defaults,
+# restated until the build engine scripts that read them are ported. An
+# external case-sensitive volume on the Mac, because V8 needs one and the
+# internal disk is not. Short on Windows, because V8's checkout is deep enough
+# to meet the 260-character limit from under a home directory.
+DEFAULT_BUILD_ROOTS = {
+    "Darwin": "/Volumes/T7-EXT-2T/euro-office-build",
+    "Windows": "C:/b",
+}
+LINUX_BUILD_ROOT = "~/euro-office-build"
+
+
+def default_build_root(system: str) -> str:
+    """$BUILD_ROOT's default on a system, `~` unexpanded: it may be a builder's."""
+    return DEFAULT_BUILD_ROOTS.get(system, LINUX_BUILD_ROOT)
+
+
+def build_root() -> Path:
+    """Where the payload's sources and builds live: $BUILD_ROOT, else this
+    system's default."""
+    if found := os.environ.get("BUILD_ROOT"):
+        return Path(found)
+    return Path(default_build_root(platform.system())).expanduser()
+
+
+def dist(version: str) -> Path:
+    """$BUILD_ROOT/out/dist/<version>: where dist.sh writes a payload version's
+    artifacts on this machine, and where collect gathers every builder's."""
+    return build_root() / "out" / "dist" / version
+
+
+def git(root: Path, *args: str) -> tuple[int, str]:
+    return capture(["git", "-C", str(root), *args])
+
+
+def head(root: Path) -> str:
+    status, out = git(root, "rev-parse", "HEAD")
+    if status != 0:
+        msg = f"{root} has no HEAD"
+        raise RefusedError(msg)
+    return out.strip()
+
+
+def branch(root: Path) -> str:
+    _, out = git(root, "rev-parse", "--abbrev-ref", "HEAD")
+    return out.strip()
+
+
+def dirty(root: Path) -> list[str]:
+    _, out = git(root, "status", "--porcelain")
+    return [line for line in out.splitlines() if line.strip()]
+
+
+def on_a_remote(root: Path) -> bool:
+    """Whether a remote has this commit, after asking every remote."""
+    git(root, "fetch", "--quiet", "--all")
+    _, out = git(root, "branch", "-r", "--contains", "HEAD")
+    return bool(out.strip())

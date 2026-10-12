@@ -12,31 +12,19 @@ shadowed by the function.
 from __future__ import annotations
 
 import argparse
-import importlib.metadata
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from libera import logs
+from libera import logs, timeline
 from libera.cli import commands
-from libera.payload import locate
+from libera.host import about
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def format_version() -> str:
-    """What `--version` prints: the application, and the payload it wants.
-
-    Both, because the two move independently -- a host fix should not force a
-    120 MB re-download, and a payload rebuilt from new upstream pins should not
-    need a host release. A bug report that names only one of them does not say
-    which halves were in play. `--diagnose` prints these and much more; this is
-    the line somebody pastes into an issue.
-    """
-    installed = importlib.metadata.version("libera")
-    return f"libera {installed} (payload {locate.PAYLOAD_VERSION})"
-
-
 def main(argv: list[str] | None = None) -> int:
+    timeline.mark("python")
     parser = _make_parser()
     args = parser.parse_args(argv)
     logs.setup(args.verbose, quiet=args.quiet)
@@ -50,6 +38,7 @@ def _make_parser() -> argparse.ArgumentParser:
         epilog=(
             "libera FILE...    open documents, one window each\n"
             "libera            the start window: new, open, recent\n"
+            "libera --convert *.docx -t pdf    convert, with no window\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -58,7 +47,7 @@ def _make_parser() -> argparse.ArgumentParser:
         "-V",
         "--version",
         action="version",
-        version=format_version(),
+        version=about.format_version(),
         help="print the version and exit",
     )
     parser.add_argument(
@@ -76,8 +65,31 @@ def _make_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print what a bug report needs: versions, payload, platform",
     )
+    _add_convert_options(parser)
     _add_serve_options(parser)
     return parser
+
+
+def _add_convert_options(parser: argparse.ArgumentParser) -> None:
+    """Pandoc's spellings where pandoc has one: `-t` the format written, `-o`
+    the file. No `-f`, which is pandoc's input format: here the extension
+    decides that, as it decides the editor."""
+    group = parser.add_argument_group("converting without a window")
+    group.add_argument(
+        "--convert",
+        action="store_true",
+        help="write each FILE in another format, beside it unless told otherwise",
+    )
+    group.add_argument(
+        "-t", "--to", metavar="FORMAT", help="the format, by extension: pdf, odt, ..."
+    )
+    group.add_argument(
+        "-o",
+        "--output",
+        metavar="FILE",
+        help="for one document: where to write it, - for standard output",
+    )
+    group.add_argument("--outdir", metavar="DIR", help="write into DIR")
 
 
 def _add_payload_options(parser: argparse.ArgumentParser) -> None:
@@ -163,6 +175,9 @@ def _choose_command(
         ("--port", "--serve", args.port is not None),
         ("--work", "--serve", args.work is not None),
         ("--shot", "--serve", args.shot is not None),
+        ("--to", "--convert", args.to is not None),
+        ("--output", "--convert", args.output is not None),
+        ("--outdir", "--convert", args.outdir is not None),
     )
     for option, owner, given in owned:
         if given and owner != flag:
@@ -172,7 +187,26 @@ def _choose_command(
     # variadic because opening documents is the default.
     if flag == "--serve" and len(args.file) != 1:
         parser.error("--serve takes exactly one document")
+    if flag == "--convert":
+        _check_convert(parser, args)
     return run
+
+
+def _check_convert(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """What `--convert` needs, which is mostly what to call the result."""
+    args.file = commands.expand_wildcards(args.file)
+    if not args.file:
+        parser.error("--convert needs at least one document")
+    if args.output is None and args.to is None:
+        parser.error("--convert needs -t FORMAT, or -o FILE")
+    if args.output is None:
+        return
+    if len(args.file) > 1:
+        parser.error("-o names one file; for several documents, use -t and --outdir")
+    if args.outdir is not None:
+        parser.error("-o and --outdir cannot be used together")
+    if args.to is None and not Path(args.output).suffix:
+        parser.error(f"no format in {args.output!r}: add -t FORMAT")
 
 
 def _find_command_flags(
@@ -193,5 +227,6 @@ def _find_command_flags(
         ("--launcher-install", args.launcher_install, commands.install_launcher),
         ("--launcher-remove", args.launcher_remove, commands.remove_launcher),
         ("--serve", args.serve, commands.serve),
+        ("--convert", args.convert, commands.convert_documents),
     )
     return [(flag, run) for flag, on, run in table if on]

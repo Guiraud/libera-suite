@@ -1,0 +1,53 @@
+From d35a5994a6b063c5e55efdb3bb003dd6ab1aa927 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:57:15 +0200
+Subject: [PATCH 131/142] OdfFile writer: a chart's axes come before its series
+
+The plot area wrote its children in the order they were added, except
+wall and floor. A chart that has no axes in the OOXML, a pie or a
+doughnut, gets default axes added after its series have been, and the
+schema wants chart:axis before chart:series: 17 of LibreOffice's ODF test
+documents after the fifth batch. Axes are now written before everything
+but 3D lights. Built on fix/odf-chart-element-order, which changed the
+same function.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/office_chart.cpp | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/office_chart.cpp b/OdfFile/Writer/Format/office_chart.cpp
+index b2d4b5360f..177542bc22 100644
+--- a/OdfFile/Writer/Format/office_chart.cpp
++++ b/OdfFile/Writer/Format/office_chart.cpp
+@@ -264,13 +264,26 @@ void chart_plot_area::serialize(std::wostream & _Wostream)
+ 
+ 			// The schema closes a plot area with chart:wall, then chart:floor; they
+ 			// arrive in either order, so they are held back and written last.
++			// Its axes come before its series, lights before its axes: a chart without axes
++			// in the OOXML, a pie for one, has default axes added after its series.
++			for (size_t i = 0; i < content_.size(); i++)
++			{
++				if (content_[i]->get_type() == typeDr3dLight)
++					content_[i]->serialize(CP_XML_STREAM());
++			}
++			for (size_t i = 0; i < content_.size(); i++)
++			{
++				if (content_[i]->get_type() == typeChartAxis)
++					content_[i]->serialize(CP_XML_STREAM());
++			}
+ 			office_element_ptr wall, floor;
+ 			for (size_t i = 0; i < content_.size(); i++)
+ 			{
+ 				ElementType type = content_[i]->get_type();
+ 				if (type == typeChartWall)			wall = content_[i];
+ 				else if (type == typeChartFloor)	floor = content_[i];
+-				else content_[i]->serialize(CP_XML_STREAM());
++				else if (type != typeChartAxis && type != typeDr3dLight)
++					content_[i]->serialize(CP_XML_STREAM());
+ 			}
+ 			if (wall)	wall->serialize(CP_XML_STREAM());
+ 			if (floor)	floor->serialize(CP_XML_STREAM());
+-- 
+2.55.0
+

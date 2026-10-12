@@ -1,7 +1,8 @@
 ; Libera Suite for Windows: the installer.
 ;
-; Built by build/windows-app.sh, which passes:
-;   /DAppVersion=0.2.2   /DAppDir=<frozen app>   /DPayloadDir=<dist artifacts>
+; Built by build/windows/windows-app.sh, which passes:
+;   /DAppVersion=0.4.0rc1   /DAppNumbers=0.4.0 (VersionInfoVersion takes numbers only)
+;   /DAppDir=<frozen app>   /DPayloadDir=<dist artifacts>
 ;   /DIconFile=<.ico>    /DAssociations=<generated .iss>  /DOutputDir=<dir>
 ;
 ; Per-user and without administrator rights: the application goes to
@@ -26,7 +27,7 @@ AppVerName={#AppName} {#AppVersion}
 AppPublisher=Abilian
 AppPublisherURL=https://liberasuite.eu/
 AppSupportURL=https://docs.liberasuite.eu/
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#AppNumbers}
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes

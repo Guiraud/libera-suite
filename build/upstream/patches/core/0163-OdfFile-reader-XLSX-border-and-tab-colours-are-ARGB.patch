@@ -1,0 +1,44 @@
+From 03be0e23101028fe8f1b746d20bff5860c9664b9 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 21:54:41 +0200
+Subject: [PATCH 163/168] OdfFile reader: XLSX border and tab colours are ARGB
+
+A border's colour and a sheet tab's were written as six hex digits,
+000000; the schema's rgb is ARGB, eight, and fonts and fills already
+wrote FF before the colour. 299 of LibreOffice's ODF test documents.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Converter/xlsx_borders.cpp     | 2 +-
+ OdfFile/Reader/Converter/xlsx_table_state.cpp | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/OdfFile/Reader/Converter/xlsx_borders.cpp b/OdfFile/Reader/Converter/xlsx_borders.cpp
+index 1554a5646c..84d21c2fdf 100644
+--- a/OdfFile/Reader/Converter/xlsx_borders.cpp
++++ b/OdfFile/Reader/Converter/xlsx_borders.cpp
+@@ -103,7 +103,7 @@ void process_border(xlsx_border_edge & borderEdge, const _CP_OPT(border_style) &
+     if (borderStyle)
+     {
+         xlsx_color color;    
+-        color.rgb = borderStyle->get_color().get_hex_value();
++        color.rgb = L"FF" + borderStyle->get_color().get_hex_value(); // ARGB, as for fonts and fills
+ 
+         borderEdge.color = color;
+         borderEdge.style = convert_border_style(*borderStyle);
+diff --git a/OdfFile/Reader/Converter/xlsx_table_state.cpp b/OdfFile/Reader/Converter/xlsx_table_state.cpp
+index 8ede92840a..ab640a467c 100644
+--- a/OdfFile/Reader/Converter/xlsx_table_state.cpp
++++ b/OdfFile/Reader/Converter/xlsx_table_state.cpp
+@@ -652,7 +652,7 @@ void xlsx_table_state::serialize_table_format (std::wostream & strm)
+ 				{
+ 					CP_XML_NODE(L"tabColor")
+ 					{
+-						CP_XML_ATTR(L"rgb", table_prop->content().tableooo_tab_color_->get_hex_value());	
++						CP_XML_ATTR(L"rgb", L"FF" + table_prop->content().tableooo_tab_color_->get_hex_value()); // ARGB
+ 					}
+ 				}
+ 				//<pageSetUpPr fitToPage="true"/>
+-- 
+2.55.0
+

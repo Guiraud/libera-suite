@@ -1,0 +1,32 @@
+From d18069b425ae1bc0aeced73e71982cd3094f176d Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 16:55:47 +0200
+Subject: [PATCH 145/148] OdfFile writer: a slide with a draw:id has the xml:id
+ it needs
+
+A slide with a transition gets a draw:id, which its timing refers to.
+The schema allows a page's draw:id only beside an xml:id, which was
+never written: 7 of LibreOffice's ODF test documents after the seventh
+batch. The page now carries both, with the same value, as shapes
+already do.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/draw_page.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/OdfFile/Writer/Format/draw_page.cpp b/OdfFile/Writer/Format/draw_page.cpp
+index 61bcb7893f..96ee4423e2 100644
+--- a/OdfFile/Writer/Format/draw_page.cpp
++++ b/OdfFile/Writer/Format/draw_page.cpp
+@@ -39,6 +39,7 @@ namespace odf_writer {
+ 
+ void draw_page_attr::serialize(CP_ATTR_NODE)
+ {
++    CP_XML_ATTR_OPT(L"xml:id", draw_id_); // a page's draw:id is allowed only beside an xml:id
+     CP_XML_ATTR_OPT(L"draw:id", draw_id_);
+ 
+ 	CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:name", draw_name_);
+-- 
+2.55.0
+

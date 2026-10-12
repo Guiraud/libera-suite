@@ -14,21 +14,16 @@ runs, and neither shape survives being made to look like the other.
 answer `make_menubar()`, what to hand `webview.start`, and `install()`, what to do
 once the application runs.
 
-COMMAND, SHIFT, Shortcut, NEW and PAGE_YIELDS come from `host/shortcuts.py`:
-two modules on either side of this one need them, and `server` reaching up
-here for PAGE_YIELDS was half of a cycle. Re-exported, so `menu.PAGE_YIELDS`
-still reads the way it always did.
+The key equivalents and PAGE_YIELDS are in `host/shortcuts.py`: two modules
+on either side of this one need them, and `server` reaching up here for
+PAGE_YIELDS was half of a cycle.
 """
 
 from __future__ import annotations
 
 import sys
 
-from libera.host.menu.actions import (
-    HELP_URL,
-    is_enabled,
-)
-from libera.host.shortcuts import COMMAND, NEW, PAGE_YIELDS, SHIFT, Shortcut
+from libera.host.menu.actions import is_enabled
 
 if sys.platform == "darwin":
     from libera.host.menu import macos as native
@@ -36,12 +31,6 @@ else:
     from libera.host.menu import gtk as native
 
 __all__ = [
-    "COMMAND",
-    "HELP_URL",
-    "NEW",
-    "PAGE_YIELDS",
-    "SHIFT",
-    "Shortcut",
     "is_enabled",
     "native",
 ]

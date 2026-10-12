@@ -14,6 +14,7 @@ import pytest
 from support import ScriptedShell
 
 from libera.host import apps, window
+from libera.host.saving import SaveRequest
 from libera.host.session import SESSIONS, Session
 
 
@@ -89,10 +90,8 @@ def test_no_front_window_still_makes_something(windows, monkeypatch):
 def test_the_template_itself_is_never_edited(windows, monkeypatch):
     in_front("0", monkeypatch)
     made = window.make_new_document()
-    assert made.parent != (SESSIONS["0"].payload / "empty")
-    assert (
-        made.read_bytes() == (SESSIONS["0"].payload / "empty" / "new.docx").read_bytes()
-    )
+    assert made.parent != (SESSIONS["0"].layout.blanks)
+    assert made.read_bytes() == (SESSIONS["0"].layout.blanks / "new.docx").read_bytes()
 
 
 def test_a_second_new_does_not_overwrite_the_first(windows, monkeypatch):
@@ -179,7 +178,7 @@ def test_saving_a_new_document_asks_where(new_document_open, monkeypatch):
         ),
     )
 
-    result = saving.save_document(new_document_open, {"fileType": 0, "params": ""})
+    result = saving.save_document(new_document_open, SaveRequest())
 
     # And not in the folder it was made in, which is our own state directory:
     # where the toolkit chooses.
@@ -193,7 +192,7 @@ def test_closing_a_new_document_cannot_save_it_in_place(new_document_open):
     from libera.host import saving
 
     assert (
-        saving.save_document(new_document_open, {"fileType": 0}, may_ask=False)["error"]
+        saving.save_document(new_document_open, SaveRequest(), may_ask=False)["error"]
         == 2
     )
 

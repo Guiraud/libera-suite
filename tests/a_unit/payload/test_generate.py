@@ -45,5 +45,52 @@ def test_a_failing_allfontsgen_says_what_it_said(tmp_path):
 def test_finding_no_fonts_is_a_failure_whatever_it_exits(tmp_path):
     root = make_payload_with_allfontsgen(tmp_path, "exit 0")
 
-    with pytest.raises(PayloadError, match="found no fonts"):
+    with pytest.raises(PayloadError, match="made 0 web fonts"):
+        generate.generate(root)
+
+
+def allfontsgen_making(fonts: int, thumbnails: int) -> str:
+    """A stand-in that writes `fonts` web fonts and `thumbnails` pictures."""
+    return f"""
+for a in "$@"; do
+  case "$a" in
+    --output-web=*) web="${{a#*=}}" ;;
+    --images=*) images="${{a#*=}}" ;;
+  esac
+done
+i=0; while [ $i -lt {fonts} ]; do touch "$web/$i"; i=$((i+1)); done
+i=0; while [ $i -lt {thumbnails} ]; do touch "$images/fonts_thumbnail$i.png"; i=$((i+1)); done
+"""
+
+
+def with_sources(root: Path, count: int) -> Path:
+    for n in range(count):
+        (root / "fonts-src" / f"face{n}.ttf").write_bytes(b"")
+    return root
+
+
+def test_a_font_for_each_source_and_every_thumbnail_is_a_payload(tmp_path):
+    root = with_sources(
+        make_payload_with_allfontsgen(tmp_path, allfontsgen_making(32, 10)), 32
+    )
+
+    assert generate.generate(root) == 32
+
+
+def test_a_run_that_stopped_partway_through_the_fonts_is_a_failure(tmp_path):
+    root = with_sources(
+        make_payload_with_allfontsgen(tmp_path, allfontsgen_making(5, 10)), 32
+    )
+
+    with pytest.raises(PayloadError, match="made 5 web fonts from 32"):
+        generate.generate(root)
+
+
+def test_a_run_that_stopped_partway_through_the_thumbnails_is_a_failure(tmp_path):
+    """On Windows it stopped at the second, and exited 0."""
+    root = with_sources(
+        make_payload_with_allfontsgen(tmp_path, allfontsgen_making(32, 1)), 32
+    )
+
+    with pytest.raises(PayloadError, match="drew 1 of 10"):
         generate.generate(root)

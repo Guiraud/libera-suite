@@ -1,0 +1,38 @@
+From 074a4c3abca636bdbc68f941cc7c9edcf52ba81b Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 19:28:06 +0200
+Subject: [PATCH 122/142] OdfFile writer: a slide's body placeholder is
+ presentation:class outline
+
+PptxConverter recodes an explicit body placeholder on a slide as type 16,
+and set_placeholder_type wrote that as presentation:class="body", which
+ODF does not have: 61 of LibreOffice's ODF test documents after the third
+batch. It is now written as outline, the class LibreOffice itself gives a
+PPTX body placeholder.
+
+The reader turns outline on a slide into a placeholder without a type,
+which PowerPoint takes for obj, where the invalid body came back as
+type="body". So the OOXML leg of a round trip loses that distinction; the
+ODF on each trip is the same.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/odf_drawing_context.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/odf_drawing_context.cpp b/OdfFile/Writer/Format/odf_drawing_context.cpp
+index fde732913e..9735966dd6 100644
+--- a/OdfFile/Writer/Format/odf_drawing_context.cpp
++++ b/OdfFile/Writer/Format/odf_drawing_context.cpp
+@@ -1515,7 +1515,7 @@ void odf_drawing_context::set_placeholder_type (int val)
+ 		case 13:	impl_->current_drawing_state_.presentation_class_ = presentation_class::subtitle;	break;
+ 		case 14:	impl_->current_drawing_state_.presentation_class_ = presentation_class::table;		break;
+ 		case 15:	impl_->current_drawing_state_.presentation_class_ = presentation_class::title;		break;
+-		case 16:	impl_->current_drawing_state_.presentation_class_ = presentation_class::body;		break;
++		case 16:	impl_->current_drawing_state_.presentation_class_ = presentation_class::outline;		break; // body: ODF has no such class
+ 		default:		
+ 			impl_->current_drawing_state_.presentation_class_ = presentation_class::outline; 			break;
+ 	}
+-- 
+2.55.0
+

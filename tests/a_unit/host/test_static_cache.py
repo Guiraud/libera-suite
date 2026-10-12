@@ -13,6 +13,7 @@ ETag over the file's full path, size and nanosecond mtime.
 
 from __future__ import annotations
 
+import email.utils
 import http.client
 import logging
 import os
@@ -21,7 +22,7 @@ import threading
 import pytest
 
 from libera.host import session
-from libera.host.server import handler
+from libera.host.server import adapter, listener
 from libera.host.session import Session
 
 
@@ -36,8 +37,8 @@ def serve(tmp_path):
 
     def start(root):
         (root / "sdkjs" / "common").mkdir(parents=True, exist_ok=True)
-        server = handler.Server(("127.0.0.1", 0), handler.Handler)
-        server.payload = root
+        server = listener.Server(("127.0.0.1", 0), listener.QuietHandler)
+        server.set_app(adapter.make_app(root))
         threading.Thread(target=server.serve_forever, daemon=True).start()
         servers.append(server)
         return server.server_address[1]
@@ -67,6 +68,9 @@ def test_a_payload_file_says_revalidate_and_names_itself(serve, tmp_path):
     assert body == b"fonts = 32"
     assert response.getheader("Cache-Control") == "no-cache"
     assert response.getheader("ETag")
+    # No date to revalidate by: two payloads can hold the same file with the
+    # same time, which is the whole reason for the ETag.
+    assert response.getheader("Last-Modified") is None
 
 
 def test_an_unchanged_file_is_a_304(serve, tmp_path, caplog):
@@ -105,9 +109,26 @@ def test_another_payload_with_the_same_file_times_is_not_a_304(serve, tmp_path):
         "/sdkjs/common/AllFonts.js",
         {
             "If-None-Match": cached.getheader("ETag"),
-            "If-Modified-Since": cached.getheader("Last-Modified"),
+            # From a cache filled before the server stopped sending dates.
+            "If-Modified-Since": email.utils.formatdate(stamp.st_mtime, usegmt=True),
         },
     )
 
     assert fresh.status == 200
     assert body == b"fonts = 032"
+
+
+def test_an_explanation_is_never_served_as_a_page(serve, tmp_path):
+    """A refusal echoes what it was sent: an unknown session says which. Served
+    as HTML, any web site could open this address with a script for a session
+    id and have it run in our origin, where our own endpoints take its
+    requests -- read the recent list, copy a file in and read it back. The
+    first Bottle adapter did exactly that; http.server had escaped it."""
+    port = serve(tmp_path / "payload")
+
+    response, body = get(port, "/__host__/current?session=%3Cscript%3Ex%3C/script%3E")
+
+    assert response.status == 404
+    assert response.getheader("Content-Type").startswith("text/plain")
+    assert response.getheader("X-Content-Type-Options") == "nosniff"
+    assert b"<script>" in body, "the probe must actually carry the markup"

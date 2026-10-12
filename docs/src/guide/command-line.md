@@ -1,0 +1,50 @@
+# Command line
+
+Libera Suite is used from its windows, but a terminal reaches a few things no window offers: converting a folder of documents in one go, installing the editors on a machine you reach over SSH, the report a bug needs.
+
+The command is `libera`, on Linux and macOS. Installed as a Flatpak it is `flatpak run eu.liberasuite.Libera`, followed by the same options. On Windows it is `libera-cli.exe`, in the folder Libera Suite was installed in; it is not on the `PATH`.
+
+## Open
+
+| | |
+| :--- | :--- |
+| `libera` | the start window: new, open, recent |
+| `libera FILE...` | each document in a window of its own; the file decides the editor. [More](documents.md#open) |
+
+## Convert
+
+| | |
+| :--- | :--- |
+| `libera --convert FILE... -t FORMAT` | each document written in `FORMAT`, beside it, with no window. `FORMAT` is an extension: `pdf`, `odt`, `docx`, `xlsx`, `csv`... |
+| `-o FILE` | for one document: the file to write, its format taken from its extension unless `-t` says otherwise. `-o -` writes to standard output |
+| `--outdir DIR` | write into `DIR` instead of beside each document |
+
+[More, with examples](documents.md#from-the-command-line).
+
+## The editors
+
+| | |
+| :--- | :--- |
+| `libera --payload-install` | download, check and install the editors. `--from DIR` installs them from a folder instead. [More](../main/alt-install.md#the-editors) |
+| `libera --payload-status` | where the editors are, their version, and the [source](../licence.md#corresponding-source) they were built from |
+| `libera --payload-remove` | delete them. [More](../main/install.md#uninstall) |
+
+## Linux applications menu
+
+| | |
+| :--- | :--- |
+| `libera --launcher-install` | put Libera Suite in the applications menu, with *Open With*. [More](../main/alt-install.md#a-launcher-entry-on-linux) |
+| `libera --launcher-remove` | take it out again |
+
+The Flatpak does this itself.
+
+## When something goes wrong
+
+| | |
+| :--- | :--- |
+| `libera --diagnose` | everything a bug report needs, on one screen. [More](../main/install.md#if-something-goes-wrong) |
+| `libera --version` | the application's version and the editors' |
+| `-v`, `-vv`, `-vvv` | say what it is doing; how; every request to the editor |
+| `-q` | errors only |
+
+`libera --help` lists every option.

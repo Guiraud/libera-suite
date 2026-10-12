@@ -9,7 +9,7 @@ Terminal=false
 Categories=Office;WordProcessor;Spreadsheet;Presentation;
 StartupNotify=true
 StartupWMClass=libera
-# The Linux half of CFBundleDocumentTypes in build/macos-app.sh, and the two
+# The Linux half of CFBundleDocumentTypes in build/macos/macos-app.sh, and the two
 # are meant to stay the same set. One entry per format host/apps.py routes to
 # an editor and the desktop actually has a shared-mime-info name for -- which
 # is why the long tail (.fodp, .otp, .vssm) is absent: xdg-mime does not know

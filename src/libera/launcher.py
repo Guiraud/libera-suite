@@ -1,6 +1,6 @@
 """The desktop entry: what puts Libera Suite in a Linux launcher.
 
-macOS gets `Libera.app` out of `build/macos-app.sh` -- a Dock icon, a name in
+macOS gets `Libera.app` out of `build/macos/macos-app.sh` -- a Dock icon, a name in
 Open With, and a double-clicked document opening in the right editor. A
 `pipx install` on Linux got a command and nothing else: nothing in the
 activities overview, nothing offering to open a `.docx`, no mark anywhere. The

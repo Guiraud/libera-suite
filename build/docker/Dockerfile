@@ -1,10 +1,10 @@
 # Build environment for Euro-Office core on Linux.
 #
-# Nothing is copied in: build/docker.sh bind-mounts this repository and the
+# Nothing is copied in: build/src/libera_build/buildbox.py bind-mounts this repository and the
 # local upstream mirror, and keeps $BUILD_ROOT in a named volume. V8 alone takes
 # half an hour, so the volume is what makes a second run cheap.
 #
-# Everything that can drift is pinned, for the same reason build/pins.toml pins
+# Everything that can drift is pinned, for the same reason build/upstream/pins.toml pins
 # the sources by SHA: a patch queue is only meaningful against a fixed base, and
 # "it built last week" has to still be true next year.
 #
@@ -31,7 +31,7 @@
 # GLIBCXX 3.4.32. Measured in a clean container of each release, the shipped
 # x2t then refused to load on Ubuntu 22.04 and on Debian 12, while the
 # jammy-built arm64 core ran on both. So both architectures build on jammy now
-# and only CLANG_VERSION differs; build/docker.sh picks it.
+# and only CLANG_VERSION differs; build/src/libera_build/buildbox.py picks it.
 #
 # Everything that can drift is still pinned per release, and the checks further
 # down run on both, so a toolchain that is wrong for one of them fails here
@@ -202,7 +202,7 @@ RUN git config --system user.email "build@libera.invalid" \
 # about a toolchain: node and clang are pinned by ARG, so they are checked
 # against the ARG.
 # common.sh beside it, because toolchain.sh sources it from its own directory.
-COPY toolchain.sh common.sh /usr/local/bin/
+COPY engine/toolchain.sh engine/common.sh /usr/local/bin/
 RUN set -eu; \
     sh /usr/local/bin/toolchain.sh check; \
     [ "v${NODE_VERSION}" = "$(node --version)" ] || { \
@@ -210,7 +210,7 @@ RUN set -eu; \
     clang --version | grep -q "clang version ${CLANG_VERSION}\." || { \
         echo "FATAL: wanted clang ${CLANG_VERSION}, got $(clang --version | head -1)" >&2; exit 1; }
 
-# What this image is, for the record. `build/docker.sh versions` prints the
+# What this image is, for the record. `lb payload container --versions` prints the
 # first; the second is every package and version, for when that is the question.
 RUN set -eu; \
     { \

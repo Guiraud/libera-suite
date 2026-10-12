@@ -1,7 +1,7 @@
 """The application icon, which three toolchains read and one of them is strict.
 
 `src/libera/icon.svg` is the only copy of the mark in the repository.
-`build/macos-icon.py` rasterises it into `Libera.icns`, `build/flatpak.sh`
+`build/macos/macos-icon.py` rasterises it into `Libera.icns`, `build/src/libera_build/flatpak.py`
 copies it beside the Flatpak manifest to be exported as the desktop icon, and
 the host loads it at startup to set the Dock icon over the interpreter's.
 
@@ -29,7 +29,7 @@ def test_the_icon_ships_with_the_package():
 
     `libera` run from a virtualenv wears the interpreter's identity, so the
     host sets the icon itself at startup -- which it can only do if the wheel
-    carried the file. build/flatpak.sh installs that wheel into the sandbox.
+    carried the file. build/src/libera_build/flatpak.py installs that wheel into the sandbox.
     """
     assert ICON.is_file(), f"no icon at {ICON}"
 

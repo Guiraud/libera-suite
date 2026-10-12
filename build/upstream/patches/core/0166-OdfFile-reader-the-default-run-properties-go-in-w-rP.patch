@@ -1,0 +1,96 @@
+From c0a4bf8a4d906520833b713080a608828078bf99 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 21:54:42 +0200
+Subject: [PATCH 166/168] OdfFile reader: the default run properties go in
+ w:rPrDefault
+
+The default paragraph style converts to a w:pPr and a w:rPr, and both
+were written in w:pPrDefault, where the schema has no place for the
+w:rPr: 1 669 of LibreOffice's ODF test documents. A consumer found no
+default run properties, and x2t's own writer lost the document's
+default font size and languages on the second trip. The w:rPr now goes
+in w:rPrDefault, which comes first; a default text style fills it only
+when the paragraph style gives none.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ .../Converter/docx_conversion_context.cpp     | 46 ++++++++++++++-----
+ 1 file changed, 34 insertions(+), 12 deletions(-)
+
+diff --git a/OdfFile/Reader/Converter/docx_conversion_context.cpp b/OdfFile/Reader/Converter/docx_conversion_context.cpp
+index 5e01995591..d8945a857a 100644
+--- a/OdfFile/Reader/Converter/docx_conversion_context.cpp
++++ b/OdfFile/Reader/Converter/docx_conversion_context.cpp
+@@ -1371,11 +1371,15 @@ void docx_conversion_context::process_styles()
+             styles_map_.get(arStyles[i]->name(), arStyles[i]->type());
+         }
+ 
+-        _Wostream << L"<w:docDefaults>";
+-
++        // A default style converts to a w:pPr and a w:rPr. The w:rPr is the document's default run
++        // properties, which belong in w:rPrDefault, before w:pPrDefault; written after the w:pPr in
++        // w:pPrDefault, where the schema has no place for it, a consumer did not find them.
++        std::wstring defaultPPr, defaultRPr;
++        bool hasDefaultPar = false;
++        StreamsManPtr mainStream = get_stream_man();
+         if (odf_reader::style_instance * defaultParStyle = styles.style_default_by_type(odf_types::style_family::Paragraph))
+         {
+-            _Wostream << L"<w:pPrDefault>";
++            hasDefaultPar = true;
+             if ( odf_reader::style_content * content = defaultParStyle->content())
+             {
+ 				if (content->get_style_paragraph_properties())
+@@ -1391,23 +1395,41 @@ void docx_conversion_context::process_styles()
+ 						}
+ 					}
+ 				}
++                std::wstringstream converted;
++                set_stream_man(streams_man::create(converted));
+                 get_styles_context().start_process_style(defaultParStyle);
+                 content->docx_convert(*this);
+ 				get_styles_context().end_process_style();
++                set_stream_man(mainStream);
++
++                const std::wstring both = converted.str();
++                const size_t pPrEnd = both.rfind(L"</w:pPr>");
++                defaultPPr = (pPrEnd == std::wstring::npos) ? L"" : both.substr(0, pPrEnd + 8);
++                defaultRPr = (pPrEnd == std::wstring::npos) ? both : both.substr(pPrEnd + 8);
+ 			}
+-            _Wostream << L"</w:pPrDefault>";
+         }
+-        if (odf_reader::style_instance * defaultParStyle = styles.style_default_by_type(odf_types::style_family::Text))
++        if (defaultRPr.find(L"<w:rPr") == std::wstring::npos)
+         {
+-            _Wostream << L"<w:rPrDefault>";
+-            if ( odf_reader::style_content * content = defaultParStyle->content())
++            defaultRPr.clear();
++            if (odf_reader::style_instance * defaultTextStyle = styles.style_default_by_type(odf_types::style_family::Text))
+             {
+-                get_styles_context().start_process_style(defaultParStyle);
+-                content->docx_convert(*this);
+-				get_styles_context().end_process_style();
+-			}
+-            _Wostream << L"</w:rPrDefault>";
++                if ( odf_reader::style_content * content = defaultTextStyle->content())
++                {
++                    std::wstringstream converted;
++                    set_stream_man(streams_man::create(converted));
++                    get_styles_context().start_process_style(defaultTextStyle);
++                    content->docx_convert(*this);
++                    get_styles_context().end_process_style();
++                    set_stream_man(mainStream);
++                    defaultRPr = converted.str();
++                }
++            }
+         }
++        _Wostream << L"<w:docDefaults>";
++        if (false == defaultRPr.empty())
++            _Wostream << L"<w:rPrDefault>" << defaultRPr << L"</w:rPrDefault>";
++        if (hasDefaultPar)
++            _Wostream << L"<w:pPrDefault>" << defaultPPr << L"</w:pPrDefault>";
+         _Wostream << L"</w:docDefaults>";
+ 
+ 		std::wstring default_style;
+-- 
+2.55.0
+

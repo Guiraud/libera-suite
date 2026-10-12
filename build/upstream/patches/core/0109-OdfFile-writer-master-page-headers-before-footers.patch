@@ -1,0 +1,38 @@
+From 3a20b6a8722eac11d881ee9867d8615b37cf83c6 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 21:20:37 +0200
+Subject: [PATCH 109/142] OdfFile writer: master page headers before footers
+
+style_master_page::serialize wrote style:footer before style:header,
+which the schema rejects: it wants header, header-left, header-first,
+then the footers in the same order. Found in 1394 of LibreOffice's
+3794 ODF test documents after a round trip through OOXML.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/styles.cpp | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/styles.cpp b/OdfFile/Writer/Format/styles.cpp
+index e0f2b3d8a6..7ea164c340 100644
+--- a/OdfFile/Writer/Format/styles.cpp
++++ b/OdfFile/Writer/Format/styles.cpp
+@@ -1331,12 +1331,13 @@ void style_master_page::serialize(std::wostream & strm)
+         {
+ 			attlist_.serialize( CP_GET_XML_NODE());
+ 			
+-			if (style_footer_)			style_footer_->serialize(CP_XML_STREAM());
++			// The schema wants each header before its footer, and each variant after
++			// the one it varies: header, header-left, header-first, then the same for footers.
+ 			if (style_header_)			style_header_->serialize(CP_XML_STREAM());
+-			
+ 			if (style_header_left_)		style_header_left_->serialize(CP_XML_STREAM());
+ 			if (style_header_first_)	style_header_first_->serialize(CP_XML_STREAM());
+ 			
++			if (style_footer_)			style_footer_->serialize(CP_XML_STREAM());
+ 			if (style_footer_left_)		style_footer_left_->serialize(CP_XML_STREAM());
+ 			if (style_footer_first_)	style_footer_first_->serialize(CP_XML_STREAM());
+ 			
+-- 
+2.55.0
+

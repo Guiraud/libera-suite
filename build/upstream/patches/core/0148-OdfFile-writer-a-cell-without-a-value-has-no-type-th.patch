@@ -1,0 +1,54 @@
+From 92b52381bc3c2222852718abad12c4b3387f53a9 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 16:55:48 +0200
+Subject: [PATCH 148/148] OdfFile writer: a cell without a value has no type
+ that needs one
+
+A formula cell whose cached result is missing, as x2t's reader writes
+a formula that yields an empty string, took the number, date or time
+type of its format but had no office:value, office:date-value or
+office:time-value, which those types require: 8 of LibreOffice's ODF
+test documents after the seventh batch, 560 errors. Such a cell now
+has no type. Typing it as a string would be closer, but the reader then
+drops the cell's number format on the next trip.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/ods_table_state.cpp | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/OdfFile/Writer/Format/ods_table_state.cpp b/OdfFile/Writer/Format/ods_table_state.cpp
+index 5b405b187a..a51d45e202 100644
+--- a/OdfFile/Writer/Format/ods_table_state.cpp
++++ b/OdfFile/Writer/Format/ods_table_state.cpp
+@@ -1536,6 +1536,27 @@ void ods_table_state::end_cell()
+ 		table_table_cell* cell = dynamic_cast<table_table_cell*>(cells_.back().elm.get());
+ 		if (cell)cell->attlist_.common_value_and_type_attlist_ = boost::none;
+ 	}
++	table_table_cell* cell = dynamic_cast<table_table_cell*>(cells_.back().elm.get());
++	if (cell && cell->attlist_.common_value_and_type_attlist_ && cell->attlist_.common_value_and_type_attlist_->office_value_type_)
++	{
++		// A type that needs a value the cell lacks, as a formula without its cached result does, is left out.
++		common_value_and_type_attlist & value = *cell->attlist_.common_value_and_type_attlist_;
++		bool valued = true;
++		switch (value.office_value_type_->get_type())
++		{
++		case office_value_type::Float:
++		case office_value_type::Currency:
++		case office_value_type::Percentage:
++		case office_value_type::Scientific:
++		case office_value_type::Fraction:	valued = (bool)value.office_value_;			break;
++		case office_value_type::Date:
++		case office_value_type::DateTime:	valued = (bool)value.office_date_value_;	break;
++		case office_value_type::Time:		valued = (bool)value.office_time_value_;	break;
++		case office_value_type::Boolean:	valued = (bool)value.office_boolean_value_;	break;
++		default:															break;
++		}
++		if (!valued) value.office_value_type_ = boost::none;
++	}
+ 	if (map_merged_cells.empty())
+ 	{
+ 		cells_.pop_back();
+-- 
+2.55.0
+

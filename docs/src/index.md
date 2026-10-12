@@ -35,13 +35,14 @@ Your documents never do.
 
 Libera Suite has **no telemetry**, analytics, crash reporting or accounts: it sends us nothing about you, your documents or the way you use it. If anything of the kind is ever added, it will be off until you turn it on.
 
-It does connect to our server to download things. Today that means the editors, when you install Libera Suite and again when a new version needs new ones. When Libera Suite starts checking for updates, it will tell you that a new version is out and ask before downloading it. Like any web request, each of these downloads shows our server your IP address, and nothing else about you.
+It does connect to our server to download things. Today that means the editors, when you install Libera Suite and again when a new version needs new ones. Once a day at most, it also asks whether a newer version is out, and says so once; it downloads nothing, and tells you how to update. Like any web request, each of these downloads shows our server your IP address, and nothing else about you.
 
 The table lists every connection the application makes today, so you can check the claim. Any new one, update checks included, will appear here in the release that adds it.
 
 | | |
 | :--- | :--- |
 | **The editors** | Downloaded from `cdn.abilian.com` when you install Libera Suite, and again only when a new version needs new ones. Each download is verified against hashes shipped inside the application. |
+| **The update check** | At most once a day, the version number of the latest release, read from `cdn.abilian.com`. A newer one is mentioned once; nothing is downloaded. Offline, nothing happens. `check_updates = false` in the [configuration file](guide/documents.md#your-name-in-documents) turns it off. |
 | **The editor's own traffic** | A web server on `127.0.0.1` that is part of the application, serving the editor to a window on the same machine. It is not reachable from anywhere else. |
 | **Links you click** | Help and similar open in *your* browser. Libera Suite does not fetch them. |
 

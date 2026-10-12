@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import pytest
 from support import ScriptedShell
 
-from libera.host import apps, convert, recents, session as sessions
+from libera.host import apps, convert, hooks, recents, session as sessions
 from libera.host.server import BRIDGE_PARTS
 
 if TYPE_CHECKING:
@@ -60,16 +60,16 @@ def test_the_page_is_told_which_keys_the_menu_bar_owns(live: LiveHost):
 def test_the_owned_keys_are_the_menu_bar_own_definition(live: LiveHost, monkeypatch):
     """One definition, two readers.
 
-    menu.PAGE_YIELDS builds the menu item *and* feeds the page, so the menu's
-    shortcut and the key the page yields cannot drift apart.
+    shortcuts.PAGE_YIELDS builds the menu item *and* feeds the page, so the
+    menu's shortcut and the key the page yields cannot drift apart.
     """
-    from libera.host import hooks, menu, server
+    from libera.host import server, shortcuts
 
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setattr(hooks, "shell", ScriptedShell())
 
-    assert server.list_owned_keys() == [s.as_json() for s in menu.PAGE_YIELDS]
-    assert server.list_owned_keys() == [{"key": menu.NEW.key, "shift": False}]
+    assert server.list_owned_keys() == [s.as_json() for s in shortcuts.PAGE_YIELDS]
+    assert [k["key"] for k in server.list_owned_keys()] == ["n", "w", "q"]
 
 
 def test_only_the_first_part_carries_the_flags(live: LiveHost):
@@ -148,9 +148,9 @@ def test_changes_are_appended_to_the_log_x2t_reads(live: LiveHost):
     assert log.read_text() == '"first","second",'
 
 
-def test_calls_reports_what_the_page_has_been_doing(live: LiveHost):
-    live.post("report", json.dumps({"calls": [{"name": "Ping"}] * 2}).encode())
-    assert live.json("calls")["calls"]["Ping"] == 2
+def test_the_report_says_what_the_page_has_been_doing(live: LiveHost):
+    live.post("page-log", json.dumps({"calls": [{"name": "Ping"}] * 2}).encode())
+    assert live.json("report")["calls"]["Ping"] == 2
 
 
 # --- what the page is not allowed to talk us into ---------------------------
@@ -159,15 +159,15 @@ def test_calls_reports_what_the_page_has_been_doing(live: LiveHost):
 @pytest.mark.parametrize(
     "url",
     [
-        b"file:///etc/passwd",
-        b"javascript:alert(1)",
-        b"ssh://box/x",
-        b"  ",
-        b"https://ok.example/ with a space",
+        "file:///etc/passwd",
+        "javascript:alert(1)",
+        "ssh://box/x",
+        "  ",
+        "https://ok.example/ with a space",
     ],
 )
-def test_open_url_refuses_anything_but_a_bare_http_url(live: LiveHost, url: bytes):
-    assert live.post("open-url", url)[0] == 400
+def test_open_url_refuses_anything_but_a_bare_http_url(live: LiveHost, url: str):
+    assert live.post("open-url", json.dumps({"url": url}).encode())[0] == 400
 
 
 def test_open_recent_refuses_a_path_it_never_offered(live: LiveHost):
@@ -182,6 +182,30 @@ def test_media_stays_inside_the_media_folder(live: LiveHost, name: str):
         live.get(f"media/{name}")
 
     assert refused.value.code == 404
+
+
+def test_media_import_copies_only_what_the_dialog_handed_the_page(
+    live: LiveHost, tmp_path, monkeypatch
+):
+    """GET media/<name> serves what was copied in, so a path of the page's
+    own choosing read any file the user can, from any script in our origin."""
+    picture = tmp_path / "photo.png"
+    picture.write_bytes(b"\x89PNG picture")
+    secret = tmp_path / "passwords.txt"
+    secret.write_text("hunter2", encoding="utf-8")
+    monkeypatch.setattr(
+        hooks, "shell", ScriptedShell(choose_open_path=lambda _kind: str(picture))
+    )
+
+    _, chosen = live.post("choose-file", b'{"filter": "images"}')
+    path = json.loads(chosen)["path"]
+    _, copied = live.post("media-import", json.dumps({"path": path}).encode())
+    name = json.loads(copied)["name"]
+
+    assert live.get(f"media/{name}") == b"\x89PNG picture"
+    status, _ = live.post("media-import", json.dumps({"path": str(secret)}).encode())
+    assert status == 403
+    assert not (live.host.media / secret.name).exists()
 
 
 def test_media_with_a_space_in_its_name_is_served(live: LiveHost):
@@ -259,6 +283,9 @@ def test_a_name_rebound_to_this_address_reads_nothing(live: LiveHost):
         ("save", b"not json"),
         ("can", b"[1]"),
         ("modified", b"[1]"),
+        ("modified", b'{"modified": "yes"}'),
+        ("fullscreen", b"1"),
+        ("page-log", b'{"calls": "Ping"}'),
         ("open-recent", b"[]"),
         ("changes?index=abc&count=1", b"x"),
     ],
@@ -433,7 +460,7 @@ def test_with_no_window_to_open_new_makes_its_own_kind_in_place(live: LiveHost):
     """`libera --serve`: one window, and the new document replaces the old."""
     before = live.host.editor_bin.read_bytes()
 
-    assert live.post("new?type=word")[0] == 200
+    assert live.post("new", b'{"type": "word"}')[0] == 200
     # The session's Editor.bin is the only evidence in serve mode -- and it is
     # not empty before either, so what counts is that it changed.
     assert live.host.editor_bin.read_bytes() != before
@@ -444,7 +471,7 @@ def test_with_no_window_to_open_another_kind_is_refused(live: LiveHost, doctype:
     """A spreadsheet converted into a Words session left a word processor on
     screen with a spreadsheet's blank behind it. `--serve` has one document and
     one window, so another kind has nowhere to go, and the host says so."""
-    assert live.post(f"new?type={doctype}")[0] == 409
+    assert live.post("new", json.dumps({"type": doctype}).encode())[0] == 409
 
 
 # --- opening things ---------------------------------------------------------
@@ -484,7 +511,12 @@ def test_a_listed_document_that_will_not_open_is_still_answered(
     broken = tmp_path / "broken.docx"
     broken.write_bytes(b"not a document")
     recents.remember_recent(live.host, broken)
-    monkeypatch.setattr(convert, "convert_to_editor_bin", lambda *_: False)
+
+    def fails(*_a):
+        msg = "x2t could not convert broken.docx (exit status 1)"
+        raise convert.ConversionError(msg)
+
+    monkeypatch.setattr(convert, "convert_to_editor_bin", fails)
 
     status, body = live.post("open-recent", json.dumps({"id": str(broken)}).encode())
 

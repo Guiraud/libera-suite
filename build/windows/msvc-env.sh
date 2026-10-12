@@ -1,0 +1,160 @@
+# Put the MSVC environment into this shell. Source it; Windows only.
+#
+# Two things go wrong without it, and the second is quieter than the first.
+#
+# build_3rdparty.py refuses outright: "MSVC environment is not set up: 'nmake'
+# not found in PATH. Run 'vcvars64.bat' or use 'x64 Native Tools Command
+# Prompt'." Fair enough, and easy to read.
+#
+# CMake does something worse. Under Git Bash with no MSVC on PATH it finds
+# whatever else is there -- on a GitHub runner that is `C:/mingw64/bin/cc.exe`,
+# GNU 15.2.0 -- and configures a GNU build with no complaint at all. It would
+# have gone on failing later, somewhere that did not mention compilers.
+#
+# So the scripts arrange it rather than asking whoever runs them to remember an
+# "x64 Native Tools Command Prompt". `nc-build.py` does the same thing for V8,
+# in Python, which is where the recipe comes from: locate the installation with
+# vswhere, run vcvarsall in cmd, and read back what it set.
+#
+# Only the variables the build needs are carried over. `set` also prints names
+# no shell can export -- `PROGRAMFILES(X86)` has parentheses in it -- so
+# re-exporting everything is not an option.
+
+# Which MSVC to ask vcvarsall for, and why it is not simply "the newest".
+#
+# The third-party stack is 2021: boost 1.78, ICU 74, V8 8.9. boost's
+# bootstrap.bat knows toolsets up to vc143 and matches on the version prefix,
+# so a runner's cl 14.51 comes back as "Unknown toolset: vcunk" and it stops.
+# V8 8.9 is from the same December and is no more likely to enjoy a compiler
+# five years its junior: on Linux the identical gap, clang 16 against V8 8.9,
+# does not compile at all.
+#
+# So pin it, the way build/engine/toolchain.sh pins clang on Linux for the same
+# reason. A version rather than a number, because the right one differs per
+# machine: measured on a GitHub runner, VS 18 ships 14.29, 14.44 and 14.51, and
+# VS 2022's own toolset has moved from 14.3x to 14.4x -- so "the vc143 boost
+# knows" is not a stable thing to name.
+#
+# In order, most wanted first. 14.29 is v142, the compiler V8 8.9 was written
+# against and one boost 1.78 certainly recognises.
+# Newest first, which is the opposite of the original guess.
+#
+# The order used to start at 14.29, on the theory that V8 8.9 is from 2021 and
+# wants a toolset of its age. V8 does not take the pin: setup_toolchain.py
+# deletes INCLUDE, LIB, LIBPATH and VSINSTALLDIR and runs its own vcvarsall with
+# no -vcvars_ver, so it built with 14.51 while everything around it used 14.29.
+# One build, two toolsets, and the pin only ever applied to the half that was
+# failing.
+MSVC_TOOLSET_PREFER="${MSVC_TOOLSET_PREFER:-14.5 14.4 14.3 14.29}"
+# MSVC_TOOLSET=<version> skips the preference and asks for exactly that.
+
+msvc_env() {
+    case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*) ;;
+    *) [ "${OS:-}" = "Windows_NT" ] || return 0 ;;
+    esac
+
+    # Already in a developer prompt, or already arranged by an earlier call.
+    command -v cl.exe >/dev/null 2>&1 && return 0
+
+    pf86="$(env | sed -n 's/^PROGRAMFILES(X86)=//p' | tr -d '\r')"
+    [ -n "$pf86" ] || pf86="/c/Program Files (x86)"
+    vswhere="$pf86/Microsoft Visual Studio/Installer/vswhere.exe"
+    [ -x "$vswhere" ] || {
+        echo "FATAL: no vswhere.exe, so no Visual Studio to set up." >&2
+        echo "       build/engine/toolchain.sh check says what to install." >&2
+        exit 1
+    }
+
+    vsdir="$("$vswhere" -latest -products '*' \
+        -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 \
+        -property installationPath 2>/dev/null | tr -d '\r')"
+    [ -n "$vsdir" ] || { echo "FATAL: Visual Studio has no C++ toolset." >&2; exit 1; }
+
+    # Pick a toolset that is actually installed, in preference order.
+    tools="$(cygpath -u "$vsdir")/VC/Tools/MSVC"
+    toolset="${MSVC_TOOLSET:-}"
+    if [ -z "$toolset" ]; then
+        for want in $MSVC_TOOLSET_PREFER; do
+            for dir in "$tools/$want"*; do
+                [ -d "$dir" ] && { toolset="$want"; break; }
+            done
+            [ -n "$toolset" ] && break
+        done
+    fi
+    if [ -z "$toolset" ]; then
+        # None of the ones we know about. Take the newest and say so, rather
+        # than refusing: the preference list is what has been measured, not a
+        # statement about everything that could work.
+        toolset="$(ls -1 "$tools" 2>/dev/null | sort -V | tail -1)"
+        echo "    none of [$MSVC_TOOLSET_PREFER] is installed; trying $toolset"
+    fi
+    [ -n "$toolset" ] || { echo "FATAL: no MSVC toolset in $tools" >&2; exit 1; }
+
+    echo "==> MSVC environment ($vsdir, toolset $toolset)"
+
+    # The VS 2017-2022 layout. A new major may have moved it, so look before
+    # calling, and say what is there instead of guessing.
+    vcvarsall="$vsdir\\VC\\Auxiliary\\Build\\vcvarsall.bat"
+    vcvarsall_u="$(cygpath -u "$vcvarsall" 2>/dev/null || echo "$vcvarsall")"
+    if [ ! -f "$vcvarsall_u" ]; then
+        echo "FATAL: no vcvarsall.bat at" >&2
+        echo "         $vcvarsall" >&2
+        echo "       What that directory holds:" >&2
+        ls -1 "$(dirname "$vcvarsall_u")" 2>/dev/null | sed 's/^/         /' >&2 ||
+            echo "         nothing -- the directory is not there either" >&2
+        exit 1
+    fi
+
+    # Through a .bat file rather than a quoted -c string. The path has spaces
+    # and backslashes in it, and nesting quotes through bash into cmd is a
+    # guessing game; a file has no quoting at all.
+    work="$(mktemp -d)"
+    {
+        echo "@echo off"
+        echo "call \"$vcvarsall\" x64 -vcvars_ver=$toolset"
+        echo "if errorlevel 1 exit /b 1"
+        echo "set"
+    } > "$work/vcvars.bat"
+
+    # `cmd //c`, with the doubled slash, or MSYS rewrites /c into a path.
+    if ! cmd //c "$(cygpath -w "$work/vcvars.bat")" > "$work/out" 2> "$work/err"; then
+        echo "FATAL: vcvarsall.bat x64 -vcvars_ver=$toolset failed. It said:" >&2
+        cat "$work/out" "$work/err" 2>/dev/null | tail -30 | sed 's/^/    /' >&2
+        echo "       Toolsets this installation has:" >&2
+        ls -1 "$(cygpath -u "$vsdir")/VC/Tools/MSVC" 2>/dev/null |
+            sed 's/^/         /' >&2 || echo "         none found" >&2
+        echo "       MSVC_TOOLSET=<version> picks another." >&2
+        rm -rf "$work"
+        exit 1
+    fi
+    dump="$work/out"
+
+    # Case-insensitively, because Windows is about the case of these names and
+    # the shell is not.
+    for var in PATH INCLUDE LIB LIBPATH \
+        VSINSTALLDIR VCINSTALLDIR VCToolsInstallDir VCToolsRedistDir \
+        WindowsSdkDir WindowsSdkVerBinPath WindowsSDKVersion UCRTVersion \
+        VSCMD_ARG_TGT_ARCH; do
+        value="$(sed -n "s/^$var=//Ip" "$dump" | tr -d '\r' | head -1)"
+        [ -n "$value" ] || continue
+        if [ "$var" = PATH ]; then
+            export PATH="$(cygpath -p -u "$value")"
+        else
+            export "$var=$value"
+        fi
+    done
+    rm -rf "$work"
+
+    command -v cl.exe >/dev/null 2>&1 || {
+        echo "FATAL: vcvarsall ran and cl.exe is still not on PATH." >&2
+        exit 1
+    }
+
+    # Named explicitly, because vcvarsall only *prepends*: mingw's cc.exe is
+    # still on PATH behind it, and CMake asking for "a C compiler" is exactly
+    # how this went wrong the first time.
+    export CC=cl
+    export CXX=cl
+    echo "    cl: $(command -v cl.exe)"
+}

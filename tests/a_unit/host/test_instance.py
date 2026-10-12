@@ -12,13 +12,14 @@ import json
 import socket
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from types import SimpleNamespace
 
 import pytest
 from support import ScriptedShell
 
-from libera.host import hooks, instance
-from libera.host.server import post
+from libera.host import hooks, instance, session as sessions
+from libera.host.server import adapter, listener, opening
+from libera.host.server.api import Refused, Request
+from libera.host.session import Session
 from libera.payload import locate
 
 
@@ -26,9 +27,10 @@ from libera.payload import locate
 def state(tmp_path, monkeypatch):
     """A temporary state directory, with instance.json inside it.
 
-    The suite-wide `no_running_instance` fixture points instance.get_path at a
-    temporary file of its own; these tests also need get_state_dir, so both point
-    at the same directory here -- which is where the real path() would put it.
+    The suite's own setup (pytest_runtest_setup, in tests/conftest.py) points
+    instance.get_path at a temporary file of its own; these tests also need
+    get_state_dir, so both point at the same directory here -- which is where
+    the real path() would put it.
     """
     monkeypatch.setattr(locate, "get_state_dir", lambda: tmp_path)
     monkeypatch.setattr(instance, "get_path", lambda: tmp_path / "instance.json")
@@ -97,28 +99,45 @@ def test_withdraw_leaves_another_instances_announcement(state):
 
 
 @pytest.fixture
-def handler():
-    """Enough of server.Handler for take_hand_off: a body, and its answers."""
+def handler(tmp_path):
+    """A hand-off request with that body. Any session: the hand-off reads none."""
 
-    def make(body: dict):
-        h = SimpleNamespace(errors=[], sent=[])
-        h.read_body = lambda: json.dumps(body).encode()
-        h.send_error = h.errors.append
-        h.send_bytes = lambda data, _ctype: h.sent.append(json.loads(data))
-        return h
+    def make(body: dict) -> Request:
+        anyone = Session(payload=tmp_path / "payload", work=tmp_path / "s")
+        return Request(anyone, json.dumps(body).encode())
 
     return make
 
 
+class Opened:
+    """What the shell was asked to open, on the hand-off's own thread."""
+
+    def __init__(self) -> None:
+        self.documents: list = []
+        self.asked = threading.Event()
+
+    def wait(self) -> list:
+        assert self.asked.wait(5), "nothing was opened"
+        return self.documents
+
+    def open_window(self, doc, _app=None) -> bool:
+        self.documents.append(doc)
+        self.asked.set()
+        return True
+
+    def show_start_window(self) -> None:
+        self.documents.append("start")
+        self.asked.set()
+
+
 @pytest.fixture
 def opened(monkeypatch):
-    calls: list = []
+    calls = Opened()
     monkeypatch.setattr(
         hooks,
         "shell",
         ScriptedShell(
-            open_window=lambda doc, _app=None: calls.append(doc),
-            show_start_window=lambda: calls.append("start"),
+            open_window=calls.open_window, show_start_window=calls.show_start_window
         ),
     )
     return calls
@@ -130,30 +149,86 @@ def test_a_wrong_token_opens_nothing(handler, opened, tmp_path):
     doc.write_bytes(b"PK")
     h = handler({"token": "guessed", "documents": [str(doc)]})
 
-    post.take_hand_off(h)
+    with pytest.raises(Refused) as refused:
+        opening.take_hand_off(h)
 
-    assert h.errors == [403]
-    assert opened == []
+    assert refused.value.status == 403
+    assert opened.documents == []
 
 
 def test_the_right_token_opens_each_file_that_exists(handler, opened, tmp_path):
     doc = tmp_path / "Report.docx"
     doc.write_bytes(b"PK")
+    # The missing one first: by the time the other opens, it has been passed.
     h = handler({
         "token": instance.TOKEN,
-        "documents": [str(doc), str(tmp_path / "gone.docx")],
+        "documents": [str(tmp_path / "gone.docx"), str(doc)],
     })
 
-    post.take_hand_off(h)
+    answer = opening.take_hand_off(h)
 
-    assert opened == [doc]
-    assert h.sent == [{"opened": True}]
+    assert json.loads(answer.body)["opened"] is True
+    assert opened.wait() == [doc]
 
 
 def test_no_documents_puts_the_start_window_up(handler, opened):
     """The icon clicked while Libera Suite is already open."""
     h = handler({"token": instance.TOKEN, "documents": []})
 
-    post.take_hand_off(h)
+    opening.take_hand_off(h)
 
-    assert opened == ["start"]
+    assert opened.wait() == ["start"]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"token": instance.TOKEN, "documents": "/a/Report.docx"},
+        {"token": instance.TOKEN, "documents": [1]},
+        {"token": 1, "documents": []},
+        {"documents": []},
+    ],
+    ids=["documents a string", "a path a number", "token a number", "no token"],
+)
+def test_a_body_of_the_wrong_shape_is_a_400(handler, opened, body):
+    """A string for documents was one path per character."""
+    with pytest.raises(Refused) as refused:
+        opening.take_hand_off(handler(body))
+
+    assert refused.value.status == 400
+    assert opened.documents == []
+
+
+@pytest.fixture
+def serving(state, tmp_path):
+    """This instance's real server, announced where a second launch looks."""
+    sessions.configure(Session(payload=tmp_path / "payload", work=tmp_path / "s"))
+    server = listener.Server(("127.0.0.1", 0), listener.QuietHandler)
+    server.set_app(adapter.make_app(tmp_path / "payload"))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    instance.announce(server.server_address[1])
+    yield
+    server.shutdown()
+    server.server_close()
+
+
+def test_the_answer_does_not_wait_for_the_window(serving, monkeypatch, tmp_path):
+    """Opening is a conversion, and a recovery or an error dialog waits on the
+    user. A sender left waiting past its timeout took that for no instance
+    and started a second, which swept this one's session directories."""
+    doc = tmp_path / "Report.docx"
+    doc.write_bytes(b"PK")
+    asked, release = threading.Event(), threading.Event()
+
+    def open_window(_doc, _app=None) -> bool:
+        asked.set()
+        release.wait(5)
+        return True
+
+    monkeypatch.setattr(hooks, "shell", ScriptedShell(open_window=open_window))
+    monkeypatch.setattr(instance, "HAND_OFF_TIMEOUT", 1.0)
+    try:
+        assert instance.hand_off([doc]) is True
+        assert asked.wait(5)
+    finally:
+        release.set()

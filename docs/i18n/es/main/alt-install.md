@@ -56,7 +56,7 @@ flatpak run eu.liberasuite.Libera
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
-## Los editores
+## Los editores {#the-editors}
 
 El instalador de Windows y el Flatpak incluyen los editores. Todos los demás canales los descargan una vez, después de la aplicación. `libera` lo ofrece la primera vez que se ejecuta; este comando lanza la descarga directamente:
 
@@ -85,7 +85,7 @@ libera --payload-install --from /ruta/a/los/artefactos
 
 Los editores están allí, en `payload/<version>/`. Para usar editores que están en otro sitio, por ejemplo una compilación local, pon su carpeta en `LIBERA_PAYLOAD`; prevalece sobre todo lo anterior.
 
-## Una entrada en el menú de aplicaciones de Linux
+## Una entrada en el menú de aplicaciones de Linux {#a-launcher-entry-on-linux}
 
 El script de instalación y el Flatpak añaden ambos Libera Suite al menú de aplicaciones. Tras cualquier otra instalación, este comando hace lo mismo, solo para tu cuenta: un icono, *Abrir con* y documentos que se abren con doble clic.
 
@@ -99,7 +99,7 @@ libera --launcher-remove     # para quitarla
 Todavía no hay una lista para usar. A partir de una copia del código fuente, puedes compilarte una:
 
 ```sh
-build/macos-app.sh          # compila build/out/Libera.app
+build/macos/macos-app.sh          # compila build/out/Libera.app
 open build/out/Libera.app
 ```
 

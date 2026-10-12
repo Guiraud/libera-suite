@@ -15,10 +15,12 @@ import logging
 import shutil
 import sys
 import threading
+import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import webview
+import webview.dom
 
 from libera.host import apps, convert, server
 from libera.host.session import SESSIONS, NotReadyError, lookup
@@ -46,7 +48,7 @@ logger = logging.getLogger(__name__)
 WINDOW_SIZE = (1400, 900)
 
 
-def _create_window(title: str, url: str, size: tuple[int, int] = WINDOW_SIZE) -> Window:
+def create_window(title: str, url: str, size: tuple[int, int] = WINDOW_SIZE) -> Window:
     """A window, or a clear failure instead of a None nobody checks.
 
     pywebview types create_window as `Window | None`, and the callers all went
@@ -62,7 +64,29 @@ def _create_window(title: str, url: str, size: tuple[int, int] = WINDOW_SIZE) ->
     return window
 
 
-START_WINDOW: list = []
+# The start window while it is on screen: one at most, and only this module
+# reads or changes the list. A test that patched it from `app` once left this
+# module reading the original.
+_start_windows: list[Window] = []
+
+
+def remember_start_window(window: Window) -> None:
+    _start_windows.append(window)
+
+
+def forget_start_window(window: Window) -> None:
+    """Closed by hand rather than by opening a document, it leaves the list
+    too, or the next request to show it would find a dead window."""
+    if window in _start_windows:
+        _start_windows.remove(window)
+
+
+def bring_start_window_forward() -> bool:
+    """Show the start window if there is one; False when there is none."""
+    if not _start_windows:
+        return False
+    _start_windows[0].show()
+    return True
 
 
 def close_start_window() -> None:
@@ -72,9 +96,9 @@ def close_start_window() -> None:
     it open behind every document -- means a window nobody asked for is the one
     keeping the application alive.
     """
-    for window in START_WINDOW:
+    for window in _start_windows:
         window.destroy()
-    START_WINDOW.clear()
+    _start_windows.clear()
 
 
 def find_front_session() -> Session | None:
@@ -86,7 +110,9 @@ def find_front_session() -> Session | None:
     if window is None:
         return None
     uid = getattr(window, "uid", None)
-    return next((found for found in SESSIONS.values() if found.window == uid), None)
+    return next(
+        (found for found in list(SESSIONS.values()) if found.window == uid), None
+    )
 
 
 def find_front_window() -> Window | None:
@@ -148,7 +174,7 @@ def find_window(session: Session) -> Window | None:
     return next((w for w in webview.windows if w.uid == uid), None) if uid else None
 
 
-def fold_changes_in(session: Session) -> bool:
+def fold_changes_in(session: Session) -> None:
     """Put the edits into Editor.bin, so a reload does not undo them.
 
     The editor works on Editor.bin plus a log of changes it streams as it
@@ -157,23 +183,18 @@ def fold_changes_in(session: Session) -> bool:
     leaves an empty log -- the same round trip a save does, without a
     destination.
 
-    False when it does not work, and then the edits are still in the log,
-    which is what a save merges.
+    Raises ConversionError when it does not work, and then the edits are
+    still in the log, which is what a save merges.
     """
     if not session.change_log:
-        return True
+        return
 
     ext, fmt = session.editor.formats[0]
     session.out_dir.mkdir(parents=True, exist_ok=True)
     staged = session.out_dir / f"recovered.{ext}"
-    if not convert.export(session, staged, fmt, None):
-        logger.error("reload: could not fold in the edits")
-        return False
-    if not convert.convert_to_editor_bin(session, staged):
-        logger.error("reload: could not reopen the folded document")
-        return False
+    convert.export(session, staged, fmt, None)
+    convert.convert_to_editor_bin(session, staged)
     logger.info("reload: folded the edits into %s", staged.name)
-    return True
 
 
 def reload_session(session: Session, port: int) -> None:
@@ -192,9 +213,7 @@ def reload_session(session: Session, port: int) -> None:
     window = find_window(session)
     if window is None:
         return
-    if not fold_changes_in(session):
-        msg = "the edits could not be folded into the document"
-        raise NotReadyError(msg)
+    fold_changes_in(session)
     document = session.read_current_document()
     name = document.name if document else "document"
     window.load_url(server.make_editor_url(port, session, name))
@@ -207,6 +226,20 @@ def reload_session(session: Session, port: int) -> None:
     threading.Timer(5.0, make_offerable_again).start()
 
 
+def close_session_window(session: Session) -> None:
+    """Close the window showing that session, as its close button would."""
+    window = find_window(session)
+    if window is not None:
+        native.close_window(window)
+
+
+def show_session_edited(session: Session, edited: bool) -> None:
+    """Mark the window showing that session as edited, or not."""
+    window = find_window(session)
+    if window is not None:
+        native.show_edited(window, edited)
+
+
 def set_fullscreen(on: bool) -> None:
     """Take the front window fullscreen for a demonstration, or give it back.
 
@@ -216,3 +249,58 @@ def set_fullscreen(on: bool) -> None:
     window = find_front_window()
     if window is not None:
         native.set_fullscreen(window, on)
+
+
+# How long a drop waits for its paths. On macOS and GTK the native layer records
+# them before the page sees the drop; on Windows they come in a message the
+# page itself posts just before asking, handled on another thread.
+DROP_WAIT = 1.0
+DROP_POLL = 0.02
+
+
+class _DropRecord(TypedDict):
+    """`webview.dom._dnd_state`, which pywebview leaves untyped."""
+
+    num_listeners: int
+    paths: list[tuple[str, str]]  # (name, full path), oldest first
+
+
+def _read_drop_record() -> _DropRecord:
+    return cast("_DropRecord", webview.dom._dnd_state)
+
+
+def listen_for_drops() -> None:
+    """Have pywebview record the full path of every file dropped on a window.
+
+    A page is only told a dropped file's name. pywebview's native layer reads
+    the paths off the drag on all three platforms, but only while a drop
+    listener is registered, and it counts them in `webview.dom._dnd_state`.
+    Registering one through pywebview's DOM API would also put its handler on
+    the top document, which consumes those paths -- racing the bridge, which
+    asks for them itself (`take_dropped`). So the count, directly: private, and
+    `tests/a_unit/host/test_drops.py` checks its shape against the installed
+    pywebview.
+    """
+    _read_drop_record()["num_listeners"] += 1
+
+
+def take_dropped(names: list[str]) -> list[Path]:
+    """The full paths of the files just dropped, by the names the page saw.
+
+    The newest record of a name wins, and every record of it goes: a drop the
+    page never asked about (one that missed every frame) must not answer for
+    the next file of the same name.
+    """
+    record = _read_drop_record()["paths"]
+    deadline = time.monotonic() + DROP_WAIT
+    while not set(names) <= {name for name, _ in record}:
+        if time.monotonic() > deadline:
+            break
+        time.sleep(DROP_POLL)
+    found = []
+    for name in names:
+        matches = [path for recorded, path in record if recorded == name]
+        if matches:
+            found.append(Path(matches[-1]))
+        record[:] = [entry for entry in record if entry[0] != name]
+    return found

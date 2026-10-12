@@ -15,18 +15,16 @@ FLUSH = 15_000
 def type_until_sent(editor) -> None:
     """Type, then wait for the editor to hand the edit to the bridge.
 
-    Waits on LocalFileSaveChanges in the page's own call log, which is the
-    thing being waited for, and not on the host having received it: in the
-    test that refuses the request, the host never does.
+    Waits on LocalFileSaveChanges in the page's own record of its calls, which
+    is the thing being waited for, and not on the host having received it: in
+    the test that refuses the request, the host never does. The edit goes by
+    synchronous XHR in the same call, so it has been answered by then.
     """
     editor.press("x")
     editor.page.keyboard.type("hello")
-    for _ in range(FLUSH // 250):
-        if "LocalFileSaveChanges" in editor.report()["calls"]:
-            return
-        editor.page.wait_for_timeout(250)
-    msg = "the editor never sent its edits"
-    raise AssertionError(msg)
+    editor.page.wait_for_function(
+        "() => window.__libera_seen.has('LocalFileSaveChanges')", timeout=FLUSH
+    )
 
 
 def test_typing_reaches_the_change_log(editor_with):
@@ -43,8 +41,7 @@ def test_an_edit_the_host_refuses_is_reported(editor_with):
     editor.page.route("**/__host__/changes*", lambda route: route.fulfill(status=500))
 
     type_until_sent(editor)
-    # The report goes up on the page's one-second tick.
-    editor.page.wait_for_timeout(2500)
 
-    errors = [e["text"] for e in editor.report()["errors"]]
+    # Said in the same call that sent the edit, so it is there to be posted.
+    errors = [e["text"] for e in editor.reported()["errors"]]
     assert any("change log did not take an edit" in text for text in errors), errors

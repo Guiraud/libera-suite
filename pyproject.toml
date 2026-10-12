@@ -1,6 +1,6 @@
 [project]
 name = "libera"
-version = "0.3.3"
+version = "0.4.0"
 description = "Libera Suite — Abilian's desktop office suite"
 readme = "README.md"
 authors = [
@@ -39,7 +39,7 @@ Source = "https://github.com/abilian/libera-suite"
 Issues = "https://github.com/abilian/libera-suite/issues"
 
 [project.scripts]
-libera = "libera:main"
+libera = "libera.cli:main"
 
 # hatchling, and deliberately not uv_build, which this used until an install
 # from source could not work anywhere.
@@ -92,6 +92,7 @@ only-include = ["src", "README.md", "LICENSE"]
 [dependency-groups]
 dev = [
     "abilian-devtools>=0.9.4",
+    "libera-build",
     "mypy>=2.3.1",
     "nox>=2026.8.17",
     "pre-commit>=4.6.2",
@@ -111,6 +112,16 @@ e2e = [
 [tool.uv]
 default-groups = ["dev", "e2e"]
 
+# build/ is also the `lb` command's project, libera-build: the build and release
+# tooling, with its own
+# pyproject.toml. In the dev group so that `make test` and `make lint` cover it;
+# never in the wheel, whose packages are src/libera only.
+[tool.uv.workspace]
+members = ["build"]
+
+[tool.uv.sources]
+libera-build = { workspace = true }
+
 [tool.mypy]
 # The same stubs ty and pyrefly use. See stubs/README.md.
 mypy_path = "stubs"
@@ -125,7 +136,8 @@ search-path = ["src", "stubs"]
 extra-paths = ["stubs"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# build/tests: the build tooling's own, beside it in its workspace member.
+testpaths = ["tests", "build/tests"]
 # conftest.py applies these by directory; registering them silences the warning.
 markers = [
     "unit: fast and isolated",

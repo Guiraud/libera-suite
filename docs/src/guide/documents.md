@@ -23,6 +23,8 @@ libera ~/Documents/*.docx     # one window each
 
 You can also open a document from inside the editor, through **File ▸ Open** or **File ▸ Open Recent**. Either opens a new window; neither disturbs the document you already have open.
 
+**Dropping a document** on any Libera Suite window, the start window included, opens it in a window of its own. An image dropped on a document is inserted into it.
+
 **File ▸ New** offers a Document, a Spreadsheet or a Presentation from any window, each in a window of its own. On macOS, `⌘N` makes one of the same kind as the front window. Inside the editor, you get the same choice from **File ▸ Create New**.
 
 ## Save
@@ -55,9 +57,22 @@ Not every format the converter can read is one it can write. `.doc` in particula
 
 If you are looking for a **Download As** entry in the File menu, there isn't one. The editors hide it when they run as an offline desktop application and put Save As in its place: the same job, one menu entry earlier.
 
+### From the command line
+
+`libera --convert` does the same without opening a window, for one document or a hundred. The format is named by its extension, with `-t`, or taken from the name given to `-o`:
+
+```sh
+libera --convert *.docx -t pdf             # report.pdf beside report.docx, and so on
+libera --convert talk.pptx -o talk.odp     # one document, named
+libera --convert *.xlsx -t ods --outdir ods/
+libera --convert report.docx -t pdf -o - | lp   # to standard output
+```
+
+A file already there under the new name is replaced. Nothing is written over the document being converted, and two documents that would end up under one name are refused before anything is converted. The spellings are pandoc's, except that there is no `-f`: the extension says what a document is.
+
 ## The menu bar
 
-On Linux and Windows the bar sits inside the window: **File**, **Edit**, **View** and **Help**, the last holding *Libera Help* and *About Libera Suite*. Three differences follow from what the menu there offers. None of the items has a keyboard shortcut, so the keys below belong to the editor and work inside the page. **Open Recent** is built when the application starts, so a document you open today appears in it tomorrow. Nothing greys out, so Save with nothing to save does nothing.
+On Linux and Windows the bar sits inside the window: **File**, **Edit**, **View** and **Help**, the last holding *Libera Help* and *About Libera Suite*. Three differences follow from what the menu there offers. None of the items shows a keyboard shortcut, but Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Shift-S, Ctrl-P and Ctrl-Z do what the ⌘ keys below do on a Mac. **Open Recent** is built when the application starts, so a document you open today appears in it tomorrow. Nothing greys out, so Save with nothing to save does nothing.
 
 On macOS it is a real Mac menu bar, with the same items plus **Window**. The usual shortcuts work there whether or not the editor has focus:
 
@@ -85,7 +100,7 @@ Choosing Don't Save is not final. Libera Suite keeps what you wrote, and offers 
 
 ## Print
 
-**File ▸ Print**, or the printer button, renders the document to PDF and opens it in your system's PDF viewer, where the print dialog lives.
+**File ▸ Print**, or the printer button, renders the document to PDF, asks where to keep it (in the document's folder unless you choose another), and opens it in your system's PDF viewer, where the print dialog lives.
 
 That is the choice for now: the viewer you already have gives you page ranges, paper size, scaling and a preview, none of which we would build better in the first version.
 
@@ -97,13 +112,32 @@ Images embedded in a document are preserved on open and save. **Insert ▸ Image
 
 Misspellings are underlined, and right-click offers suggestions. Which dictionary is used follows **the document's language**, which you set from the **status bar** at the bottom of the window, per document.
 
-Dictionaries for five languages ship: English (US and UK), French, German, Spanish and Italian. A language with no dictionary is not an error; its words are simply treated as correct. Words you add through *Add to dictionary* come back next session, because personal dictionaries are not stored yet.
+Dictionaries for five languages ship: English (US and UK), French, German, Spanish and Italian. A language with no dictionary is not an error; its words are simply treated as correct. Words you add through *Add to dictionary* are kept: from then on they are correct in every document and every language.
 
 ## Your name in documents
 
 Tracked changes and comments are attributed to a person, whose name is written into the saved file. Libera Suite takes it from your account: your full name as macOS knows it, the display name of your Windows account, or the full-name field of your Unix account on Linux, falling back to your login name.
 
-There is no setting for it yet. If a document has to go out under a different name, that is worth [telling us](../feedback.md) about.
+To use another name, put it in the configuration file, creating the file if it is not there:
+
+```toml
+user_name = "Jeanne Dupont"
+```
+
+| | |
+| :--- | :--- |
+| Linux | `$XDG_CONFIG_HOME/libera/config.toml`, or `~/.config/libera/config.toml` |
+| Linux, Flatpak | `~/.var/app/eu.liberasuite.Libera/config/libera/config.toml` |
+| macOS | `~/Library/Application Support/Libera Suite/config.toml` |
+| Windows | `%USERPROFILE%\.config\libera\config.toml` |
+
+It applies to the windows opened after Libera Suite next starts. Documents saved before keep the name they were saved with.
+
+The same file turns off the daily check for a newer version, with a line of its own:
+
+```toml
+check_updates = false
+```
 
 ## Where your working files go
 

@@ -1,0 +1,113 @@
+From da1fbf274d6bdf725f2133016bcbcec32d1691c8 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:21:27 +0200
+Subject: [PATCH 125/142] OdfFile writer: a DOCX table without grid columns
+ gets one column per cell
+
+A table whose w:tblGrid is empty or missing, which Word accepts and x2t's
+own reader writes for a table whose columns have no width, was written
+with an empty table:table-columns. ODF requires at least one
+table:table-column, so every such table was invalid: 47 of LibreOffice's
+ODF test documents after the fourth batch. The writer now counts the
+widest row, spans included, and writes that many columns, without widths.
+A table whose rows have no cells at all, which a few test documents hold
+on purpose, is left as it was.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/DocxConverter.cpp | 42 +++++++++++++++++++---
+ OdfFile/Writer/Converter/DocxConverter.h   |  2 +-
+ 2 files changed, 38 insertions(+), 6 deletions(-)
+
+diff --git a/OdfFile/Writer/Converter/DocxConverter.cpp b/OdfFile/Writer/Converter/DocxConverter.cpp
+index 95958787ec..52d120f7ff 100644
+--- a/OdfFile/Writer/Converter/DocxConverter.cpp
++++ b/OdfFile/Writer/Converter/DocxConverter.cpp
+@@ -4705,6 +4705,32 @@ void DocxConverter::convert_hdr_ftr(std::wstring sId)
+ 	oox_current_child_document  = back_document;
+ }
+ 
++// The widest row, in grid columns: what a table without a grid, which Word accepts, has
++static int columns_in_rows(OOX::Logic::CTbl *oox_table)
++{
++	int columns = 0;
++	for (size_t i = 0; i < oox_table->m_arrItems.size(); ++i)
++	{
++		OOX::Logic::CTr *oox_row = dynamic_cast<OOX::Logic::CTr*>(oox_table->m_arrItems[i]);
++		if (!oox_row) continue;
++
++		int count = 0;
++		for (size_t j = 0; j < oox_row->m_arrItems.size(); ++j)
++		{
++			OOX::Logic::CTc *oox_cell = dynamic_cast<OOX::Logic::CTc*>(oox_row->m_arrItems[j]);
++			if (!oox_cell) continue;
++
++			int span = 1;
++			if (oox_cell->m_pTableCellProperties && oox_cell->m_pTableCellProperties->m_oGridSpan.IsInit() &&
++				oox_cell->m_pTableCellProperties->m_oGridSpan->m_oVal.IsInit())
++				span = (std::max)(1, *oox_cell->m_pTableCellProperties->m_oGridSpan->m_oVal);
++			count += span;
++		}
++		columns = (std::max)(columns, count);
++	}
++	return columns;
++}
++
+ void DocxConverter::convert(OOX::Logic::CTbl *oox_table)
+ {
+ 	if (oox_table == NULL) return;
+@@ -4879,11 +4905,13 @@ void DocxConverter::convert(OOX::Logic::CTbl *oox_table)
+ 
+ 	int count_rows		= oox_table->m_nCountRow;
+ 	int count_columns	= oox_table->m_oTblGrid.IsInit() ? (int)oox_table->m_oTblGrid->m_arrGridCol.size() : 0;
++	int columns_without_grid = count_columns > 0 ? 0 : columns_in_rows(oox_table);
++	if (count_columns < 1) count_columns = columns_without_grid;
+ 
+ 	odt_context->styles_context()->table_styles().set_current_dimension(count_columns, count_rows);
+ 	odt_context->table_context()->set_table_size(count_columns, count_rows);
+ //------ columns
+-	convert(oox_table->m_oTblGrid.GetPointer());
++	convert(oox_table->m_oTblGrid.GetPointer(), columns_without_grid);
+ 
+ //------ lines
+     for (size_t i = 0; i < oox_table->m_arrItems.size(); ++i)
+@@ -4929,15 +4957,19 @@ void DocxConverter::convert(OOX::Logic::CTbl *oox_table)
+ 		odt_context->end_change(id_change_properties, 3); 
+ }
+ 
+-void DocxConverter::convert(OOX::Logic::CTblGrid	*oox_table_grid)
++void DocxConverter::convert(OOX::Logic::CTblGrid	*oox_table_grid, int columns_without_grid)
+ {
+-	if (oox_table_grid == NULL) return;
++	if (oox_table_grid == NULL && columns_without_grid < 1) return;
+ 
+-	int id_change_properties = convert(oox_table_grid->m_oTblGridChange.GetPointer());
++	int id_change_properties = oox_table_grid ? convert(oox_table_grid->m_oTblGridChange.GetPointer()) : -1;
+ 
+ 	odt_context->start_table_columns();
+ 
+-	for (size_t i =0 ; i < oox_table_grid->m_arrGridCol.size(); i++)
++	// A table needs a column; one without a grid gets one per column of its widest row
++	for (int i = 0; i < columns_without_grid; i++)
++		odt_context->add_table_column(-1);
++
++	for (size_t i =0 ; oox_table_grid && i < oox_table_grid->m_arrGridCol.size(); i++)
+ 	{
+ 		if (oox_table_grid->m_arrGridCol[i] == NULL) continue;
+ 		double width = -1;
+diff --git a/OdfFile/Writer/Converter/DocxConverter.h b/OdfFile/Writer/Converter/DocxConverter.h
+index a09359319c..9cd383c9e8 100644
+--- a/OdfFile/Writer/Converter/DocxConverter.h
++++ b/OdfFile/Writer/Converter/DocxConverter.h
+@@ -261,7 +261,7 @@ namespace Oox2Odf
+ 		void convert(OOX::Logic::CEndnoteReference		*oox_note_ref);
+ 
+ 		void convert(OOX::Logic::CTbl					*oox_table);
+-		void convert(OOX::Logic::CTblGrid				*oox_table_grid);
++		void convert(OOX::Logic::CTblGrid				*oox_table_grid, int columns_without_grid = 0);
+ 		void convert(OOX::Logic::CTr					*oox_table_row);
+ 		void convert(OOX::Logic::CTc					*oox_table_cell);
+ 
+-- 
+2.55.0
+

@@ -1,0 +1,31 @@
+From 6d125924e1087a949f197a281aa0887b3d69cea2 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 21:54:40 +0200
+Subject: [PATCH 162/168] OdfFile reader: a sheet selection names its pane with
+ pane
+
+A sheet view's selection was written with activePane, which is the
+pane element's attribute; a selection has pane. 799 of LibreOffice's
+ODF test documents.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Converter/xlsx_table_state.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/OdfFile/Reader/Converter/xlsx_table_state.cpp b/OdfFile/Reader/Converter/xlsx_table_state.cpp
+index 732bf8b0c3..8ede92840a 100644
+--- a/OdfFile/Reader/Converter/xlsx_table_state.cpp
++++ b/OdfFile/Reader/Converter/xlsx_table_state.cpp
+@@ -733,7 +733,7 @@ void xlsx_table_state::serialize_table_format (std::wostream & strm)
+ 							CP_XML_ATTR(L"activeCell", getCellAddress(col, row));			
+ 							CP_XML_ATTR(L"activeCellId", 0);			
+ 							//CP_XML_ATTR(L"pane", ((bXSplit || bYSplit) ? L"bottomLeft" : L"topLeft"));			
+-							CP_XML_ATTR(L"activePane", L"topLeft");
++							CP_XML_ATTR(L"pane", L"topLeft"); // a selection names its pane; activePane is the pane's own
+ 							CP_XML_ATTR(L"sqref", getCellAddress(col, row));
+ 						}						
+ 					}
+-- 
+2.55.0
+

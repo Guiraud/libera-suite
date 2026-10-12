@@ -8,7 +8,7 @@
 ((M) => {
   if (!M || M.page) return;
   const w = M.w;
-  const { TAG, hostUrl, postToHost, report } = M;
+  const { TAG, hostUrl, getFromHostSync, postToHost, report } = M;
 
   // -- localStorage ------------------------------------------------------------
   // pywebview's GTK/WebKit backend leaves window.localStorage (and indexedDB)
@@ -81,8 +81,8 @@
   };
 
   function captureLater() {
-    // Armed by the host (see get.serve) only when a shot was requested; a real
-    // window has no reason to photograph itself.
+    // Armed by the host (see editor.serve_bridge) only when a shot was asked
+    // for; a real window has no reason to photograph itself.
     if (!w.LIBERA_SHOT) return;
     // onDocumentContentReady fires before the first paint settles.
     w.setTimeout(captureCanvas, 1500);
@@ -119,6 +119,33 @@
     );
   }
 
+  // Words the user added to the dictionary, read with the worker. The worker
+  // has no notion of them -- it answers only "spell" and "suggest" -- so the
+  // bridge marks them correct in its answers.
+  let personal = new Set();
+
+  // A word as the editor checks it carries the punctuation around it in the
+  // text: the last word of a sentence arrives as "Frobnitzel.", and matched
+  // exactly it stayed flagged, so an added word looked forgotten as soon as it
+  // ended a sentence. What the editor adds is what was under the cursor, which
+  // can carry it too. Apostrophes and hyphens inside a word stay.
+  const bare = (word) => String(word).replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, "");
+
+  // Hunspell's rule for case: a word kept in lower case is right capitalised
+  // and in capitals too, as a dictionary word is; one kept capitalised, a
+  // name, is not right in lower case.
+  function isPersonal(word) {
+    const w0 = bare(word);
+    return personal.has(w0) || personal.has(w0.toLowerCase());
+  }
+
+  function addPersonalWord(word) {
+    const w0 = bare(word);
+    if (!w0) return;
+    personal.add(w0);
+    postToHost("/__host__/words", JSON.stringify({ word: w0 }));
+  }
+
   // Started on the first check rather than at load: a document nobody types in
   // never pays for the worker or the dictionary downloads.
   let checker = null;
@@ -132,7 +159,16 @@
       enginePath: "/sdkjs/common/spell/spell",
       dictionariesPath: "/dictionaries",
     });
+    // Bare as well: a word added before punctuation was stripped may carry it.
+    personal = new Set(
+      JSON.parse(getFromHostSync("/__host__/words") || "[]").map(bare),
+    );
     checker.oncommand = (res) => {
+      if (res && res.usrCorrect && res.usrWords) {
+        res.usrWords.forEach((word, i) => {
+          if (isPersonal(word)) res.usrCorrect[i] = true;
+        });
+      }
       w.asc_nativeOnSpellCheck && w.asc_nativeOnSpellCheck(res);
     };
     return checker;
@@ -146,7 +182,7 @@
   const nativeOpen = w.open;
   w.open = function (url) {
     if (typeof url === "string" && /^https?:\/\//i.test(url)) {
-      postToHost("/__host__/open-url", url, null, "text/plain");
+      postToHost("/__host__/open-url", JSON.stringify({ url }));
       return null;
     }
     return nativeOpen.apply(w, arguments);
@@ -161,7 +197,7 @@
   // The menu bar is the canonical dispatcher on a Mac, so the page yields --
   // without *claiming* the key, which is the subtle part; see below.
   //
-  // The list comes from the host, and menu.PAGE_YIELDS is where it is defined:
+  // The list comes from the host, and shortcuts.PAGE_YIELDS is where it is defined:
   // one definition for the menu item and for this, so changing the menu's
   // shortcut cannot leave the page yielding the wrong key. Empty on Linux,
   // whose menu bar carries no accelerators, and under `libera --serve`, which
@@ -198,5 +234,5 @@
     rtl: false,
   };
 
-  M.page = { captureLater, spellChecker };
+  M.page = { addPersonalWord, captureLater, spellChecker };
 })(window.__libera__);

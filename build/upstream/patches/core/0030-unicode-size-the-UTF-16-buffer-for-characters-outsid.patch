@@ -1,0 +1,49 @@
+From cf34d366402d4797494f6963a153ba5a137cbb77 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sfermigier@gmail.com>
+Date: Mon, 5 Oct 2026 22:04:16 +0200
+Subject: [PATCH 30/31] unicode: size the UTF-16 buffer for characters outside
+ the BMP
+
+fromUnicode gave u_strFromWCS one UTF-16 unit per wchar_t. On macOS and
+Linux wchar_t is UTF-32, and a character outside the BMP needs two: the
+conversion overflowed, the result was empty, and the fallback narrowed
+every character to one byte. A CSV or .txt holding one emoji was written
+in Latin-1, and a .txt read without a BOM, which is decoded and then
+encoded back through fromUnicode, stopped at its first emoji.
+SASLprepToUtf8 sized its buffer the same way.
+---
+ UnicodeConverter/UnicodeConverter.cpp | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/UnicodeConverter/UnicodeConverter.cpp b/UnicodeConverter/UnicodeConverter.cpp
+index 776e0c5941..85417ead04 100644
+--- a/UnicodeConverter/UnicodeConverter.cpp
++++ b/UnicodeConverter/UnicodeConverter.cpp
+@@ -97,7 +97,9 @@ namespace NSUnicodeConverter
+ 			std::string sRes;
+ 			UErrorCode status = U_ZERO_ERROR;
+ 
+-			int32_t nUCharCapacity = (int32_t)nInputLen;// UTF-16 uses 2 code-points per char
++			// Two UTF-16 units per wchar_t where wchar_t is UTF-32 (macOS, Linux): a
++			// character outside the BMP takes two, and one per wchar_t overflowed.
++			int32_t nUCharCapacity = (int32_t)nInputLen * (sizeof(wchar_t) == 4 ? 2 : 1);
+ 
+ 			UChar* pUChar = new UChar[(uint32_t)nUCharCapacity * sizeof(UChar)];
+ 			if (pUChar)
+@@ -161,7 +163,12 @@ namespace NSUnicodeConverter
+ 			UConverter* conv = ucnv_open(converterName, &status);
+ 			if (U_SUCCESS(status))
+ 			{
+-				int32_t nUCharCapacity = (int32_t)nInputLen;// UTF-16 uses 2 code-points per char
++				// Two UTF-16 units per wchar_t where wchar_t is UTF-32 (macOS, Linux). With
++				// one, a character outside the BMP overflowed u_strFromWCS, sRes stayed
++				// empty, and the fallback below narrowed every character to one byte: a
++				// CSV or .txt with one emoji came out in Latin-1, and a .txt read without
++				// a BOM, which goes through here, stopped at it.
++				int32_t nUCharCapacity = (int32_t)nInputLen * (sizeof(wchar_t) == 4 ? 2 : 1);
+ 
+ 				//UChar* pUChar = new UChar[nUCharCapacity];
+ 				UChar* pUChar = (UChar*)malloc((uint32_t)nUCharCapacity * sizeof(UChar));
+-- 
+2.55.0
+

@@ -1,0 +1,121 @@
+From 8e34a00e3ed831e1544b05127a2033d1773506d7 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:29:14 +0200
+Subject: [PATCH 129/142] OdfFile: an index entry's text reaches
+ text:string-value, and its levels its keys
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+A DOCX XE field became a text:alphabetical-index-mark without
+text:string-value, which a point mark requires: 15 of LibreOffice's ODF
+test documents after the fourth batch, with 1 522 errors. Three defects:
+the serializer never wrote string-value; the entry was parsed from the
+start of the instruction rather than after XE, and lost a character, so
+it was empty for XE "á"; and the whole entry went to key1 as well,
+making every entry its own heading. The writer now takes the first
+quoted text after XE, splits "main:sub" into key1 and string-value as
+Word means it, writes string-value, and escapes the keys. The reader,
+which wrote only string-value back, now joins the keys to it, so an
+entry keeps its levels across a round trip.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Format/paragraph_elements.cpp  |  5 +++++
+ OdfFile/Writer/Format/odf_text_context.cpp    | 13 +++++++++++--
+ .../Writer/Format/odt_conversion_context.cpp  | 19 ++++++++++++-------
+ OdfFile/Writer/Format/paragraph_elements.cpp  |  5 +++--
+ 4 files changed, 31 insertions(+), 11 deletions(-)
+
+diff --git a/OdfFile/Reader/Format/paragraph_elements.cpp b/OdfFile/Reader/Format/paragraph_elements.cpp
+index 2739548674..7ce81f4642 100644
+--- a/OdfFile/Reader/Format/paragraph_elements.cpp
++++ b/OdfFile/Reader/Format/paragraph_elements.cpp
+@@ -2268,6 +2268,11 @@ void alphabetical_index_mark::docx_convert(oox::docx_conversion_context & Contex
+ 	{
+ 		value = *key1_;
+ 	}
++	else if (false == value.empty())
++	{// the entry under its keys, "main:sub", as Word has it
++		if (key2_ && false == key2_->empty()) value = *key2_ + L":" + value;
++		if (key1_ && false == key1_->empty()) value = *key1_ + L":" + value;
++	}
+ 	if (value.empty()) return;
+ 
+ 	Context.finish_run();	
+diff --git a/OdfFile/Writer/Format/odf_text_context.cpp b/OdfFile/Writer/Format/odf_text_context.cpp
+index 3c07be421f..ab73a12980 100644
+--- a/OdfFile/Writer/Format/odf_text_context.cpp
++++ b/OdfFile/Writer/Format/odf_text_context.cpp
+@@ -552,8 +552,17 @@ office_element_ptr odf_text_context::start_field(int type, const std::wstring& v
+ 			text_alphabetical_index_mark *index = dynamic_cast<text_alphabetical_index_mark*>(elm.get());
+ 			if (index)
+ 			{
+-				index->key1_ = value;
+-				index->string_value_ = value;
++				// "main:sub" is the entry sub under main, as Word has it
++				std::vector<std::wstring> levels;
++				for (size_t start = 0, colon; ; start = colon + 1)
++				{
++					colon = value.find(L':', start);
++					levels.push_back(value.substr(start, std::wstring::npos == colon ? std::wstring::npos : colon - start));
++					if (std::wstring::npos == colon) break;
++				}
++				index->string_value_ = levels.back();
++				if (levels.size() > 1) index->key1_ = levels[0];
++				if (levels.size() > 2) index->key2_ = levels[1];
+ 			}
+ 		}break;
+ 		case fieldPage:
+diff --git a/OdfFile/Writer/Format/odt_conversion_context.cpp b/OdfFile/Writer/Format/odt_conversion_context.cpp
+index beca02538d..ec3a5ac5bf 100644
+--- a/OdfFile/Writer/Format/odt_conversion_context.cpp
++++ b/OdfFile/Writer/Format/odt_conversion_context.cpp
+@@ -882,14 +882,19 @@ void odt_conversion_context::set_field_instr()
+ 	if (std::wstring::npos != res1 && current_fields.back().type == 0)
+ 	{
+ 		current_fields.back().type = fieldXE;
+-		std::map<std::wstring, std::wstring> options = parse_instr_options(instr.substr(3));
+-		
+-		for (std::map<std::wstring, std::wstring>::iterator it = options.begin(); it != options.end(); ++it)
++		// XE "entry", then switches: the entry is the first quoted text after XE, or up to a switch.
++		// The options were parsed from the start of the instruction, which lost it.
++		std::wstring rest = instr.substr(res1 + 2);
++		size_t open = rest.find(L'"');
++		if (std::wstring::npos != open)
+ 		{
+-			if (it->first == L" ")//field-argument
+-			{
+-				current_fields.back().value = it->second.substr(0, it->second.length() - 1);	
+-			}
++			size_t close = rest.find(L'"', open + 1);
++			current_fields.back().value = rest.substr(open + 1, std::wstring::npos == close ? std::wstring::npos : close - open - 1);
++		}
++		else
++		{
++			current_fields.back().value = rest.substr(0, rest.find(L'\\'));
++			boost::algorithm::trim(current_fields.back().value);
+ 		}
+ 	}
+ 	res1 = instr.find(L"BIBLIOGRAPHY");
+diff --git a/OdfFile/Writer/Format/paragraph_elements.cpp b/OdfFile/Writer/Format/paragraph_elements.cpp
+index d0b3109cc1..228d9a8443 100644
+--- a/OdfFile/Writer/Format/paragraph_elements.cpp
++++ b/OdfFile/Writer/Format/paragraph_elements.cpp
+@@ -1037,10 +1037,11 @@ void text_alphabetical_index_mark::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         { 	
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"text:string-value", string_value_);
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"text:string-value-phonetic", string_value_phonetic_);
+-			CP_XML_ATTR_OPT (L"text:key1", key1_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"text:key1", key1_);
+ 			CP_XML_ATTR_OPT (L"text:key1-phonetic", key1_phonetic_);
+-			CP_XML_ATTR_OPT (L"text:key2", key2_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"text:key2", key2_);
+ 			CP_XML_ATTR_OPT (L"text:key2-phonetic", key2_phonetic_);
+ 			CP_XML_ATTR_OPT (L"text:main-entry", main_entry_);
+ 		}
+-- 
+2.55.0
+

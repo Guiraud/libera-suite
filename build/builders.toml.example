@@ -4,10 +4,10 @@
 # repository is the wrong place for one.
 
 [defaults]
-# The checkout on each builder, and the branch it builds. Either can be
-# overridden per builder below.
+# The checkout on each builder; it can be overridden per builder below. It
+# builds the commit the driving checkout is at, which `update` sends it over
+# ssh: no branch to name, nothing to push first.
 repo = "~/liberasuite"
-branch = "main"
 
 [[builders]]
 # platform is the one in the filename the build writes, core-<platform>.tar.gz:
@@ -31,10 +31,21 @@ target = "builder-amd64"
 # `0.2/`, not `0.2/` itself, so a version bump changes nothing here.
 #   a native build      $BUILD_ROOT/out/dist
 #   a container build   $BUILD_ROOT/linux-<amd64|arm64>/out/dist
-# Omit it for the same path this machine uses.
+# Omit it for where that machine's build writes them with its default
+# BUILD_ROOT: a container build on Linux, a native one elsewhere, and on this
+# machine its own BUILD_ROOT. These three say it anyway.
 dist = "~/euro-office-build/linux-amd64/out/dist"
 
 [[builders]]
 platform = "linux-arm64"
 target = "builder-arm64"
 dist = "~/euro-office-build/linux-arm64/out/dist"
+
+[[builders]]
+# Reached over OpenSSH, its shell Git Bash; `ship` builds its core and the
+# installer there with `payload all` and `app windows` (see
+# docs/src/develop/build.md, Windows). C:/b is the build root there
+# (engine/common.sh).
+platform = "windows-x86_64"
+target = "builder-windows"
+dist = "C:/b/out/dist"

@@ -3,7 +3,7 @@
 Every request from a window carries its session's id in the query string; the
 handler looks it up and hands the session to whatever answers. It used to be
 bound to the thread serving the request instead, as `H`, and the thread bugs
-in notes/lessons-learned.md all came from that.
+in notes/lessons-learned/ all came from that (threads.md).
 """
 
 from __future__ import annotations

@@ -45,7 +45,9 @@ def test_payload_version_matches_the_build() -> None:
     Every format mismatch in this project has been two halves disagreeing about
     a file. This is the cheapest possible guard against another one.
     """
-    declared = (REPO / "build" / "payload.version").read_text(encoding="utf-8")
+    declared = (REPO / "build" / "payload" / "payload.version").read_text(
+        encoding="utf-8"
+    )
     version = next(
         line.split("=", 1)[1].strip().strip('"')
         for line in declared.splitlines()
@@ -220,6 +222,20 @@ def test_install_replaces_the_payload_by_a_rename_beside_it(
     assert staged_beside, "staged somewhere other than beside the destination"
 
 
+def test_an_install_says_which_payload_before_anything_else(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(payload.installer, "read_bundled_manifest", lambda: None)
+    said: list[str] = []
+    monkeypatch.setattr(payload.installer, "_finish", lambda _d, say: say("done"))
+
+    payload.install(
+        source=_fake_dist(tmp_path, corrupt=False), dest=tmp_path / "d", say=said.append
+    )
+
+    assert said == [f"Installing payload version {payload.PAYLOAD_VERSION}", "done"]
+
+
 def test_an_interrupted_install_puts_the_old_payload_back(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -286,13 +302,13 @@ def test_the_artifacts_carry_no_apple_metadata() -> None:
 
     The dist is **found**, not declared. This wanted `LIBERA_DIST` in the
     environment, so it skipped on every machine that had a dist, including the
-    kind it was written for. `built_dist` looks where `build/dist.sh` writes.
+    kind it was written for. `built_dist` looks where `build/engine/dist.sh` writes.
     """
     import tarfile
 
     dist = built_dist(payload.PAYLOAD_VERSION)
     if dist is None:
-        pytest.skip("needs built artifacts: `make payload-dist`, or set LIBERA_DIST")
+        pytest.skip("needs built artifacts: `lb payload dist`, or set LIBERA_DIST")
 
     archives = sorted(dist.glob("*.tar.gz"))
     # An empty directory would make every assertion below vacuous, and a check
@@ -415,7 +431,7 @@ def manifest_the_code_reads() -> Path:
 def test_the_build_writes_the_manifest_where_the_application_reads_it():
     """One path, written by a shell script and read by a module.
 
-    `build/dist.sh` copies it into the package under INSTALL_MANIFEST, and
+    `build/engine/dist.sh` copies it into the package under INSTALL_MANIFEST, and
     `installer.read_bundled_manifest` opens it. They disagreed: the copy went to
     `libera/manifest.json` and the read looked in `libera/payload/`, because it
     was spelt `Path(__file__).with_name(...)` inside `libera.payload.installer`.
@@ -423,9 +439,9 @@ def test_the_build_writes_the_manifest_where_the_application_reads_it():
     Compared by the last two components rather than as absolute paths, so this
     says the same thing about a checkout and about an installed wheel.
     """
-    dist_sh = (REPO / "build" / "dist.sh").read_text(encoding="utf-8")
+    dist_sh = (REPO / "build" / "engine" / "dist.sh").read_text(encoding="utf-8")
     written = re.search(r"src/(libera/\S*?manifest\.json)", dist_sh)
-    assert written, "build/dist.sh no longer copies a manifest into the package"
+    assert written, "build/engine/dist.sh no longer copies a manifest into the package"
     assert written.group(1) == "/".join(manifest_the_code_reads().parts[-2:])
 
 
@@ -445,7 +461,7 @@ def test_a_stamped_manifest_is_the_one_found():
     assert payload.can_fetch()
     found = payload.installer.read_bundled_manifest()
     assert found is not None
-    assert [a["name"] for a in found["artifacts"]]
+    assert [a.name for a in found.artifacts]
 
 
 @pytest.mark.skipif(
@@ -455,7 +471,7 @@ def test_a_stamped_manifest_is_the_one_found():
 def test_the_stamped_manifest_is_for_the_payload_this_build_wants():
     """Bump the payload version and this goes red until the payload is rebuilt.
 
-    That window is real and expected: `build/payload.version` and
+    That window is real and expected: `build/payload/payload.version` and
     `locate.PAYLOAD_VERSION` move first, the cores are rebuilt on three
     machines afterwards, and until the last one lands the manifest in the tree
     describes the payload before the bump. So it skips rather than fails, and
@@ -467,10 +483,11 @@ def test_the_stamped_manifest_is_for_the_payload_this_build_wants():
     """
     found = payload.installer.read_bundled_manifest()
     assert found is not None
-    if found["payload_version"] != locate.PAYLOAD_VERSION:
+    # Agreeing is the pass, and disagreeing the skip: nothing after it could
+    # fail, so there is nothing after it.
+    if found.payload_version != locate.PAYLOAD_VERSION:
         pytest.skip(
-            f"stamped for payload {found['payload_version']}, this tree wants "
+            f"stamped for payload {found.payload_version}, this tree wants "
             f"{locate.PAYLOAD_VERSION}: rebuild the cores and re-run "
-            "INSTALL_MANIFEST=1 sh build/dist.sh --manifest-only before publishing"
+            "INSTALL_MANIFEST=1 sh build/engine/dist.sh --manifest-only before publishing"
         )
-    assert found["payload_version"] == locate.PAYLOAD_VERSION

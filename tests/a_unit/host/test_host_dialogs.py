@@ -1,7 +1,7 @@
 """What the close prompt decides, once somebody has answered it.
 
 The GTK dialog itself is checked in the container, under Xvfb, by
-`make dialog-linux`: whether a window appears and whether the answer gets back
+`lb linux dialog`: whether a window appears and whether the answer gets back
 across a thread is a thing only a display can settle. The Windows message box
 is `win32.ask`, and what its Yes, No and Cancel mean is pinned below. What is here is the half
 that can be wrong on any platform -- which button means keep the window, and
@@ -16,6 +16,7 @@ from __future__ import annotations
 import pytest
 
 from libera.host import saving
+from libera.host.saving import SaveRequest
 from libera.host.window import Answer, Question, dialogs, win32
 
 # Handed to the save, which every test here replaces.
@@ -151,7 +152,7 @@ def test_save_as_offers_the_formats_of_the_window_that_asked(tmp_path, monkeypat
         ),
     )
 
-    saving.save_document(asking, {"fileType": 257, "params": "saveas=true"})
+    saving.save_document(asking, SaveRequest(file_type=257, save_as=True))
 
     assert offered == [apps.TABLES.save_formats]
 
@@ -180,7 +181,7 @@ def test_save_as_starts_in_the_folder_the_document_is_in(tmp_path, monkeypatch):
         ),
     )
 
-    saving.save_document(asking, {"fileType": 0, "params": "saveas=true"})
+    saving.save_document(asking, SaveRequest(save_as=True))
 
     assert started == [folder]
 

@@ -4,6 +4,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 Two versions move here and they move independently. The **application** is this package, `libera`. The **editor payload** is the Euro-Office build it fetches on first use, versioned separately so that a fix to the host does not force a 120 MB re-download. `libera --version` prints both.
 
+## [0.4.0] - 2026-10-12
+
+The first with payload **0.4**, so the editors are downloaded again once, about 100 MB on macOS. It fixes the converter where 0.3's host could only refuse a save or warn.
+
+### Added
+
+- **Convert from the command line.** `libera --convert *.docx -t pdf` writes each document in another format beside it, with no window; `-o FILE` names the result of one document (`-` for standard output), and `--outdir DIR` puts them elsewhere. The spellings are pandoc's. The conversion is the one Save As makes.
+- **A window shows when its document has unsaved edits.** On macOS, the dot in the close button and "Edited" after the title, as in Pages and Keynote; on Linux and Windows, a `*` before the title.
+- **A document open somewhere else says so.** Libera Suite now writes a lock file beside each document it opens, in LibreOffice's format, so each sees the other's. A document LibreOffice, or another copy of Libera Suite, already has open is marked *locked for editing*: you can read and change it, and saving asks where, so the other copy's file is never written over. Save As onto a file someone else has open is refused, and says who has it. A lock left by a crash of Libera Suite is taken over on the next open.
+- **Libera Suite says when a newer version is out.** At most once a day it reads the latest release's version number from the CDN, and mentions a newer one once, with how to update for the way it was installed. It downloads nothing; offline, it says nothing. The home page's list of connections has the row. `check_updates = false` in `config.toml` turns it off.
+- **Drag and drop.** A document dropped on any window, the start window included, opens in a window of its own. An image dropped on a document is inserted into it. A dropped file can no longer replace the editor with the file itself.
+- **Your name in documents can be set.** `user_name` in `config.toml` replaces your account's name in tracked changes, in comments and in the lock file. The user guide says where the file is on each platform.
+
+### Changed
+
+- **The editors are smaller**, by about 38 MB once installed on macOS. The native libraries lose their symbol tables. The fallbacks for browsers without WebAssembly are gone too, since the webviews and the converter all have it.
+- **Print asks where to keep the PDF.** It starts in the document's folder; another folder is a click away. The PDF used to go into Libera Suite's own working folder, which is hard to find and is cleared when the window closes.
+- **Ctrl-N, Ctrl-O and Ctrl-W work on Linux and Windows.** They make a new document of the same kind, open one, and close the window, asking first about unsaved changes. Ctrl-N did nothing there. The menus still show no shortcuts.
+- **Installing the payload says which one first.** `--payload-install` and the download a first start offers both begin with "Downloading payload version 0.4". The last line says where it went.
+- **The host's web server is Bottle**, which pywebview already brings, running on the standard library's server as before. Nothing changes for the editor; the host's endpoints are now plain functions, which the framework never reaches.
+
+### Fixed
+
+- **A CSV or `.txt` holding an emoji saves as one.** On macOS and Linux, the converter wrote plain text holding a character beyond Unicode's first 65,536 in Latin-1 where UTF-8 was asked for, so Libera Suite refused the save. It now writes UTF-8.
+- **A large CSV is read whole.** The converter skipped one character in every 500,000. Where that character was a quote, a comma or a line break, a cell split in two, or two cells or two rows ran together; Libera Suite named the rows when the file opened. It now reads them as written.
+- **Without Flatpak, Linux runs on RHEL 9 and its rebuilds.** One function in the converter asked for glibc 2.35, where RHEL 9 has 2.34. The converter now asks for 2.34.
+- **OpenDocument files are written and read more faithfully**: 68 fixes to the converter for `.odt`, `.ods` and `.odp`, each found against LibreOffice's own test documents.
+- **Cmd-W and Cmd-Q work again after a slideshow** on macOS. Once the show had ended, the editor took both keys and the menu never saw them.
+- **A document dropped on `Libera.app`'s Dock icon opens.** macOS refused it, saying Python could not open that format: the launcher handed over to Python, and from then on macOS took the running application for Python. The launcher now runs Python inside itself.
+- **Add to dictionary keeps the word.** It was handed to the spell checker, which only checks and suggests and dropped it, so the word was flagged again in the next session. The words are kept beside the Recent list, for every document and every language.
+- **Several documents opened at once are all in the Recent list.** Opened together, most of them were dropped. A window reading the list while another wrote it could also empty it altogether.
+- **A dozen documents opened at once no longer start a dozen converters.** Each takes tens to hundreds of MB; the rest now wait their turn.
+- **The editor's File ▸ Close closes the window.** It only hid the menu, as Back does. It now closes the window as its close button does, asking first about unsaved changes.
+- **Opening a document twice brings its window forward.** It opened a second window on the same file. Each window saved over the other, so the last save won and the other window's edits were lost.
+- **The first document's lock goes when its window closes.** The window a launch opens first was the one that never let go: after Libera Suite quit, LibreOffice still saw the document as open, and edits left by "Don't Save" were not offered back when it was opened again. Every lock Libera Suite holds is also released when it quits.
+- **Opening several documents at once starts one Libera Suite.** Explorer starts a copy per file of a multi-selection. A document handed to a running copy that took more than three seconds to open started a second one too. Two copies shared one working folder, where each could delete the working files of the other's open documents. A launch now waits for the copy that is starting and hands its documents over.
+- **A first document that cannot be opened says so.** `libera damaged.docx` ended in a traceback, and from Finder or a file manager in nothing at all; a document opened later already got a dialog.
+- **A save that writes nothing is a failed save.** Every save went through one staging file, so a conversion that wrote nothing found the previous save's file there and reported success. Each save now has its own. An empty result counts as a failure.
+- **A problem on a background thread is shown.** Opening, menu actions and drops run on threads of their own. A failure there went only to a terminal, which a launch from the desktop does not have.
+- **Installing the payload checks every font thumbnail.** The install accepted a font run that stopped partway; the font menu then showed blank names. It now checks the thumbnails and the number of fonts, as the build does.
+- **Cancelling File ▸ Open leaves the window as it was.** It reloaded the document.
+- **The editor can only copy in an image you chose.** Inserting a picture copies it into the document's working folder. The host took any path the page named, which would have let a script in the editor read any of your files. It now copies only what you picked in a dialog or dropped.
+- **Another web page cannot read Libera Suite's scripts.** A site open in your browser could load them from the local server Libera Suite runs, and read the name of whoever has a document locked; such requests are now refused.
+- **A failure to note unsaved edits is no longer silent.** The editor tells the host when a document has unsaved edits, which is what recovery after a crash relies on; a refused report went unnoticed. It is now logged.
+- **An idle window stops polling.** Each window checked forty times a second, for as long as it was open, for an editor its outer frame never has.
+- **About says which versions are running**, the application's and the editors', as `libera -V` does. It named who wrote what, and on macOS, outside `Libera.app`, showed Python's version.
+
 ## [0.3.3] - 2026-10-02
 
 ### Changed

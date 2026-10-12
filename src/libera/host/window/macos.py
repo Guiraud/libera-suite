@@ -28,6 +28,7 @@ from PyObjCTools import AppHelper
 
 from libera.host import about, hooks
 from libera.host.window.portable import Answer, Question
+from libera.payload import locate
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Sequence
@@ -121,6 +122,39 @@ def set_fullscreen(window: Window, on: bool) -> None:
 
     # The request arrives on a server thread; AppKit belongs to the GUI one.
     AppHelper.callAfter(apply)
+
+
+def show_edited(window: Window, edited: bool) -> None:
+    """The dot in the close button, and "Edited" after the title.
+
+    setDocumentEdited: alone gives only the dot: the grey "Edited" Pages and
+    TextEdit show comes from the window's subtitle, which NSDocument sets and
+    this does in its place (measured, macOS 14).
+    """
+    native = window.native
+    if native is None:  # pywebview has not finished making it
+        return
+
+    def apply() -> None:
+        native.setDocumentEdited_(edited)
+        native.setSubtitle_("Edited" if edited else "")
+
+    # The news arrives on a server thread; AppKit belongs to the GUI one.
+    AppHelper.callAfter(apply)
+
+
+def close_window(window: Window) -> None:
+    """performClose:, as the menu's File > Close sends.
+
+    It goes through the window's delegate, which asks about unsaved changes.
+    pywebview's destroy() calls NSWindow.close, which skips the delegate and
+    would close a window holding unsaved edits without a word.
+    """
+    native = window.native
+    if native is None:  # pywebview has not finished making it
+        return
+    # The request arrives on a server thread; AppKit belongs to the GUI one.
+    AppHelper.callAfter(native.performClose_, None)
 
 
 def ask(question: Question, parent: Window | None) -> Answer:
@@ -392,7 +426,7 @@ def _name_the_application() -> None:
     this runs from prepare(), ahead of `webview.start()`, and it cannot move
     into complete_startup() with the rest of the start-up work.
 
-    Both keys, mirroring `build/macos-app.sh`'s Info.plist: CFBundleName is the
+    Both keys, mirroring `build/macos/macos-app.sh`'s Info.plist: CFBundleName is the
     menu bar, CFBundleDisplayName is what the system reports elsewhere. Inside
     the bundle both already hold these values, so this is a no-op there.
 
@@ -429,6 +463,10 @@ def _name_the_application() -> None:
     # a pipx or uv install runs. Inside the bundle `macos-app.sh` already writes
     # the same string, so this is a no-op there.
     info["NSHumanReadableCopyright"] = about.COPYRIGHT
+    # And the versions, which the panel shows as "Version 0.4.0 (payload 0.4)":
+    # outside the bundle they were the interpreter's, or nothing.
+    info["CFBundleShortVersionString"] = about.app_version()
+    info["CFBundleVersion"] = f"payload {locate.PAYLOAD_VERSION}"
 
 
 def _wear_the_application_icon() -> None:
@@ -446,7 +484,8 @@ def _wear_the_application_icon() -> None:
     of startup on purpose.
 
     `icon.svg` ships in the wheel and is the one copy of the mark in the
-    repository; `build/macos-icon.py` and `build/flatpak.sh` read the same file.
+    repository; `build/macos/macos-icon.py` and `lb app flatpak`
+    (libera_build/flatpak.py) read the same file.
 
     NSImage has read SVG only since macOS 13. On 11 and 12 it returns nil, and
     then there is nothing to do but leave the rocket -- an application that
@@ -455,7 +494,7 @@ def _wear_the_application_icon() -> None:
     """
     # resources.files, not Path(__file__).parents[2]: the icon is package data
     # two directories up from this module, and counting parents is how six test
-    # files broke the moment they moved. See notes/lessons-learned.md.
+    # files broke the moment they moved. See notes/lessons-learned/data-and-paths.md.
     icon = resources.files("libera") / "icon.svg"
     image = AppKit.NSImage.alloc().initWithContentsOfFile_(str(icon))
     if image is None:

@@ -1,0 +1,32 @@
+From ddb05f3604d9217233e4a8578c1f2cd8a4ac892d Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 21:54:41 +0200
+Subject: [PATCH 164/168] OdfFile reader: an XLSX underline is written by name
+
+<u val="1"/>: the underline was written as its enum's number, where the
+schema wants single, double, singleAccounting or doubleAccounting.
+29 of LibreOffice's ODF test documents.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Converter/xlsx_font.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Reader/Converter/xlsx_font.cpp b/OdfFile/Reader/Converter/xlsx_font.cpp
+index 306f3f0601..fc92409a11 100644
+--- a/OdfFile/Reader/Converter/xlsx_font.cpp
++++ b/OdfFile/Reader/Converter/xlsx_font.cpp
+@@ -192,7 +192,9 @@ void xlsx_serialize(std::wostream & _Wostream, const xlsx_font & font)
+             {
+                 CP_XML_NODE(L"u")
+                 {
+-                    CP_XML_ATTR(L"val", *font.u);
++                    // the value's name, where its number was written
++                    static const wchar_t * names[] = { L"none", L"single", L"double", L"singleAccounting", L"doubleAccounting" };
++                    CP_XML_ATTR(L"val", names[*font.u]);
+                 }
+             }
+ 
+-- 
+2.55.0
+

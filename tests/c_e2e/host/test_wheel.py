@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     import pathlib
 
 FIRST_ROW = "() => Asc.editor.wb.getWorksheet().visibleRange.r1"
+SCROLLED = "() => Asc.editor.wb.getWorksheet().visibleRange.r1 > 0"
 
 
 def test_the_wheel_scrolls_a_spreadsheet(editor_with, tmp_path: pathlib.Path):
@@ -37,6 +38,7 @@ def test_the_wheel_scrolls_a_spreadsheet(editor_with, tmp_path: pathlib.Path):
 
     for _ in range(3):
         editor.page.mouse.wheel(0, 100)
-        editor.page.wait_for_timeout(300)
 
-    assert editor.frame.evaluate(FIRST_ROW) > 0
+    # Waited for, not read once: the events can return before the editor has
+    # moved, and a sheet that never moves times out here.
+    editor.frame.wait_for_function(SCROLLED, timeout=10_000)

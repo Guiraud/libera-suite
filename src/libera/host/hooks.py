@@ -60,6 +60,10 @@ class Shell(Protocol):
     def set_fullscreen(self, on: bool) -> None:
         """Slides, starting or ending a demonstration."""
 
+    def close_window(self, session: Session) -> None:
+        """The editor's File > Close: close that window, asking about unsaved
+        changes as its close button does."""
+
     def offer_reload(self, session: Session, message: str) -> None:
         """The editor threw where nothing caught it: offer to rebuild it."""
 
@@ -71,6 +75,13 @@ class Shell(Protocol):
 
     def tell(self, heading: str, detail: str) -> None:
         """Something the user should know, with nothing to decide."""
+
+    def show_edited(self, session: Session, edited: bool) -> None:
+        """Mark that session's window as holding unsaved edits, or not."""
+
+    def take_dropped(self, names: list[str]) -> list[Path]:
+        """The full paths of files just dropped on a window, which the page
+        knows only by name. Those it cannot account for are left out."""
 
 
 class HeadlessShell:
@@ -100,6 +111,9 @@ class HeadlessShell:
     def set_fullscreen(self, on: bool) -> None:
         pass
 
+    def close_window(self, session: Session) -> None:
+        logger.warning("close: no window to close")
+
     def offer_reload(self, session: Session, message: str) -> None:
         pass
 
@@ -111,6 +125,12 @@ class HeadlessShell:
 
     def tell(self, heading: str, detail: str) -> None:
         logger.warning("%s: %s", heading, detail)
+
+    def show_edited(self, session: Session, edited: bool) -> None:
+        pass
+
+    def take_dropped(self, names: list[str]) -> list[Path]:
+        return []
 
 
 shell: Shell = HeadlessShell()

@@ -1,0 +1,84 @@
+From 44711814eecc8bcf7fad0e60286175ad44bd2a84 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 09:56:29 +0200
+Subject: [PATCH 104/142] OdfFile: carry the document metadata OOXML actually
+ provides
+
+OoxConverter::convert_meta maps 6 of the 15 core properties that CCore
+already parses, and mislabels authorship. It is shared by the DOCX, PPTX
+and XLSX converters, so every OOXML to ODF conversion loses the same
+fields, at exit 0 and without a word.
+
+Newly carried: dc:subject from cp:subject, dc:date from dcterms:modified,
+and meta:editing-cycles from cp:revision. All three already have element
+classes in office_meta and only needed wiring.
+
+Authorship was the one that was wrong rather than missing. OOXML
+dc:creator is the original author; ODF dc:creator is the last editor.
+Writing one into the other relabels who touched the document last. The
+author now goes to meta:initial-creator, which is what it means, and
+dc:creator takes cp:lastModifiedBy. Where the document does not say who
+last edited it, dc:creator keeps the author as before, so nothing that is
+populated today becomes empty.
+
+Left out deliberately, and worth separate changes:
+
+cp:lastPrinted maps to meta:print-date, which has no element class in
+office_meta yet. Adding one means a new entry in the shared element type
+enumeration, which is a wider footprint than the rest of this.
+
+docProps/app.xml is still ignored: convert_meta takes a CApp and does
+nothing with it.
+
+The ODT to DOCX leg has the mirror-image problem in its own writer,
+dropping meta:initial-creator, meta:print-date and meta:editing-cycles
+and overwriting cp:lastModifiedBy with the generator string.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/Converter.cpp | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/OdfFile/Writer/Converter/Converter.cpp b/OdfFile/Writer/Converter/Converter.cpp
+index 1e8f28058e..aecb2ea010 100644
+--- a/OdfFile/Writer/Converter/Converter.cpp
++++ b/OdfFile/Writer/Converter/Converter.cpp
+@@ -340,18 +340,35 @@ void OoxConverter::convert_meta(OOX::CApp *app, OOX::CCore *core)
+ 	}
+ 	if (core)
+ 	{
++		// OOXML dc:creator is the original author and ODF dc:creator is the
++		// last editor, so they are not the same field. Carry the author to
++		// meta:initial-creator, and prefer cp:lastModifiedBy for dc:creator,
++		// falling back to the author when the document does not say who last
++		// edited it.
+ 		if (core->m_sCreator.IsInit())
++			odf_context()->add_meta(L"meta", L"initial-creator", *core->m_sCreator);
++		if (core->m_sLastModifiedBy.IsInit())
++			odf_context()->add_meta(L"dc", L"creator", *core->m_sLastModifiedBy);
++		else if (core->m_sCreator.IsInit())
+ 			odf_context()->add_meta(L"dc", L"creator", *core->m_sCreator);
+ 		if (core->m_sCreated.IsInit())
+ 			odf_context()->add_meta(L"meta", L"creation-date", *core->m_sCreated);
++		if (core->m_sModified.IsInit())
++			odf_context()->add_meta(L"dc", L"date", *core->m_sModified);
++		if (core->m_sRevision.IsInit())
++			odf_context()->add_meta(L"meta", L"editing-cycles", *core->m_sRevision);
+ 		if (core->m_sKeywords.IsInit())
+ 			odf_context()->add_meta(L"meta", L"keyword", *core->m_sKeywords);
+ 		if (core->m_sTitle.IsInit())
+ 			odf_context()->add_meta(L"dc", L"title", *core->m_sTitle);
++		if (core->m_sSubject.IsInit())
++			odf_context()->add_meta(L"dc", L"subject", *core->m_sSubject);
+ 		if (core->m_sDescription.IsInit())
+ 			odf_context()->add_meta(L"dc", L"description", *core->m_sDescription);
+ 		if (core->m_sLanguage.IsInit())
+ 			odf_context()->add_meta(L"dc", L"language", *core->m_sLanguage);
++		// cp:lastPrinted has no mapping yet: meta:print-date needs an element
++		// class in office_meta, which the rest of this change does not.
+ 	}
+ }
+ void OoxConverter::convert_customs(OOX::IFileContainer* container)
+-- 
+2.55.0
+

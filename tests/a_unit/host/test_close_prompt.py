@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 from libera.host import convert, saving, session as sessions, window
+from libera.host.saving import SaveRequest
 from libera.host.session import Session
 from libera.host.window import Answer
 
@@ -55,7 +56,7 @@ def test_a_saved_document_stops_being_dirty(bound_session, monkeypatch):
 
     monkeypatch.setattr(convert, "export", lambda *_: True)
     monkeypatch.setattr(saving.shutil, "copyfile", lambda *_: None)
-    result = saving.save_document(bound_session, {"fileType": 0, "params": ""})
+    result = saving.save_document(bound_session, SaveRequest())
 
     assert result["error"] == 0
     assert not bound_session.unsaved_marker.is_file()

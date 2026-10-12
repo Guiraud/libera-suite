@@ -8,6 +8,9 @@ The editor works on Editor.bin plus a log of changes it streams as you type. A
 reload hands it Editor.bin alone -- the document as it was opened -- so the
 edits have to be folded into the base first, or reloading silently undoes
 everything since the file was opened.
+
+Whether a reload is offered at all needs no converter, and is in
+tests/a_unit/host/test_editor_error.py.
 """
 
 from __future__ import annotations
@@ -16,10 +19,8 @@ import re
 import zipfile
 from typing import TYPE_CHECKING
 
-from support import ScriptedShell
-
-from libera.host import hooks, server, window
-from libera.host.saving import save_document
+from libera.host import window
+from libera.host.saving import SaveRequest, save_document
 
 if TYPE_CHECKING:
     from libera.host.session import Session
@@ -32,7 +33,7 @@ def a_change(host: Session, raw: str) -> None:
 
 def test_folding_with_nothing_to_fold_is_a_no_op(opened: Session):
     before = opened.editor_bin.read_bytes()
-    assert window.fold_changes_in(opened)
+    window.fold_changes_in(opened)
     assert opened.editor_bin.read_bytes() == before
 
 
@@ -47,7 +48,7 @@ def test_folding_rebuilds_editor_bin(opened: Session):
     before = opened.editor_bin.read_bytes()
     a_change(opened, "AgAAAA==")
 
-    assert window.fold_changes_in(opened)
+    window.fold_changes_in(opened)
 
     assert opened.editor_bin.stat().st_size > 0
     assert opened.editor_bin.read_bytes() != before, "the base was not rebuilt"
@@ -56,7 +57,7 @@ def test_folding_rebuilds_editor_bin(opened: Session):
 def test_folding_empties_the_log_it_folded(opened: Session):
     """Otherwise the next save applies them twice."""
     a_change(opened, "AgAAAA==")
-    assert window.fold_changes_in(opened)
+    window.fold_changes_in(opened)
 
     assert not opened.change_log
 
@@ -71,7 +72,7 @@ def test_the_document_survives_the_round_trip(opened: Session):
     a_change(opened, "AgAAAA==")
     window.fold_changes_in(opened)
 
-    assert save_document(opened, {"fileType": 0})["error"] == 0
+    assert save_document(opened, SaveRequest())["error"] == 0
 
     text = re.sub(
         r"<[^>]+>",
@@ -82,62 +83,3 @@ def test_the_document_survives_the_round_trip(opened: Session):
         .decode("utf-8", "replace"),
     )
     assert "Second paragraph" in text, "the round trip lost the document"
-
-
-def test_the_host_stays_quiet_when_the_editor_speaks(opened: Session, monkeypatch):
-    """Two dialogs for one fault is what a user called confusing.
-
-    asc_onError means the editor is already putting its own message up. File >
-    Reload stays the way out, and it is always there.
-    """
-    offered: list[str] = []
-    monkeypatch.setattr(
-        hooks, "shell", ScriptedShell(offer_reload=lambda _s, m: offered.append(m))
-    )
-
-    server.handle_editor_error(
-        opened, "TypeError: endReporter is not a function", quiet=True
-    )
-
-    assert offered == []
-
-
-def test_an_uncaught_error_the_editor_says_nothing_about_is_offered(
-    opened: Session, monkeypatch
-):
-    """Nothing else would tell the user anything at all."""
-    offered: list[str] = []
-    monkeypatch.setattr(
-        hooks, "shell", ScriptedShell(offer_reload=lambda _s, m: offered.append(m))
-    )
-
-    server.handle_editor_error(opened, "TypeError: x is not a function")
-
-    assert offered == ["TypeError: x is not a function"]
-
-
-def test_an_uncaught_error_is_offered_once(opened: Session, monkeypatch):
-    """An editor that throws once throws again; a dialog per repeat is worse
-    than the fault."""
-    seen: list[str] = []
-    monkeypatch.setattr(
-        hooks, "shell", ScriptedShell(offer_reload=lambda _s, m: seen.append(m))
-    )
-
-    server.handle_editor_error(opened, "TypeError: x is not a function")
-    server.handle_editor_error(opened, "TypeError: x is not a function")
-
-    assert seen == ["TypeError: x is not a function"]
-
-
-def test_nothing_is_offered_where_there_is_no_window(opened: Session, monkeypatch):
-    """`libera --serve` and the harness have no way to ask, and must not
-    block waiting to."""
-    monkeypatch.setattr(hooks, "shell", hooks.HeadlessShell())
-
-    server.handle_editor_error(
-        opened, "TypeError: x is not a function"
-    )  # must not raise
-
-    # And it got as far as the shell, which is what declined.
-    assert opened.reload_offered

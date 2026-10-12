@@ -1,0 +1,86 @@
+From 480d07e516ccd567ccb9278e41e5222b89ece107 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 09:57:06 +0200
+Subject: [PATCH 102/142] OdfFile: give a date content control a value its type
+ allows
+
+A date content control converts to an ODF form:date whose form:value and
+form:current-value are filled with the control's display string, for
+instance form:value="17/03/2024". Both attributes are typed xsd:date in
+ODF 1.2 and 1.3, so the value is invalid, LibreOffice cannot parse it,
+the control renders empty, and the date is gone from the page.
+
+The correct value was in hand the whole time. m_oSdtPr->m_oDate->
+m_oFullDate holds it, and the line that would have used it was commented
+out. Uncommenting that line alone is a trap: CDateTime::ToString returns
+the stored string verbatim, which is a dateTime such as
+2024-03-17T00:00:00Z. LibreOffice happens to render that, but it is still
+not an xsd:date, so the value is truncated at the time part.
+
+The generic tail of the form path calls set_value with the display text
+whatever the control type, which is what put the unparseable string
+there. That call now takes the ISO date for a date control and the
+display text for everything else, and it still runs after the text has
+been collected, so the width calculation below is unaffected.
+
+Also removed: the "Dropdown" property was added twice for a date control,
+once unconditionally and once inside the full-date branch, so it was
+emitted twice.
+
+Not addressed here, and a design decision rather than a defect: a date
+content control could move out of the form group and become a text:date
+field with a data style built from w:dateFormat, which would keep the
+date in the text stream where search, copy and screen readers reach it.
+A Word date control genuinely is an interactive picker and ODF 1.3 has no
+standard inline content-control element, so form:date is defensible. The
+invalid value is not, and should not wait for that question.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/DocxConverter.cpp | 23 ++++++++++++++++------
+ 1 file changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/OdfFile/Writer/Converter/DocxConverter.cpp b/OdfFile/Writer/Converter/DocxConverter.cpp
+index 2e5617979f..e47ba74856 100644
+--- a/OdfFile/Writer/Converter/DocxConverter.cpp
++++ b/OdfFile/Writer/Converter/DocxConverter.cpp
+@@ -566,11 +566,8 @@ void DocxConverter::convert(OOX::Logic::CSdt *oox_sdt)
+ 			{
+ 				odt_context->controls_context()->add_property(L"Dropdown", odf_types::office_value_type::Boolean, L"true");
+ 
+-				if (oox_sdt->m_oSdtPr->m_oDate->m_oFullDate.IsInit())
+-				{
+-					odt_context->controls_context()->add_property(L"Dropdown", odf_types::office_value_type::Boolean, L"true");
+-					//odt_context->controls_context()->set_value(oox_sdt->m_oSdtPr->m_oDate->m_oFullDate->ToString());
+-				}
++				// The value itself is set below, once the control's display
++				// text has been collected, so that it wins over it.
+ 				if ((oox_sdt->m_oSdtPr->m_oDate->m_oDateFormat.IsInit()) &&
+ 					(oox_sdt->m_oSdtPr->m_oDate->m_oDateFormat->m_sVal.IsInit()))
+ 				{
+@@ -669,7 +666,21 @@ void DocxConverter::convert(OOX::Logic::CSdt *oox_sdt)
+ 		{
+ 			value.erase(value.back());
+ 		}
+-		odt_context->controls_context()->set_value(value);
++		// form:value and form:current-value are typed xsd:date on a date
++		// control, so the display string, "17/03/2024" and the like, is not a
++		// legal value: a reader that cannot parse it renders the control empty
++		// and the date disappears from the page. Use the stored full date
++		// without its time part, which is what the type wants.
++		std::wstring control_value = value;
++		if ((oox_sdt->m_oSdtPr.IsInit()) && (oox_sdt->m_oSdtPr->m_eType == OOX::Logic::sdttypeDate)
++			&& (oox_sdt->m_oSdtPr->m_oDate.IsInit())
++			&& (oox_sdt->m_oSdtPr->m_oDate->m_oFullDate.IsInit()))
++		{
++			const std::wstring full_date = oox_sdt->m_oSdtPr->m_oDate->m_oFullDate->ToString();
++			const size_t time_part = full_date.find(L'T');
++			control_value = (time_part == std::wstring::npos) ? full_date : full_date.substr(0, time_part);
++		}
++		odt_context->controls_context()->set_value(control_value);
+ 
+ 		if (false == value.empty())
+ 		{
+-- 
+2.55.0
+

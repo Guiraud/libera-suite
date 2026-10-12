@@ -7,8 +7,8 @@ import logging
 import pathlib
 import shutil
 
-from libera.host import convert, hooks, recents
-from libera.host.session import SESSIONS, NotReadyError, Session
+from libera.host import convert, hooks, locking, recents
+from libera.host.session import SESSIONS, Session
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +30,9 @@ def open_document(session: Session, document: pathlib.Path) -> None:
         logger.info("recovered unsaved changes to %s", document)
         session.write_current_document(document)
         recents.remember_recent(session, document)
+        locking.hold(session, document)
         return
-    if not convert.convert_to_editor_bin(session, document):
-        msg = f"could not open {document}"
-        raise NotReadyError(msg)
-    if document.suffix.lower() in convert.CSV_SUFFIXES:
-        _warn_of_misread_rows(document)
+    convert.convert_to_editor_bin(session, document)
     if stale and stale != session.work:
         # "Open Saved Version" declines the edits wherever they were. In this
         # session's directory the conversion has just replaced them; left in
@@ -44,39 +41,7 @@ def open_document(session: Session, document: pathlib.Path) -> None:
     session.write_current_document(document)
     session.unsaved_marker.unlink(missing_ok=True)
     recents.remember_recent(session, document)
-
-
-# How many rows the warning names before it counts the rest.
-NAMED_ROWS = 5
-
-
-def _warn_of_misread_rows(document: pathlib.Path) -> None:
-    """Say which rows of a large CSV the converter has read wrongly.
-
-    Until payload 0.4 carries the fix (patch 0029 in build/patches/core), x2t
-    skips a character every 500,000, and where that character is a quote, a
-    delimiter or a newline, a row is wrong on screen and, once saved, in the
-    file. Nothing here can put it right without changing the data, so the
-    least it can do is say where, before anybody saves.
-    """
-    rows = convert.find_misread_rows(document)
-    if not rows:
-        return
-    named = ", ".join(str(r) for r in rows[:NAMED_ROWS])
-    if len(rows) > NAMED_ROWS:
-        named += f" and {len(rows) - NAMED_ROWS} more"
-    elif len(rows) > 1:
-        first, _, last = named.rpartition(", ")
-        named = f"{first} and {last}"
-    which = f"row {named}" if len(rows) == 1 else f"rows {named}"
-    hooks.shell.tell(
-        f"Some of \u201c{document.name}\u201d was read wrongly",
-        f"Libera Suite's converter misreads large CSV files once every 500,000 "
-        f"characters, and in this one that changed {which}: a cell may be split "
-        "in two, or two cells or two rows run together. Check before saving, "
-        "because a save writes what the sheet shows. A coming update of the "
-        "editors fixes this.",
-    )
+    locking.hold(session, document)
 
 
 def has_unsaved_edits(found: Session, document: pathlib.Path) -> bool:
@@ -109,7 +74,7 @@ def find_recoverable(session: Session, document: pathlib.Path) -> pathlib.Path |
     did.
     """
     here = session.work
-    live = {found.work for found in SESSIONS.values()}
+    live = {found.work for found in list(SESSIONS.values())}
     others = (
         d
         for d in sorted(here.parent.glob("*"))

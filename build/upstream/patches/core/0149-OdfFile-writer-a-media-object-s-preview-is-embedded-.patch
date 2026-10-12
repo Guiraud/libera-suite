@@ -1,0 +1,83 @@
+From 940b7f4804e6c2358955e369c7a3c823b025ed60 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 18:32:42 +0200
+Subject: [PATCH 149/156] OdfFile writer: a media object's preview is embedded,
+ and so is the media
+
+In a presentation, a picture that plays audio or video took the
+"external" flag of its media link for its preview image too. x2t's reader
+links the media as an external "NULL" and embeds the real file through
+p14:media, so the preview was written as a link to x2t's own temporary
+directory (xlink:href="/home/.../pptx_unpacked/ppt/media/image1.png"):
+the image is broken, the user's paths leak into the file, and the output
+differs on every run. The media itself became xlink:href="NULL". 7 of
+LibreOffice's ODF test documents; the validator cannot see it.
+
+The media now takes the embedded copy first and the link only without
+one, with a flag of its own, so the preview keeps the image's. A linked
+OLE object had the same fault with its preview, and gets the same fix.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/ConvertDrawing.cpp | 21 +++++++++++++++------
+ 1 file changed, 15 insertions(+), 6 deletions(-)
+
+diff --git a/OdfFile/Writer/Converter/ConvertDrawing.cpp b/OdfFile/Writer/Converter/ConvertDrawing.cpp
+index f14f1e834d..95c5c85fab 100644
+--- a/OdfFile/Writer/Converter/ConvertDrawing.cpp
++++ b/OdfFile/Writer/Converter/ConvertDrawing.cpp
+@@ -343,8 +343,11 @@ void OoxConverter::convert(PPTX::Logic::Pic *oox_picture)
+ 		{
+ 			PPTX::Logic::MediaFile & media = oox_picture->nvPicPr.nvPr.media.as<PPTX::Logic::MediaFile>();
+ 
+-			std::wstring sID = media.link.get();
+-			std::wstring pathMedia = find_link_by_id(sID, 3, bExternal);
++			// The embedded copy (p14:media) first: the link may point outside the package, or at
++			// nothing ("NULL", as x2t's reader writes it). The media has its own flag; bExternal is
++			// the image's, which becomes the media's preview.
++			bool bExternalMedia = false;
++			std::wstring pathMedia;
+ 
+ 			double start = -1, end = -1;
+ 
+@@ -353,14 +356,19 @@ void OoxConverter::convert(PPTX::Logic::Pic *oox_picture)
+ 				PPTX::Logic::Ext & ext = oox_picture->nvPicPr.nvPr.extLst[i];
+ 				if (pathMedia.empty() && ext.link_media.IsInit())
+ 				{
+-					pathMedia = find_link_by_id(ext.link_media->get(), 3, bExternal);
++					pathMedia = find_link_by_id(ext.link_media->get(), 3, bExternalMedia);
+ 					//for example mp3 files
+ 				}
+ 				if (ext.st.IsInit())	start	= *ext.st;
+ 				if (ext.end.IsInit())	end		= *ext.end;
+ 			}
++			if (pathMedia.empty())
++			{
++				std::wstring sID = media.link.get();
++				pathMedia = find_link_by_id(sID, 3, bExternalMedia);
++			}
+ 			
+-			std::wstring odf_ref_media = odf_context()->add_media(pathMedia, bExternal);
++			std::wstring odf_ref_media = odf_context()->add_media(pathMedia, bExternalMedia);
+ 
+ 			if (!odf_ref_media.empty())
+ 			{
+@@ -386,12 +394,13 @@ void OoxConverter::convert(PPTX::Logic::Pic *oox_picture)
+ 			pathImage = oox_picture->blipFill.blip->oleFilepathImage;
+ 		}
+ 		std::wstring pathOle;
++		bool bExternalOle = false; // a linked object; its preview image is still in the package
+ 	
+ 		if (oox_picture->oleObject->m_oId.IsInit())
+ 		{
+-			pathOle = find_link_by_id(oox_picture->oleObject->m_oId->get(), 4, bExternal);
++			pathOle = find_link_by_id(oox_picture->oleObject->m_oId->get(), 4, bExternalOle);
+ 		}
+-		std::wstring odf_ref_ole = odf_context()->add_oleobject(pathOle, bExternal);
++		std::wstring odf_ref_ole = odf_context()->add_oleobject(pathOle, bExternalOle);
+ 
+ 		if (!odf_ref_ole.empty())
+ 		{
+-- 
+2.55.0
+

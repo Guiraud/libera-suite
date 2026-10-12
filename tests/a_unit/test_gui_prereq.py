@@ -15,6 +15,11 @@ import pytest
 
 from libera import gui
 
+OURS = f"{sys.version_info.major}.{sys.version_info.minor}"
+# 3.9 because the package requires 3.12 and up, so it can never be the version
+# the suite is running on and the branch is pinned either way.
+ANOTHER_PYTHON = ("/usr/bin/python3", "3.9")
+
 
 @pytest.mark.parametrize(
     ("os_release", "expected"),
@@ -91,8 +96,26 @@ def test_nothing_to_say_where_the_backend_ships_with_pywebview():
     assert gui.explain_why_no_window() is None
 
 
+@pytest.fixture
+def linux_without_gtk(monkeypatch, tmp_path):
+    """Linux, with no GTK this environment can import, installed at the
+    prefix returned -- a checkout's virtualenv until a test adds what pipx
+    leaves. The system Python has GTK, on our version, until a test says
+    otherwise.
+
+    The whole environment, because the answer depends on all of it: an
+    unpinned prefix asserted on whatever virtualenv the suite ran in."""
+    monkeypatch.setattr(sys, "prefix", str(tmp_path))
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(gui, "is_gtk_available", lambda: False)
+    monkeypatch.setattr(
+        gui, "_find_system_python_for_gtk", lambda: ("/usr/bin/python3", OURS)
+    )
+    return tmp_path
+
+
 def test_a_virtualenv_that_cannot_see_the_system_packages_is_told_so(
-    monkeypatch, tmp_path
+    linux_without_gtk,
 ):
     """The failure that sends people round the loop twice.
 
@@ -106,18 +129,7 @@ def test_a_virtualenv_that_cannot_see_the_system_packages_is_told_so(
     the test below. Leaving it unpinned meant this asserted on whatever
     virtualenv the suite happened to be running in.
     """
-    (tmp_path / "pipx_metadata.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(sys, "prefix", str(tmp_path))
-    monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setattr(gui, "is_gtk_available", lambda: False)
-    monkeypatch.setattr(
-        gui,
-        "_find_system_python_for_gtk",
-        lambda: (
-            "/usr/bin/python3",
-            f"{sys.version_info.major}.{sys.version_info.minor}",
-        ),
-    )
+    (linux_without_gtk / "pipx_metadata.json").write_text("{}", encoding="utf-8")
 
     message = gui.explain_why_no_window()
 
@@ -127,21 +139,9 @@ def test_a_virtualenv_that_cannot_see_the_system_packages_is_told_so(
 
 
 def test_the_same_failure_in_a_checkout_is_told_something_it_can_act_on(
-    monkeypatch, tmp_path
+    linux_without_gtk,
 ):
     """Same diagnosis, different fix, and the wrong one wastes an afternoon."""
-    monkeypatch.setattr(sys, "prefix", str(tmp_path))
-    monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setattr(gui, "is_gtk_available", lambda: False)
-    monkeypatch.setattr(
-        gui,
-        "_find_system_python_for_gtk",
-        lambda: (
-            "/usr/bin/python3",
-            f"{sys.version_info.major}.{sys.version_info.minor}",
-        ),
-    )
-
     message = gui.explain_why_no_window()
 
     assert message is not None
@@ -149,7 +149,9 @@ def test_the_same_failure_in_a_checkout_is_told_something_it_can_act_on(
     assert "pipx uninstall" not in message, "there is nothing installed to remove"
 
 
-def test_a_virtualenv_on_another_python_is_told_that_instead(monkeypatch, tmp_path):
+def test_a_virtualenv_on_another_python_is_told_that_instead(
+    linux_without_gtk, monkeypatch
+):
     """The flag is not the answer when the interpreter is the problem.
 
     Reported from an arm64 box: `pipx install --system-site-packages libera`
@@ -158,26 +160,20 @@ def test_a_virtualenv_on_another_python_is_told_that_instead(monkeypatch, tmp_pa
     distribution's own Python, and no flag reaches a compiled extension across
     versions.
     """
-    (tmp_path / "pipx_metadata.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(sys, "prefix", str(tmp_path))
-    monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setattr(gui, "is_gtk_available", lambda: False)
-    # 3.9 because the package requires 3.12 and up, so it can never be the
-    # version the suite is running on and the branch is pinned either way.
-    monkeypatch.setattr(
-        gui, "_find_system_python_for_gtk", lambda: ("/usr/bin/python3", "3.9")
-    )
+    (linux_without_gtk / "pipx_metadata.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(gui, "_find_system_python_for_gtk", lambda: ANOTHER_PYTHON)
 
     message = gui.explain_why_no_window()
 
     assert message is not None
     assert "--python /usr/bin/python3" in message, "the interpreter is the fix"
     assert "3.9" in message, "say which Python has it"
-    ours = f"{sys.version_info.major}.{sys.version_info.minor}"
-    assert ours in message, "and which one this copy is on"
+    assert OURS in message, "and which one this copy is on"
 
 
-def test_a_checkout_on_another_python_is_not_told_to_uv_venv(monkeypatch, tmp_path):
+def test_a_checkout_on_another_python_is_not_told_to_uv_venv(
+    linux_without_gtk, monkeypatch
+):
     """The advice has to survive the next command in it.
 
     `uv venv --python X --system-site-packages` followed by `uv sync` was the
@@ -188,12 +184,7 @@ def test_a_checkout_on_another_python_is_not_told_to_uv_venv(monkeypatch, tmp_pa
     the flag off. UV_PYTHON is read ahead of .python-version, so nothing gets
     rebuilt and the pyvenv.cfg line stays.
     """
-    monkeypatch.setattr(sys, "prefix", str(tmp_path))
-    monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setattr(gui, "is_gtk_available", lambda: False)
-    monkeypatch.setattr(
-        gui, "_find_system_python_for_gtk", lambda: ("/usr/bin/python3", "3.9")
-    )
+    monkeypatch.setattr(gui, "_find_system_python_for_gtk", lambda: ANOTHER_PYTHON)
 
     message = gui.explain_why_no_window()
 
@@ -238,7 +229,7 @@ def test_the_probe_reports_the_version_it_ran_on(monkeypatch):
     assert done.stdout.strip() == f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
-def test_packages_actually_missing_still_names_them(monkeypatch):
+def test_packages_actually_missing_still_names_them(linux_without_gtk, monkeypatch):
     """The other branch, and the one that was there first.
 
     It used not to patch _system_python_has_pygobject, and so asked the
@@ -246,8 +237,6 @@ def test_packages_actually_missing_still_names_them(monkeypatch):
     failing on any Linux box that has the packages. Both branches are pinned
     now.
     """
-    monkeypatch.setattr(sys, "platform", "linux")
-    monkeypatch.setattr(gui, "is_gtk_available", lambda: False)
     monkeypatch.setattr(gui, "_find_system_python_for_gtk", lambda: None)
 
     message = gui.explain_why_no_window()

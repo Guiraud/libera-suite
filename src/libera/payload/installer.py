@@ -7,7 +7,6 @@ download that does not match its hash is never unpacked.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import shutil
 import tarfile
@@ -18,29 +17,24 @@ from importlib import resources
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from libera.manifest import Manifest, ManifestError
 from libera.payload import generate, locate
 from libera.payload.locate import Payload, PayloadError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from libera.manifest import Artifact
+
 DEFAULT_ORIGIN = "https://cdn.abilian.com/libera"
 
 
-def _hash_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def read_bundled_manifest() -> dict | None:
+def read_bundled_manifest() -> Manifest | None:
     """The manifest shipped in the wheel, which is what makes the origin untrusted.
 
     resources.files("libera"), not Path(__file__).with_name(): this module is
     `libera.payload.installer`, so with_name looked in `libera/payload/` and
-    build/dist.sh has always written `libera/manifest.json`, one level up. The
+    build/engine/dist.sh has always written `libera/manifest.json`, one level up. The
     two never met. A released wheel would therefore have answered every
     `libera --payload-install` with "this build ships no manifest, so downloads
     cannot be verified", and the only way in would have been --from DIR.
@@ -51,7 +45,9 @@ def read_bundled_manifest() -> dict | None:
     a container with no payload was pointed at it.
     """
     f = resources.files("libera") / "manifest.json"
-    return json.loads(f.read_text(encoding="utf-8")) if f.is_file() else None
+    if not f.is_file():
+        return None
+    return Manifest.from_dict(json.loads(f.read_text(encoding="utf-8")))
 
 
 def can_fetch() -> bool:
@@ -101,17 +97,13 @@ def _fetch(url: str, dest: Path) -> None:
             raise PayloadError(msg) from e
 
 
-def _select_artifacts(manifest: dict, want_platform: str) -> list[dict]:
-    """The artifacts this machine needs: its own core, plus the neutral ones."""
-    out = []
-    for a in manifest["artifacts"]:
-        if a["kind"] == "core" and a.get("platform") != want_platform:
-            continue
-        out.append(a)
-    if not any(a["kind"] == "core" for a in out):
-        msg = f"manifest has no core artifact for {want_platform}"
-        raise PayloadError(msg)
-    return out
+def _artifacts_for(manifest: Manifest, platform: str) -> list[Artifact]:
+    """This machine's core and the shared artifacts, refused as a PayloadError
+    when the manifest has no core for it, which every caller already reports."""
+    try:
+        return manifest.select(platform)
+    except ManifestError as e:
+        raise PayloadError(str(e)) from e
 
 
 def safe_extract(tar: tarfile.TarFile, dest: Path) -> None:
@@ -130,7 +122,9 @@ def safe_extract(tar: tarfile.TarFile, dest: Path) -> None:
         raise PayloadError(msg) from e
 
 
-def _read_manifest(base_url: str, local: Path | None, *, trust_manifest: bool) -> dict:
+def _read_manifest(
+    base_url: str, local: Path | None, *, trust_manifest: bool
+) -> Manifest:
     """The manifest that decides what gets installed, and whether to trust it.
 
     The wheel's copy is authoritative -- that is what makes the origin untrusted
@@ -146,10 +140,10 @@ def _read_manifest(base_url: str, local: Path | None, *, trust_manifest: bool) -
             msg = (
                 f"no manifest.json in {local}\n"
                 "  --from wants a directory of built artifacts, as written by\n"
-                "  build/dist.sh: BUILD_ROOT/out/dist/<payload-version>/"
+                "  build/engine/dist.sh: BUILD_ROOT/out/dist/<payload-version>/"
             )
             raise PayloadError(msg)
-        return json.loads(f.read_text(encoding="utf-8"))
+        return Manifest.read(f)
     if not trust_manifest:
         msg = (
             "this build ships no manifest, so downloads cannot be verified.\n"
@@ -160,7 +154,7 @@ def _read_manifest(base_url: str, local: Path | None, *, trust_manifest: bool) -
     url = f"{base_url}/manifest.json"
     try:
         with urllib.request.urlopen(url, timeout=60) as r:
-            return json.loads(r.read())
+            return Manifest.from_dict(json.loads(r.read()))
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
         msg = f"could not read the manifest at {url}\n  {getattr(e, 'reason', e)}"
         raise PayloadError(msg) from e
@@ -176,7 +170,7 @@ def _finish(dest: Path, say: Callable[[str], object]) -> None:
         raise PayloadError(msg)
 
 
-def _check_room(where: Path, artifacts: list[dict]) -> None:
+def _check_room(where: Path, artifacts: list[Artifact]) -> None:
     """Refuse before downloading if the disk cannot hold the result.
 
     `No space left on device` arrives a hundred megabytes in, from inside
@@ -188,7 +182,7 @@ def _check_room(where: Path, artifacts: list[dict]) -> None:
     tarball being unpacked. Approximate, and deliberately on the generous side
     of a number that is cheap to check and expensive to get wrong.
     """
-    need = 2 * sum(int(a["size"]) for a in artifacts)
+    need = 2 * sum(a.size for a in artifacts)
     free = shutil.disk_usage(where).free
     if free >= need:
         return
@@ -196,9 +190,68 @@ def _check_room(where: Path, artifacts: list[dict]) -> None:
         f"not enough room in {where}\n"
         f"  needs about {need / 1e6:.0f} MB free, has {free / 1e6:.0f} MB\n"
         f"  the payload unpacks to roughly "
-        f"{sum(int(a['size']) for a in artifacts) * 1.5 / 1e6:.0f} MB"
+        f"{sum(a.size for a in artifacts) * 1.5 / 1e6:.0f} MB"
     )
     raise PayloadError(msg)
+
+
+def _stage(
+    tmpdir: Path,
+    artifacts: list[Artifact],
+    source: Path | str,
+    say: Callable[[str], object],
+) -> Path:
+    """Every artifact copied from a directory or fetched from a URL, checked
+    against its hash, and unpacked into `tmpdir`/payload. Nothing is unpacked
+    from a file that failed its check."""
+    staged = tmpdir / "payload"
+    staged.mkdir()
+    for a in artifacts:
+        got = tmpdir / a.name
+        if isinstance(source, Path):
+            shutil.copyfile(source / a.name, got)
+        else:
+            say(f"  fetching {a.name} ({a.size / 1e6:.0f} MB)")
+            _fetch(f"{source}/{a.name}", got)
+
+        if problem := a.problem_with(got):
+            raise PayloadError(problem)
+
+        with tarfile.open(got, "r:gz") as tar:
+            safe_extract(tar, staged)
+        got.unlink()
+    return staged
+
+
+def _swap_in(staged: Path, dest: Path, say: Callable[[str], object]) -> None:
+    """Put the staged payload where the old one was, generate its local files
+    there, and put the old one back if either fails.
+
+    The generated files record absolute paths, so they have to be written
+    where the payload will actually live -- generating in the staging
+    directory bakes in a temporary path that is gone a moment later. Hence:
+    move first, generate second, and roll back if that fails.
+    """
+    previous = dest.with_name(dest.name + ".previous")
+    shutil.rmtree(previous, ignore_errors=True)
+    if dest.exists():
+        dest.rename(previous)
+
+    # The rename and the generation share one rollback. They used to be
+    # separate, so a failed move left dest broken and the working payload
+    # stranded at .previous -- the one outcome worse than not installing.
+    # BaseException: a Ctrl-C while the fonts are generated is the likeliest
+    # interruption of all, and it left the working payload at .previous,
+    # where nothing looks and the next install deletes it. Re-raised.
+    try:
+        staged.rename(dest)
+        _finish(dest, say)
+    except BaseException:
+        shutil.rmtree(dest, ignore_errors=True)
+        if previous.exists():
+            previous.rename(dest)
+        raise
+    shutil.rmtree(previous, ignore_errors=True)
 
 
 def install(
@@ -221,24 +274,27 @@ def install(
     # Before the manifest, which is read from it: with no --from, `source` is
     # None, and --trust-manifest asked for "None/manifest.json".
     base_url = str(source or f"{DEFAULT_ORIGIN}/{locate.PAYLOAD_VERSION}")
+    # First, so that what is coming is named before the hundred megabytes.
+    verb = "Installing" if local else "Downloading"
+    say(f"{verb} payload version {locate.PAYLOAD_VERSION}")
     manifest = _read_manifest(base_url, local, trust_manifest=trust_manifest)
 
-    if manifest["payload_version"] != locate.PAYLOAD_VERSION:
+    if manifest.payload_version != locate.PAYLOAD_VERSION:
         msg = (
-            f"manifest is for payload {manifest['payload_version']}, "
+            f"manifest is for payload {manifest.payload_version}, "
             f"this libera needs {locate.PAYLOAD_VERSION}"
         )
         raise PayloadError(msg)
 
-    artifacts = _select_artifacts(manifest, want_platform)
+    artifacts = _artifacts_for(manifest, want_platform)
 
     if local is not None:
-        missing = [a["name"] for a in artifacts if not (local / a["name"]).is_file()]
+        missing = [a.name for a in artifacts if not (local / a.name).is_file()]
         if missing:
             msg = (
                 f"{local} is missing {', '.join(missing)}\n"
                 f"  the manifest lists them for {want_platform}; "
-                "build them with build/dist.sh"
+                "build them with build/engine/dist.sh"
             )
             raise PayloadError(msg)
 
@@ -262,70 +318,23 @@ def install(
     _check_room(dest.parent, artifacts)
 
     with tempfile.TemporaryDirectory(prefix=".libera-staging-", dir=dest.parent) as tmp:
-        tmpdir = Path(tmp)
-        staged = tmpdir / "payload"
-        staged.mkdir()
-
-        for a in artifacts:
-            got = tmpdir / a["name"]
-            if local:
-                shutil.copyfile(local / a["name"], got)
-            else:
-                say(f"  fetching {a['name']} ({a['size'] / 1e6:.0f} MB)")
-                _fetch(f"{base_url}/{a['name']}", got)
-
-            digest = _hash_file(got)
-            if digest != a["sha256"]:
-                msg = (
-                    f"{a['name']} failed verification\n"
-                    f"  expected {a['sha256']}\n  got      {digest}"
-                )
-                raise PayloadError(msg)
-
-            with tarfile.open(got, "r:gz") as tar:
-                safe_extract(tar, staged)
-            got.unlink()
-
+        staged = _stage(Path(tmp), artifacts, local or base_url, say)
         (staged / "payload.json").write_text(
             json.dumps(
                 {
-                    "payload_version": manifest["payload_version"],
+                    "payload_version": manifest.payload_version,
                     "platform": want_platform,
-                    "font_set": manifest.get("font_set"),
-                    "built": manifest.get("built"),
+                    "font_set": manifest.font_set,
+                    "built": manifest.built,
                     # Which source this binary corresponds to. Printed by
                     # `payload status`; an AGPL obligation, not decoration.
-                    "source": manifest.get("source"),
+                    "source": manifest.source,
                 },
                 indent=2,
             )
             + "\n",
             encoding="utf-8",
         )
-
-        # The generated files record absolute paths, so they have to be written
-        # where the payload will actually live -- generating in the staging
-        # directory bakes in a temporary path that is gone a moment later.
-        # Hence: move first, generate second, and roll back if that fails.
-        previous = dest.with_name(dest.name + ".previous")
-        shutil.rmtree(previous, ignore_errors=True)
-        if dest.exists():
-            dest.rename(previous)
-
-        # The rename and the generation share one rollback. They used to be
-        # separate, so a failed move left dest broken and the working payload
-        # stranded at .previous -- the one outcome worse than not installing.
-        # BaseException: a Ctrl-C while the fonts are generated is the likeliest
-        # interruption of all, and it left the working payload at .previous,
-        # where nothing looks and the next install deletes it. Re-raised.
-        try:
-            staged.rename(dest)
-            _finish(dest, say)
-        except BaseException:
-            shutil.rmtree(dest, ignore_errors=True)
-            if previous.exists():
-                previous.rename(dest)
-            raise
-        shutil.rmtree(previous, ignore_errors=True)
+        _swap_in(staged, dest, say)
 
     return Payload(dest, "installed")

@@ -1,0 +1,134 @@
+From e4b01bbe09bd975406049e9852f41f30c0676c8b Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 09:55:15 +0200
+Subject: [PATCH 103/142] OdfFile: w:outlineLvl is zero-based, and text:level
+ must not wipe it
+
+Converting ODT to DOCX, every heading lands one level too deep. ODF
+text:outline-level counts from 1; ECMA-376 w:outlineLvl counts from 0
+over the range 0-9, where 9 means body text. The reader copies the number
+across unchanged, so an ODF level-1 heading becomes w:val="1", which is
+Heading 2.
+
+The two halves of the converter disagree with each other about this. The
+ODF writer adds one back (odf_text_context.cpp), and the sibling w:ilvl
+ten lines from the faulty code already subtracts one. So each
+odt-docx-odt round trip raises every heading by one: measured 1/2/3 to
+2/3/4 after one trip, and six text:p with no text:h after two.
+
+Four sites wrote the value verbatim, three in the paragraph path and one
+in the style path. They now share one conversion, which also clamps: ODF
+level 9 and deeper map to w:val="8", matching LibreOffice, where the
+third site previously had no upper bound at all and could emit a w:val
+outside the ECMA range. The conversion is total, so the existing guards,
+which test whether the optional is set rather than what it holds, cannot
+produce a negative level.
+
+Second, and needed for the first to be reachable: text:outline-level on a
+text:h never arrived. The OpenOffice 1.0 alias text:level is applied
+straight after it, and _cp_apply_attribute assigns unconditionally, so an
+absent alias reset the value that had just been parsed. In practice only
+style:default-outline-level from the style chain was ever honoured; a
+document carrying the level on the paragraph produced no w:outlineLvl at
+all. The alias is now a fallback rather than an override.
+
+Left alone deliberately: the commented-out /*+1*/ in the ODF writer's
+DocxConverter is not compensation for this bug. That member holds the
+zero-based OOXML value for style inheritance and is never serialised to
+ODF.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Converter/docx_conversion_context.cpp |  6 +++---
+ OdfFile/Reader/Converter/docx_conversion_context.h   | 12 ++++++++++++
+ .../Format/style_paragraph_properties_docx.cpp       |  2 +-
+ OdfFile/Reader/Format/text_elements.cpp              |  6 +++++-
+ 4 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/OdfFile/Reader/Converter/docx_conversion_context.cpp b/OdfFile/Reader/Converter/docx_conversion_context.cpp
+index 8ec9c04547..c15968f172 100644
+--- a/OdfFile/Reader/Converter/docx_conversion_context.cpp
++++ b/OdfFile/Reader/Converter/docx_conversion_context.cpp
+@@ -2199,7 +2199,7 @@ int docx_conversion_context::process_paragraph_attr(odf_reader::text::paragraph_
+ 							if ((outline_level) && (*outline_level < 10))
+ 							{
+ 								output_stream() << L"<w:pPr>";
+-									output_stream() << L"<w:outlineLvl w:val=\"" << *outline_level << L"\"/>";
++									output_stream() << L"<w:outlineLvl w:val=\"" << outline_level_to_ooxml(*outline_level) << L"\"/>";
+ 								output_stream() << L"</w:pPr>";
+ 							}					
+ 						}
+@@ -2210,7 +2210,7 @@ int docx_conversion_context::process_paragraph_attr(odf_reader::text::paragraph_
+ 							//if ((Attr->outline_level_) && (*Attr->outline_level_ > 0))
+ 							if ((outline_level) && (*outline_level < 10))
+ 							{
+-								output_stream() << L"<w:outlineLvl w:val=\"" << *outline_level << L"\"/>";
++								output_stream() << L"<w:outlineLvl w:val=\"" << outline_level_to_ooxml(*outline_level) << L"\"/>";
+ 							}
+ 							output_stream() << L"</w:pPr>";
+ 						}
+@@ -2266,7 +2266,7 @@ int docx_conversion_context::process_paragraph_attr(odf_reader::text::paragraph_
+ 						output_stream() << L"<w:numId w:val=\"" << list_styles.id_outline() << L"\"/>"; // check bug 51965
+ 						output_stream() << L"</w:numPr>";
+ 					}
+-					output_stream() << L"<w:outlineLvl w:val=\"" << *outline_level << L"\"/>";
++					output_stream() << L"<w:outlineLvl w:val=\"" << outline_level_to_ooxml(*outline_level) << L"\"/>";
+ 				}
+ 
+ 				if (!get_text_tracked_context().dumpRPrInsDel_.empty())
+diff --git a/OdfFile/Reader/Converter/docx_conversion_context.h b/OdfFile/Reader/Converter/docx_conversion_context.h
+index 3e9802d523..09fc66c1ee 100644
+--- a/OdfFile/Reader/Converter/docx_conversion_context.h
++++ b/OdfFile/Reader/Converter/docx_conversion_context.h
+@@ -74,6 +74,18 @@ namespace oox {
+ class docx_conversion_context;
+ class rels;
+ 
++// ODF text:outline-level counts headings from 1; ECMA-376 w:outlineLvl counts
++// them from 0, over the range 0-9 where 9 means body text. A heading therefore
++// clamps to 8, which is what LibreOffice writes for ODF levels 9 and deeper.
++inline int outline_level_to_ooxml(int odf_outline_level)
++{
++    // Total on purpose: callers guard on the optional being set, not on its
++    // value, and a level outside 1-9 must not turn into a negative or an
++    // out-of-range w:val.
++    const int level = odf_outline_level < 1 ? 1 : (odf_outline_level > 9 ? 9 : odf_outline_level);
++    return level - 1;
++}
++
+ namespace package
+ {
+     class docx_document;
+diff --git a/OdfFile/Reader/Format/style_paragraph_properties_docx.cpp b/OdfFile/Reader/Format/style_paragraph_properties_docx.cpp
+index ccde631ca0..fdac5ed62d 100644
+--- a/OdfFile/Reader/Format/style_paragraph_properties_docx.cpp
++++ b/OdfFile/Reader/Format/style_paragraph_properties_docx.cpp
+@@ -210,7 +210,7 @@ void paragraph_format_properties::docx_convert(oox::docx_conversion_context & Co
+ 					}
+ 				_pPr << L"</w:numPr>";
+ 			}
+-			_pPr << L"<w:outlineLvl w:val=\"" << level << L"\"/>";
++			_pPr << L"<w:outlineLvl w:val=\"" << oox::outline_level_to_ooxml(level) << L"\"/>";
+ 		}
+ 	    
+ 		if (fo_text_align_)
+diff --git a/OdfFile/Reader/Format/text_elements.cpp b/OdfFile/Reader/Format/text_elements.cpp
+index e0497f50df..32e4525017 100644
+--- a/OdfFile/Reader/Format/text_elements.cpp
++++ b/OdfFile/Reader/Format/text_elements.cpp
+@@ -550,7 +550,11 @@ void h::add_attributes( const xml::attributes_wc_ptr & Attributes )
+     CP_APPLY_ATTR(L"text:restart-numbering"	, restart_numbering_);
+     CP_APPLY_ATTR(L"text:start-value"		, start_value_);
+     CP_APPLY_ATTR(L"text:is-list-header"	, is_list_header_);
+-	CP_APPLY_ATTR(L"text:level"				, outline_level_); // openoffice xml 1.0
++	// _cp_apply_attribute assigns unconditionally, so applying the legacy
++	// alias after the real attribute would reset it to none on every modern
++	// document, where text:level is absent. Only fall back to it.
++	if (!outline_level_)
++		CP_APPLY_ATTR(L"text:level"			, outline_level_); // openoffice xml 1.0
+ 
+     paragraph_.add_attributes(Attributes);
+ 
+-- 
+2.55.0
+

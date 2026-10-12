@@ -31,7 +31,7 @@ curl -fsSL https://cdn.abilian.com/libera/install.sh | sh
 
 If your machine has Flatpak, this installs Libera Suite as a Flatpak, with everything it needs inside, and adds it to your applications menu. Otherwise it installs the `libera` command; the first time you run it, it names any system packages your distribution is missing and the exact command to install them.
 
-It works on Ubuntu 22.04, Debian 12, Fedora 35, RHEL 9 and anything newer. Without Flatpak it also needs Python 3.12 or newer, and says so before changing anything if it is missing.
+It works on Ubuntu 22.04, Debian 12, Fedora 36, RHEL 9 and its rebuilds, and anything newer. Without Flatpak it also needs Python 3.12 or newer, and says so before changing anything if it is missing.
 
 If you use Homebrew on Linux, the Homebrew line in the macOS section below works there too.
 

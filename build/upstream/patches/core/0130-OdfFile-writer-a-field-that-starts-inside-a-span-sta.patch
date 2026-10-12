@@ -1,0 +1,49 @@
+From c6c6d305ee0b9103babab26f8917c22be0e21374 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:56:16 +0200
+Subject: [PATCH 130/142] OdfFile writer: a field that starts inside a span
+ starts its own element
+
+A simple field inside a run was started with text_context()->start_field
+whatever its type, but ended by type: a SEQ field with end_sequence and a
+drop-down with end_drop_down, both of which pop a level that only
+start_sequence and start_drop_down push. So the paragraph was popped
+instead, and the rest of it landed directly in its container: a caption
+"Figure {SEQ}: text" in a text box came out with ": text" outside any
+paragraph, 27 of LibreOffice's ODF test documents after the fifth batch.
+The field is now started as it is outside a span: sequence, drop-down,
+user field, hyperlink or plain field.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/odt_conversion_context.cpp | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/odt_conversion_context.cpp b/OdfFile/Writer/Format/odt_conversion_context.cpp
+index ec3a5ac5bf..56732da7b1 100644
+--- a/OdfFile/Writer/Format/odt_conversion_context.cpp
++++ b/OdfFile/Writer/Format/odt_conversion_context.cpp
+@@ -1401,7 +1401,19 @@ void odt_conversion_context::start_run(bool styled)
+ 	if (!current_fields.empty() && current_fields.back().status == 1 && current_fields.back().in_span)//the field starts in span - needed to save the style
+ 	{
+ 		current_fields.back().status = 2;
+-		current_fields.back().elm = text_context()->start_field(current_fields.back().type, current_fields.back().value, current_fields.back().format);
++
++		// As when it starts outside a span: end_field ends a sequence or a drop-down by popping a
++		// level, which text_context()->start_field never pushed for them, and so closed the paragraph
++		if (current_fields.back().type == fieldHyperlink)
++		{
++			std::wstring location;
++			start_hyperlink(current_fields.back().value, location);
++		}
++		else if (current_fields.back().type == fieldSeq)		start_sequence();
++		else if (current_fields.back().type == fieldDropDown)	start_drop_down();
++		else if (current_fields.back().type == fieldUserDefined)start_user_defined();
++		else
++			current_fields.back().elm = text_context()->start_field(current_fields.back().type, current_fields.back().value, current_fields.back().format);
+ 	}	
+ }
+ void odt_conversion_context::end_run()
+-- 
+2.55.0
+

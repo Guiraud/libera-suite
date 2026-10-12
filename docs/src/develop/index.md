@@ -60,12 +60,13 @@ libera -q FILE       # errors only
 ## What there is to run
 
 ```sh
-make help
+make help             # the standard jobs: lint, test, docs, the wheel
+lb --help             # building, packaging, releasing
 ```
 
-It reads the targets out of the Makefile, so it cannot fall behind them. A target appears there when it has a `## summary`, which is how the ones you never type stay out of the way: the steps of `payload-all` are all still there to resume a build that failed in the middle.
+The Makefile holds what any Python project has, plus `make payload` and `make ship`. Everything else is `lb` (`uv run lb` outside the virtualenv), a group per job (`payload`, `toolchain`, `app`, `linux`, `release`), and `--help` at every level lists the options with examples, each naming the environment variable it sets. The steps of `make payload` are each a command, to resume a build that failed in the middle: `lb payload --help`.
 
-`make tidy` removes every artefact a build on this machine wrote, which is mostly the Flatpak: its builddir, its ostree store and flatpak-builder's cache came to 1.4 GB on the laptop this was written on. It leaves `$BUILD_ROOT` alone, because that is the payload and the native core, and hours of V8 and ICU should not be removable by a repository-level tidy.
+`lb tidy` removes every artefact a build on this machine wrote, which is mostly the Flatpak: its builddir, its ostree store and flatpak-builder's cache came to 1.4 GB on the laptop this was written on. It leaves `$BUILD_ROOT` alone, because that is the payload and the native core, and hours of V8 and ICU should not be removable by a repository-level tidy.
 
 ## Running the checks
 

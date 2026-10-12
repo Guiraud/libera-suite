@@ -1,0 +1,82 @@
+From a0a4b64acc2987b01e09ab5bd45aa4a7b1bba965 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 16:55:48 +0200
+Subject: [PATCH 146/148] OdfFile writer: a click action belongs to the frame,
+ after its content
+
+A click action on a picture, a media object or a text box was written
+inside the draw:image, draw:plugin or draw:text-box, whichever level
+was open, where office:event-listeners is not allowed; and the frame
+wrote its own listeners before its content, where the schema wants
+them after: 11 of LibreOffice's ODF test documents after the seventh
+batch. The listeners now go to the frame, after its content. A
+listener with no event or no action, as for a click that only starts
+media or does nothing, is invalid and is no longer written.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/draw_frame.cpp             |  5 +++--
+ OdfFile/Writer/Format/odf_drawing_context.cpp    | 15 +++++++++++++--
+ OdfFile/Writer/Format/office_event_listeners.cpp |  3 +++
+ 3 files changed, 19 insertions(+), 4 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/draw_frame.cpp b/OdfFile/Writer/Format/draw_frame.cpp
+index d1b3b331c3..0abe6307a7 100644
+--- a/OdfFile/Writer/Format/draw_frame.cpp
++++ b/OdfFile/Writer/Format/draw_frame.cpp
+@@ -198,9 +198,10 @@ void draw_frame::serialize(std::wostream & _Wostream)
+ 			
+ 			draw_frame_attlist_.serialize(CP_GET_XML_NODE());
+ 
+-			if (office_event_listeners_)office_event_listeners_->serialize(CP_XML_STREAM());
+-
+ 			draw_base::serialize(CP_XML_STREAM());
++
++			// after the frame's content, not before it
++			if (office_event_listeners_)office_event_listeners_->serialize(CP_XML_STREAM());
+ 		}
+ 	}
+ }
+diff --git a/OdfFile/Writer/Format/odf_drawing_context.cpp b/OdfFile/Writer/Format/odf_drawing_context.cpp
+index 63280cb3e8..310a68a00b 100644
+--- a/OdfFile/Writer/Format/odf_drawing_context.cpp
++++ b/OdfFile/Writer/Format/odf_drawing_context.cpp
+@@ -3085,8 +3085,19 @@ void odf_drawing_context::start_action(std::wstring value)
+ 	office_element_ptr elm_listeners;
+ 	create_element(L"office", L"event-listeners", elm_listeners, impl_->odf_context_);
+ 
+-	start_element(elm_listeners);
+-	
++	// The image, text box or plugin in a frame takes no event listeners; the frame holding it does.
++	size_t level = impl_->current_level_.size();
++	draw_frame* frame = level > 1 && !dynamic_cast<draw_frame*>(impl_->current_level_[level - 1].elm.get())
++		? dynamic_cast<draw_frame*>(impl_->current_level_[level - 2].elm.get()) : NULL;
++	if (frame)
++	{
++		frame->add_child_element(elm_listeners);
++		impl_->current_drawing_state_.elements_.push_back(odf_element_state(elm_listeners, L"", office_element_ptr(), level));
++		impl_->current_level_.push_back(odf_level_state(impl_->current_graphic_properties, elm_listeners));
++	}
++	else
++		start_element(elm_listeners);
++
+ 	office_element_ptr elm;
+ 	create_element(L"presentation", L"event-listener", elm, impl_->odf_context_);
+ 
+diff --git a/OdfFile/Writer/Format/office_event_listeners.cpp b/OdfFile/Writer/Format/office_event_listeners.cpp
+index 2ff82c549f..cdb9b2a38d 100644
+--- a/OdfFile/Writer/Format/office_event_listeners.cpp
++++ b/OdfFile/Writer/Format/office_event_listeners.cpp
+@@ -114,6 +114,9 @@ void presentation_event_listener::add_child_element( const office_element_ptr &
+ }
+ void presentation_event_listener::serialize(std::wostream & _Wostream)
+ {
++	// Both are required. A click that only starts media, or does nothing, is left without them.
++	if (!attlist_.script_event_name_ || !attlist_.presentation_action_) return;
++
+     CP_XML_WRITER(_Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+-- 
+2.55.0
+

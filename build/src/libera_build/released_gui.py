@@ -1,0 +1,90 @@
+"""`lb release released-gui`: does what users download open a window?
+
+`lb linux gui` opens one from the build tree, in the test container: it proves
+the code opens a window and says nothing about the artifact anybody downloads,
+which on Linux is a Flatpak whose GTK and WebKit come from the GNOME runtime
+rather than the distribution. A different WebKit, and the one users get.
+
+This Mac has no flatpak, no Xvfb and no X server, so it asks machines that can.
+build/install/released-gui.sh is what runs there, and it stays shell: it is copied to
+a builder and run with no checkout and no payload of its own, like install.sh
+on a user's machine. This is the half that drives it: which machines, the copy,
+the verdict, the screenshot back.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+from libera_build import inventory, repo
+from libera_build.hosts import MARK, SshHost, facts_from
+from libera_build.repo import REPO
+from libera_build.report import RefusedError, say, step
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from libera_build.hosts import Host
+
+SCRIPT = "~/released-gui.sh"
+SHOT = "~/released-gui.png"
+
+
+@dataclass(frozen=True)
+class ReleasedGuiOptions:
+    on: str | None = None  # one ssh target; default every remote Linux builder
+    doc: str | None = None  # a document on that machine, instead of the payload's blank
+    root: Path = REPO
+    host_for: Callable[[str], Host] = field(default=SshHost)
+
+
+def passed(out: str) -> bool:
+    """The script's verdict, read from the line it printed for it: over ssh an
+    exit status describes the shell, including its logout scripts. The line and
+    not a word: "PASS" turned up in a document's path and the app's own log."""
+    return facts_from(out).get(MARK) == "ok"
+
+
+def on_host(host: Host, name: str, options: ReleasedGuiOptions) -> bool:
+    """Copy the script there, run it, bring the screenshot back."""
+    step(f"{name} on {host.name}")
+    if "reachable" not in host.capture("echo reachable"):
+        say("    unreachable")
+        return False
+    if host.send(options.root / "build" / "install" / "released-gui.sh", SCRIPT)[0]:
+        say("    could not copy the script there")
+        return False
+    doc = f" --doc {options.doc}" if options.doc else ""
+    out = host.capture(f"sh {SCRIPT} --out {SHOT}{doc}")
+    for line in out.splitlines():
+        say(f"    {line}")
+    if not passed(out):
+        return False
+    shot = options.root / "build" / "out" / f"released-gui-{name}.png"
+    shot.parent.mkdir(parents=True, exist_ok=True)
+    if host.fetch(SHOT, shot)[0] or not shot.is_file():
+        say("    it passed and the screenshot did not come back")
+        return False
+    say(f"    {shot}")
+    return True
+
+
+def run(options: ReleasedGuiOptions) -> int:
+    if options.on:
+        targets = [(options.on, options.on)]
+    else:
+        builders = inventory.read(options.root / repo.BUILDERS)
+        targets = [(b.platform, b.target) for b in inventory.linux_remotes(builders)]
+        if not targets:
+            msg = "no remote Linux builders in build/builders.toml"
+            raise RefusedError(msg)
+    passes = sum(
+        on_host(options.host_for(target), name, options) for name, target in targets
+    )
+    step(f"{passes} of {len(targets)} machine(s) drew a window")
+    if passes < len(targets):
+        msg = "a released Libera Suite did not draw a window everywhere"
+        raise RefusedError(msg)
+    return 0

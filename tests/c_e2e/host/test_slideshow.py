@@ -12,70 +12,26 @@ loudly, which is the right way to find out.
 
 from __future__ import annotations
 
-import json
 import shutil
-import threading
-import urllib.request
 
 import pytest
-from playwright.sync_api import Error, sync_playwright
-from support import find_free_port
 
 from libera import payload as payload_mod
-from libera.host import opening, server, session as sessions
-from libera.host.session import Session
 
 LOUD = ("error", "reject", "asc_onError")
-READY = 180_000
 
 
 @pytest.fixture
-def slides(tmp_path):
-    """Slides, open on the payload's blank deck, in a real browser."""
-    root = payload_mod.resolve().root
+def slides(editor_with, tmp_path):
+    """Slides, open on the payload's blank deck, in a real browser.
+
+    Ready when the document is laid out and the load mask is down, as every
+    editor here is: it waited for `Asc.editor` and then slept three seconds,
+    which is the condition tests/c_e2e/host/conftest.py says is wrong.
+    """
     deck = tmp_path / "deck.pptx"
-    shutil.copyfile(root / "empty" / "new.pptx", deck)
-
-    sessions.SESSIONS.clear()
-    shown = Session(payload=root, work=tmp_path / "0", document=deck)
-    sessions.configure(shown)
-    opening.open_document(shown, deck)
-
-    port = find_free_port()
-    httpd = server.make_server(port, shown)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-
-    play = sync_playwright().start()
-    try:
-        browser = play.chromium.launch()
-    except Error as e:
-        play.stop()
-        httpd.shutdown()
-        pytest.skip(f"needs Playwright's chromium: playwright install chromium ({e})")
-    page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto(server.make_editor_url(port, shown, deck.name))
-    page.wait_for_function(
-        "() => { const f = document.querySelector('iframe');"
-        "return f && f.contentWindow && f.contentWindow.Asc"
-        " && f.contentWindow.Asc.editor; }",
-        timeout=READY,
-    )
-    page.wait_for_timeout(3000)
-
-    def report() -> dict:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/__host__/calls", timeout=30
-        ) as r:
-            return json.load(r)
-
-    page.report = report
-    page.editor = page.frames[1]
-    yield page
-
-    browser.close()
-    play.stop()
-    httpd.shutdown()
-    sessions.SESSIONS.clear()
+    shutil.copyfile(payload_mod.resolve().root / "empty" / "new.pptx", deck)
+    return editor_with([], deck)
 
 
 def loud_errors(report: dict) -> list[str]:
@@ -86,21 +42,34 @@ def loud_errors(report: dict) -> list[str]:
     ]
 
 
-def start_the_show(page) -> None:
-    page.editor.locator("#slot-btn-dt-start-over").click()
-    page.wait_for_timeout(2500)
+def start_the_show(slides) -> None:
+    """Click, and wait for sdkjs to ask the host for the screen."""
+    with slides.answered("fullscreen"):
+        slides.frame.locator("#slot-btn-dt-start-over").click()
 
 
-def end_the_show(page) -> None:
+def end_the_show(slides) -> None:
     """Leave the slideshow, which is where the presenter window is torn down.
 
     Escape, not a click on the canvas: measured, both reach
     DemonstrationReporterEnd, and the preview element that takes the click is
     not the one with the id that looks right (#presentation-preview is an
-    empty shell; #pe-preview is the visible one).
+    empty shell; #pe-preview is the visible one). Leaving gives the screen
+    back, which is the request waited for.
     """
-    page.keyboard.press("Escape")
-    page.wait_for_timeout(2500)
+    with slides.answered("fullscreen"):
+        slides.page.keyboard.press("Escape")
+
+
+def quiet_since(slides) -> list[str]:
+    """The loud errors, once what was just done has had its moment to throw.
+
+    An error that is not raised has no event to wait for, so this waits a
+    fixed time after the action's own request was answered, then has the page
+    post everything it saw.
+    """
+    slides.wait_for_nothing()
+    return loud_errors(slides.reported())
 
 
 def test_ending_a_slideshow_does_not_raise(slides):
@@ -113,7 +82,7 @@ def test_ending_a_slideshow_does_not_raise(slides):
     start_the_show(slides)
     end_the_show(slides)
 
-    assert loud_errors(slides.report()) == []
+    assert quiet_since(slides) == []
 
 
 def test_show_from_the_beginning_does_not_raise(slides):
@@ -122,7 +91,7 @@ def test_show_from_the_beginning_does_not_raise(slides):
 
     start_the_show(slides)
 
-    assert loud_errors(slides.report()) == []
+    assert quiet_since(slides) == []
 
 
 def test_show_from_the_beginning_asks_the_host_for_fullscreen(slides):
@@ -133,7 +102,7 @@ def test_show_from_the_beginning_asks_the_host_for_fullscreen(slides):
     """
     start_the_show(slides)
 
-    assert slides.report()["routes"].get("fullscreen") == 1
+    assert slides.asked_for("fullscreen") == 1
 
 
 def test_the_bridge_carries_the_method_sdkjs_calls_unguarded(slides):
@@ -143,5 +112,5 @@ def test_the_bridge_carries_the_method_sdkjs_calls_unguarded(slides):
     which is right for a feature check and a TypeError for a call like this
     one.
     """
-    kind = slides.editor.evaluate("() => typeof window.AscDesktopEditor.SetFullscreen")
+    kind = slides.frame.evaluate("() => typeof window.AscDesktopEditor.SetFullscreen")
     assert kind == "function"

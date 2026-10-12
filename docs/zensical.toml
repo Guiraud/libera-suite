@@ -47,6 +47,7 @@ nav = [
     { "Using Libera Suite" = [
         { "Overview" = "guide/index.md" },
         { "Work with documents" = "guide/documents.md" },
+        { "Command line" = "guide/command-line.md" },
     ]},
     { "Developers" = [
         { "Overview" = "develop/index.md" },
@@ -58,6 +59,7 @@ nav = [
     ]},
     { "News" = [
         { "All news" = "news/index.md" },
+        { "Libera Suite 0.4: safer in a shared folder, more faithful to OpenDocument" = "news/2026-10-12-libera-suite-0-4.md" },
         { "Libera Suite: your documents, on your own machine" = "news/2026-10-01-your-documents-on-your-own-machine.md" },
     ]},
     { "Feedback" = "feedback.md" },

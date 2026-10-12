@@ -1,0 +1,45 @@
+From 5db1f2ac6ef5bc5b9d191987061d7492dbe5329c Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 07:49:07 +0200
+Subject: [PATCH 135/142] OdfFile writer: office:text opens with forms, tracked
+ changes, then sequences
+
+office:text wrote its sequence declarations first, then its forms, then
+its tracked changes. The schema wants forms, tracked changes, and then
+the declarations. A document with figure or table captions and tracked
+changes, or captions and form controls, was invalid: 4 of LibreOffice's
+ODF test documents once fix/odt-field-in-span-starts-its-element let SEQ fields inside spans
+become text:sequence.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/office_text.cpp | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/office_text.cpp b/OdfFile/Writer/Format/office_text.cpp
+index 7c5eef7008..3a6577dd79 100644
+--- a/OdfFile/Writer/Format/office_text.cpp
++++ b/OdfFile/Writer/Format/office_text.cpp
+@@ -151,15 +151,16 @@ void office_text::serialize(std::wostream & _Wostream)
+         {
+ 			office_text_attlist_.serialize(CP_GET_XML_NODE());
+ 
+-			if (sequences_)
+-				sequences_->serialize(CP_XML_STREAM());
+-
++			// The schema's order: forms, tracked changes, then declarations
+ 			if (forms_)
+ 				forms_->serialize(CP_XML_STREAM());
+ 
+ 			if (tracked_changes_)
+ 				tracked_changes_->serialize(CP_XML_STREAM());
+ 
++			if (sequences_)
++				sequences_->serialize(CP_XML_STREAM());
++
+ 			for (int  i = 0; i < content_.size(); i++)
+ 			{
+ 				content_[i]->serialize(CP_XML_STREAM());
+-- 
+2.55.0
+

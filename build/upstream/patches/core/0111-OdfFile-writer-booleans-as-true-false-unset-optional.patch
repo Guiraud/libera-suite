@@ -1,0 +1,421 @@
+From 833720c23f0ae6ada43cbfea2ac80db9db30138b Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 21:23:07 +0200
+Subject: [PATCH 111/142] OdfFile writer: booleans as true/false, unset
+ optionals left out
+
+Streaming a C++ bool into an attribute writes 0 or 1, and ODF's
+boolean type allows only true and false. Fixed where the writer does
+that: text:h (restart-numbering, is-list-header), table column and row
+groups (table:display), and line numbering (text:number-lines).
+Boolean spreadsheet cells had the same fault by another route: the
+XLSX cell text, 0 or 1, was copied into office:boolean-value.
+
+Streaming an unset boost::optional writes "--". Every optional
+attribute of the data pilot elements was written that way, so a
+data-pilot-table without, say, a grand-total came out with
+table:grand-total="--". They now use CP_XML_ATTR_OPT like the rest
+of the writer.
+
+Across LibreOffice's 3794 ODF test documents these account for 531
+documents with bad boolean cells, 39 with "--" attributes, and 15
+with bad heading attributes.
+
+OdfFile writer: collapsed outline groups say so
+
+The writer never set table:display on a column or row group, so every
+group came out displayed. Writing that bool as 1 used to hide this:
+the reader does not take 1 for true, so on the next trip every group
+read as collapsed, and hidden columns stayed hidden by accident. With
+the value now a valid true, the next trip believes it and the hidden
+columns come back visible (sc/qa/unit/data/ods/outline.ods).
+
+XLSX says a group is collapsed only by hiding its members, so the
+table state now counts each group's members and hidden members, and a
+group whose members are all hidden is written table:display=false.
+One hidden row in an open group does not collapse it.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/ods_table_state.cpp     |  15 ++-
+ OdfFile/Writer/Format/styles.cpp              |   2 +-
+ OdfFile/Writer/Format/table.cpp               |   4 +-
+ OdfFile/Writer/Format/table.h                 |  12 ++
+ .../Writer/Format/table_data_pilot_tables.cpp | 112 +++++++++---------
+ OdfFile/Writer/Format/text_elements.cpp       |   4 +-
+ 6 files changed, 87 insertions(+), 62 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/ods_table_state.cpp b/OdfFile/Writer/Format/ods_table_state.cpp
+index da6fbe938a..5b405b187a 100644
+--- a/OdfFile/Writer/Format/ods_table_state.cpp
++++ b/OdfFile/Writer/Format/ods_table_state.cpp
+@@ -382,6 +382,8 @@ void ods_table_state::add_row_break(_INT32 val)
+ void ods_table_state::add_column(office_element_ptr & elm, _UINT32 repeated, office_element_ptr & style_elm)
+ {
+ 	current_level_.back()->add_child_element(elm);
++	if (table_table_column_group* group = dynamic_cast<table_table_column_group*>(current_level_.back().get()))
++		group->members_++;
+ 
+ 	std::wstring style_name;
+ 
+@@ -464,6 +466,9 @@ void ods_table_state::set_column_hidden(bool val)
+ 	table_table_column* column = dynamic_cast<table_table_column*>(columns_.back().elm.get());
+ 	if (column == NULL) return;
+ 
++	if (!column->attlist_.table_visibility_)
++		if (table_table_column_group* group = dynamic_cast<table_table_column_group*>(current_level_.back().get()))
++			group->hidden_members_++;
+ 	column->attlist_.table_visibility_ = table_visibility(table_visibility::Collapse);
+ }
+ void ods_table_state::set_table_dimension(_INT32 col, _INT32 row)
+@@ -490,6 +495,8 @@ void ods_table_state::add_row(office_element_ptr & elm, _UINT32 repeated, office
+ 		}
+ 	}
+ 	current_level_.back()->add_child_element(elm);
++	if (table_table_row_group* group = dynamic_cast<table_table_row_group*>(current_level_.back().get()))
++		group->members_++;
+ 
+ 	std::wstring style_name;
+ 
+@@ -533,6 +540,10 @@ void ods_table_state::set_row_hidden(bool Val)
+ 	table_table_row* row = dynamic_cast<table_table_row*>(rows_.back().elm.get());
+ 	if (row == NULL)return;
+ 
++	// Hidden and collapsed both land here for one row; count it once.
++	if (!row->attlist_.table_visibility_)
++		if (table_table_row_group* group = dynamic_cast<table_table_row_group*>(current_level_.back().get()))
++			group->hidden_members_++;
+ 	row->attlist_.table_visibility_ = table_visibility(table_visibility::Collapse);
+ }
+ void ods_table_state::set_row_optimal_height(bool val)
+@@ -1358,7 +1369,9 @@ void ods_table_state::set_cell_value(const std::wstring & value, bool need_cash)
+ 			cell->attlist_.common_value_and_type_attlist_->office_string_value_ = value;
+ 			break;
+ 		case office_value_type::Boolean:
+-			cell->attlist_.common_value_and_type_attlist_->office_boolean_value_ = value;
++			// XLSX writes a boolean cell as 0 or 1; ODF wants false or true.
++			cell->attlist_.common_value_and_type_attlist_->office_boolean_value_ =
++				value == L"1" ? L"true" : value == L"0" ? L"false" : value;
+ 			break;
+ 		case office_value_type::Date:
+ 		case office_value_type::Time:
+diff --git a/OdfFile/Writer/Format/styles.cpp b/OdfFile/Writer/Format/styles.cpp
+index 7ea164c340..84114118bd 100644
+--- a/OdfFile/Writer/Format/styles.cpp
++++ b/OdfFile/Writer/Format/styles.cpp
+@@ -1410,7 +1410,7 @@ void text_linenumbering_configuration::serialize(std::wostream & strm)
+ 			CP_XML_ATTR_OPT(L"text:style-name", text_style_name_);
+ 			if (false == text_number_lines_)
+ 			{
+-				CP_XML_ATTR(L"text:number-lines", text_number_lines_);
++				CP_XML_ATTR(L"text:number-lines", L"false");
+ 			}
+ 			CP_XML_ATTR_OPT(L"style:num-format", style_num_format_);
+ 			CP_XML_ATTR_OPT(L"style:num-letter-sync", style_num_letter_sync_);
+diff --git a/OdfFile/Writer/Format/table.cpp b/OdfFile/Writer/Format/table.cpp
+index 1eacdbb5f4..1a9d92afa2 100644
+--- a/OdfFile/Writer/Format/table.cpp
++++ b/OdfFile/Writer/Format/table.cpp
+@@ -501,7 +501,7 @@ void table_table_column_group::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR( L"table:display",	table_table_column_group_attlist_.table_display_);
++			CP_XML_ATTR( L"table:display",	table_table_column_group_attlist_.table_display_ && !collapsed() ? L"true" : L"false");
+ 
+ 			table_columns_and_groups_.serialize(CP_XML_STREAM());	
+ 		}
+@@ -904,7 +904,7 @@ void table_table_row_group::add_child_element( const office_element_ptr & child_
+ 	{
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR( L"table:display",	table_table_row_group_attlist_.table_display_);
++			CP_XML_ATTR( L"table:display",	table_table_row_group_attlist_.table_display_ && !collapsed() ? L"true" : L"false");
+ 			
+ 			table_rows_and_groups_.serialize(CP_XML_STREAM());
+ 		}
+diff --git a/OdfFile/Writer/Format/table.h b/OdfFile/Writer/Format/table.h
+index 615834444d..4bae4a302d 100644
+--- a/OdfFile/Writer/Format/table.h
++++ b/OdfFile/Writer/Format/table.h
+@@ -372,6 +372,12 @@ public:
+     table_table_column_group_attlist	table_table_column_group_attlist_;
+     table_columns_and_groups			table_columns_and_groups_;
+ 
++	// XLSX says an outline group is collapsed only by hiding its members; ODF says it
++	// on the group. Counted as the members are added and hidden, read at serialisation.
++	int members_ = 0;
++	int hidden_members_ = 0;
++	bool collapsed() const { return members_ > 0 && hidden_members_ == members_; }
++
+ };
+ 
+ CP_REGISTER_OFFICE_ELEMENT2(table_table_column_group);
+@@ -585,6 +591,12 @@ public:
+     table_table_row_group_attlist table_table_row_group_attlist_;
+     table_rows_and_groups table_rows_and_groups_;
+ 
++	// XLSX says an outline group is collapsed only by hiding its members; ODF says it
++	// on the group. Counted as the members are added and hidden, read at serialisation.
++	int members_ = 0;
++	int hidden_members_ = 0;
++	bool collapsed() const { return members_ > 0 && hidden_members_ == members_; }
++
+ };
+ 
+ CP_REGISTER_OFFICE_ELEMENT2(table_table_row_group);
+diff --git a/OdfFile/Writer/Format/table_data_pilot_tables.cpp b/OdfFile/Writer/Format/table_data_pilot_tables.cpp
+index 24c1e92a38..9a148fb8ca 100644
+--- a/OdfFile/Writer/Format/table_data_pilot_tables.cpp
++++ b/OdfFile/Writer/Format/table_data_pilot_tables.cpp
+@@ -103,14 +103,14 @@ void table_data_pilot_table::serialize(std::wostream & _Wostream)
+ 		CP_XML_NODE_SIMPLE()
+         {  
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"table:name"		, table_name_);
+-			CP_XML_ATTR(L"table:application-data"			, table_application_data_);
+-			CP_XML_ATTR(L"table:buttons"					, table_buttons_);
+-			CP_XML_ATTR(L"table:drill-down-on-double-click"	, table_drill_down_ondouble_click_);
+-			CP_XML_ATTR(L"table:grand-total"				, table_grand_total_);
+-			CP_XML_ATTR(L"table:identify-categories"		, table_identify_categories_);
+-			CP_XML_ATTR(L"table:ignore-empty-rows"			, table_ignore_empty_rows_);
+-			CP_XML_ATTR(L"table:show-filter-button"			, table_show_filter_button_);
+-			CP_XML_ATTR(L"table:target-range-address"		, table_target_range_address_);
++			CP_XML_ATTR_OPT(L"table:application-data"			, table_application_data_);
++			CP_XML_ATTR_OPT(L"table:buttons"					, table_buttons_);
++			CP_XML_ATTR_OPT(L"table:drill-down-on-double-click"	, table_drill_down_ondouble_click_);
++			CP_XML_ATTR_OPT(L"table:grand-total"				, table_grand_total_);
++			CP_XML_ATTR_OPT(L"table:identify-categories"		, table_identify_categories_);
++			CP_XML_ATTR_OPT(L"table:ignore-empty-rows"			, table_ignore_empty_rows_);
++			CP_XML_ATTR_OPT(L"table:show-filter-button"			, table_show_filter_button_);
++			CP_XML_ATTR_OPT(L"table:target-range-address"		, table_target_range_address_);
+ 
+ 			if (source_)
+ 				source_->serialize(CP_XML_STREAM());
+@@ -162,14 +162,14 @@ void table_data_pilot_field::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         { 
+-			CP_XML_ATTR(L"table:source-field-name"		, table_source_field_name_);
+-			CP_XML_ATTR(L"table:orientation"			, table_orientation_);
+-			CP_XML_ATTR(L"table:used-hierarchy"			, table_used_hierarchy_);
+-			CP_XML_ATTR(L"table:function"				, table_function_);
+-			CP_XML_ATTR(L"loext:ignore-selected-page"	, loext_ignore_selected_page_);
+-			CP_XML_ATTR(L"table:selected-page"			, table_selected_page_);
+-			CP_XML_ATTR(L"table:is-data-layout-field"	, table_is_data_layout_field_);
+-			CP_XML_ATTR(L"tableooo:display-name"		, table_display_name_);
++			CP_XML_ATTR_OPT(L"table:source-field-name"		, table_source_field_name_);
++			CP_XML_ATTR_OPT(L"table:orientation"			, table_orientation_);
++			CP_XML_ATTR_OPT(L"table:used-hierarchy"			, table_used_hierarchy_);
++			CP_XML_ATTR_OPT(L"table:function"				, table_function_);
++			CP_XML_ATTR_OPT(L"loext:ignore-selected-page"	, loext_ignore_selected_page_);
++			CP_XML_ATTR_OPT(L"table:selected-page"			, table_selected_page_);
++			CP_XML_ATTR_OPT(L"table:is-data-layout-field"	, table_is_data_layout_field_);
++			CP_XML_ATTR_OPT(L"tableooo:display-name"		, table_display_name_);
+ 
+ 			if (level_)
+ 				level_->serialize(CP_XML_STREAM());
+@@ -192,10 +192,10 @@ void table_data_pilot_field_reference::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         { 
+-			CP_XML_ATTR(L"table:field-name"		, table_field_name_);
+-			CP_XML_ATTR(L"table:member-name"	, table_member_name_);
+-			CP_XML_ATTR(L"table:member-type"	, table_member_type_);
+-			CP_XML_ATTR(L"table:type"			, table_type_);
++			CP_XML_ATTR_OPT(L"table:field-name"		, table_field_name_);
++			CP_XML_ATTR_OPT(L"table:member-name"	, table_member_name_);
++			CP_XML_ATTR_OPT(L"table:member-type"	, table_member_type_);
++			CP_XML_ATTR_OPT(L"table:type"			, table_type_);
+ 		}
+ 	}
+ }
+@@ -209,8 +209,8 @@ void table_database_source_table::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         { 
+-			CP_XML_ATTR(L"table:database-name", table_database_name_);
+-			CP_XML_ATTR(L"table:table-name"	, table_table_name_);
++			CP_XML_ATTR_OPT(L"table:database-name", table_database_name_);
++			CP_XML_ATTR_OPT(L"table:table-name"	, table_table_name_);
+ 		}
+ 	}
+ }
+@@ -224,8 +224,8 @@ void table_database_source_query::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         { 
+-			CP_XML_ATTR(L"table:database-name"	, table_database_name_);
+-			CP_XML_ATTR(L"table:query-name"		, table_query_name_);	
++			CP_XML_ATTR_OPT(L"table:database-name"	, table_database_name_);
++			CP_XML_ATTR_OPT(L"table:query-name"		, table_query_name_);	
+ 		}
+ 	}
+ }
+@@ -239,9 +239,9 @@ void table_database_source_sql::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         { 
+-			CP_XML_ATTR(L"table:database-name"		, table_database_name_);
+-			CP_XML_ATTR(L"table:parse-sql-statement", table_parse_sql_statement_);
+-			CP_XML_ATTR(L"table:sql-statement"		, table_sql_statement_);
++			CP_XML_ATTR_OPT(L"table:database-name"		, table_database_name_);
++			CP_XML_ATTR_OPT(L"table:parse-sql-statement", table_parse_sql_statement_);
++			CP_XML_ATTR_OPT(L"table:sql-statement"		, table_sql_statement_);
+ 		}
+ 	}
+ }
+@@ -265,7 +265,7 @@ void table_source_cell_range::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:cell-range-address", table_cell_range_address_);
++			CP_XML_ATTR_OPT(L"table:cell-range-address", table_cell_range_address_);
+ 			
+ 			for (size_t i = 0; i < content_.size(); i++)
+ 			{
+@@ -284,7 +284,7 @@ void table_source_cell_ranges::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:cell-ranges-address", table_cell_ranges_address_);
++			CP_XML_ATTR_OPT(L"table:cell-ranges-address", table_cell_ranges_address_);
+ 		}
+ 	}
+ }
+@@ -299,10 +299,10 @@ void table_source_service::serialize(std::wostream & _Wostream)
+ 		CP_XML_NODE_SIMPLE()
+         {
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"table:name", table_name_);
+-			CP_XML_ATTR(L"table:object-name", table_object_name_);
+-			CP_XML_ATTR(L"table:password",	table_password_);
+-			CP_XML_ATTR(L"table:source-name", table_source_name_);
+-			CP_XML_ATTR(L"table:user-name",	table_user_name_);
++			CP_XML_ATTR_OPT(L"table:object-name", table_object_name_);
++			CP_XML_ATTR_OPT(L"table:password",	table_password_);
++			CP_XML_ATTR_OPT(L"table:source-name", table_source_name_);
++			CP_XML_ATTR_OPT(L"table:user-name",	table_user_name_);
+ 		}
+ 	}
+ }
+@@ -355,8 +355,8 @@ void table_data_pilot_level::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:show-empty", table_show_empty_);
+-			CP_XML_ATTR(L"calcext:repeat-item-labels", calcext_repeat_item_labels_);
++			CP_XML_ATTR_OPT(L"table:show-empty", table_show_empty_);
++			CP_XML_ATTR_OPT(L"calcext:repeat-item-labels", calcext_repeat_item_labels_);
+ 
+ 			if (display_info_)
+ 				display_info_->serialize(CP_XML_STREAM());
+@@ -395,12 +395,12 @@ void table_data_pilot_groups::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:date-start",		table_date_start_);
+-			CP_XML_ATTR(L"table:date-end",			table_date_end_);
++			CP_XML_ATTR_OPT(L"table:date-start",		table_date_start_);
++			CP_XML_ATTR_OPT(L"table:date-end",			table_date_end_);
+ 			CP_XML_ATTR(L"table:start",				table_start);
+-			CP_XML_ATTR(L"table:end",				table_end_);
+-			CP_XML_ATTR(L"table:grouped-by",		table_grouped_by_);
+-			CP_XML_ATTR(L"table:source-field-name",	table_source_field_name_);
++			CP_XML_ATTR_OPT(L"table:end",				table_end_);
++			CP_XML_ATTR_OPT(L"table:grouped-by",		table_grouped_by_);
++			CP_XML_ATTR_OPT(L"table:source-field-name",	table_source_field_name_);
+ 			CP_XML_ATTR(L"table:step",				table_step);
+ 			
+ 			for (size_t i = 0; i < content_.size(); i++)
+@@ -477,8 +477,8 @@ void table_data_pilot_member::serialize(std::wostream & _Wostream)
+ 		CP_XML_NODE_SIMPLE()
+         {
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"table:name", table_name_);
+-			CP_XML_ATTR(L"table:display", table_display_);
+-			CP_XML_ATTR(L"table:show-details", table_show_details_);
++			CP_XML_ATTR_OPT(L"table:display", table_display_);
++			CP_XML_ATTR_OPT(L"table:show-details", table_show_details_);
+ 		}
+ 	}
+ }
+@@ -533,7 +533,7 @@ void table_data_pilot_subtotal::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:function",	table_function_);
++			CP_XML_ATTR_OPT(L"table:function",	table_function_);
+ 		}
+ 	}
+ }
+@@ -547,10 +547,10 @@ void table_data_pilot_grand_total::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:display"				, table_display_);
+-			CP_XML_ATTR(L"table:orientation"			, table_orientation_);
+-			//CP_XML_ATTR(L"table:display-name"			, table_display_name_);
+-			CP_XML_ATTR(L"tableooo:display-name"		, table_display_name_);
++			CP_XML_ATTR_OPT(L"table:display"				, table_display_);
++			CP_XML_ATTR_OPT(L"table:orientation"			, table_orientation_);
++			//CP_XML_ATTR_OPT(L"table:display-name"			, table_display_name_);
++			CP_XML_ATTR_OPT(L"tableooo:display-name"		, table_display_name_);
+ 		}
+ 	}
+ }
+@@ -564,8 +564,8 @@ void table_data_pilot_layout_info::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:add-empty-lines"	, table_add_empty_lines_);
+-			CP_XML_ATTR(L"table:layout-mode"		, table_layout_mode_);
++			CP_XML_ATTR_OPT(L"table:add-empty-lines"	, table_add_empty_lines_);
++			CP_XML_ATTR_OPT(L"table:layout-mode"		, table_layout_mode_);
+ 		}
+ 	}
+ }
+@@ -579,9 +579,9 @@ void table_data_pilot_sort_info::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:data-field"	, table_data_field_);
+-			CP_XML_ATTR(L"table:order"		, table_order_);
+-			CP_XML_ATTR(L"table:sort-mode"	, table_sort_mode_);
++			CP_XML_ATTR_OPT(L"table:data-field"	, table_data_field_);
++			CP_XML_ATTR_OPT(L"table:order"		, table_order_);
++			CP_XML_ATTR_OPT(L"table:sort-mode"	, table_sort_mode_);
+ 		}
+ 	}
+ }
+@@ -595,10 +595,10 @@ void table_data_pilot_display_info::serialize(std::wostream & _Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR(L"table:data-field"			, table_data_field_);
+-			CP_XML_ATTR(L"table:display-member-mode"	, table_display_member_mode_);
+-			CP_XML_ATTR(L"table:enabled"				, table_enabled_);
+-			CP_XML_ATTR(L"table:member-count"			, table_member_count_);
++			CP_XML_ATTR_OPT(L"table:data-field"			, table_data_field_);
++			CP_XML_ATTR_OPT(L"table:display-member-mode"	, table_display_member_mode_);
++			CP_XML_ATTR_OPT(L"table:enabled"				, table_enabled_);
++			CP_XML_ATTR_OPT(L"table:member-count"			, table_member_count_);
+ 		}
+ 	}
+ }
+diff --git a/OdfFile/Writer/Format/text_elements.cpp b/OdfFile/Writer/Format/text_elements.cpp
+index a7d11e5d36..dbe8eb0469 100644
+--- a/OdfFile/Writer/Format/text_elements.cpp
++++ b/OdfFile/Writer/Format/text_elements.cpp
+@@ -78,9 +78,9 @@ void text_h::serialize(std::wostream & _Wostream)
+ 		CP_XML_NODE_SIMPLE()
+         {
+ 			CP_XML_ATTR		(L"text:outline-level",		text_outline_level_);
+-			CP_XML_ATTR		(L"text:restart-numbering",	text_restart_numbering_);
++			CP_XML_ATTR		(L"text:restart-numbering",	text_restart_numbering_ ? L"true" : L"false");
+ 			CP_XML_ATTR_OPT	(L"text:start-value",		text_start_value_);
+-			CP_XML_ATTR		(L"text:is-list-header",	text_is_list_header_);
++			CP_XML_ATTR		(L"text:is-list-header",	text_is_list_header_ ? L"true" : L"false");
+ 
+ 			paragraph_attrs_.serialize(CP_GET_XML_NODE());
+ 			
+-- 
+2.55.0
+

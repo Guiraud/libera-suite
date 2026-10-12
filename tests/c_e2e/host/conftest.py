@@ -9,9 +9,11 @@ Chromium loads the editor from it. It has no window opener, like `--serve`.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import urllib.request
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 import pytest
 from playwright.sync_api import (
@@ -21,6 +23,7 @@ from playwright.sync_api import (
 )
 from support import find_free_port
 
+from c_e2e.conftest import SYNC_REPORTS, flush_reports
 from libera import payload as payload_mod
 from libera.host import opening, server, session as sessions
 from libera.host.session import Session
@@ -32,6 +35,9 @@ if TYPE_CHECKING:
 # The editor takes a while to be ready for a keystroke, and a key pressed at a
 # page that has not finished booting tells us nothing.
 READY = 180_000
+# How long to watch for something that must not happen. Only ever after a sync
+# point, so this covers a request already on its way, not a page catching up.
+ABSENCE = 1_000
 
 
 class Editor:
@@ -39,7 +45,7 @@ class Editor:
 
     def __init__(self, page, port: int) -> None:
         self.page = page
-        self._calls = f"http://127.0.0.1:{port}/__host__/calls"
+        self._calls = f"http://127.0.0.1:{port}/__host__/report"
         # Requests the page gave up on: a load that never finishes is one of
         # these, and saying so is the difference between a stall and a stopwatch.
         self.failed: list[str] = []
@@ -49,8 +55,27 @@ class Editor:
         with urllib.request.urlopen(self._calls, timeout=30) as r:
             return json.load(r)
 
+    def reported(self) -> dict:
+        """The report, once the page has posted everything it holds: an error
+        raised since the bridge's last one-second tick is not in `report()`."""
+        flush_reports(self.page)
+        return self.report()
+
     def asked_for(self, route: str) -> int:
         return self.report()["routes"].get(route, 0)
+
+    def answered(self, route: str):
+        """Around an action: wait until the host has answered the request to
+        `route` that the action makes. A count read after a fixed wait missed
+        a request that arrived late, and a loaded machine makes them late."""
+        path = f"/__host__/{route}"
+        return self.page.expect_response(lambda r: urlparse(r.url).path == path)
+
+    def wait_for_nothing(self) -> None:
+        """The one fixed wait: for a request that must not come. There is no
+        event to wait for, only time, so it follows a sync point the caller
+        has already reached."""
+        self.page.wait_for_timeout(ABSENCE)
 
     def wait_until_ready(self) -> None:
         """Until the document is laid out and the load mask is down.
@@ -62,8 +87,12 @@ class Editor:
         five.
 
         onDocumentContentReady is the editor saying the document is laid out,
-        read from this page's own call log: the host's counters are shared by
-        every page in the process.
+        read from this page's own record of the calls it made: the host's
+        counters are shared by every page in the process. Not from
+        the shared call log (the top frame's `__libera__.calls`), which each
+        report empties, and the report goes the
+        moment the document is ready: the PDF editor's ready call was gone
+        before this looked, every time.
 
         A load that never gets there says which requests failed. That is how
         the stall at "Loading document: 8%" was found: a font request reset by
@@ -74,8 +103,8 @@ class Editor:
             self.page.wait_for_function(
                 "() => { const f = document.querySelector('iframe');"
                 " const d = f && f.contentDocument;"
-                " return (window.__libera_calls || []).some("
-                "(c) => c.name === 'onDocumentContentReady')"
+                " return !!window.__libera_seen"
+                " && window.__libera_seen.has('onDocumentContentReady')"
                 " && !!d && !d.querySelector('.asc-loadmask'); }",
                 timeout=READY,
             )
@@ -130,15 +159,16 @@ class Editor:
         The click is not decoration. The editor is in an iframe, and a key sent
         to a page whose focus is still on the outer document reaches nothing --
         measured: no click, no keydown in the frame, no request to the host.
+        So the key waits for the editor's frame to have the focus.
+
+        What the key should make happen is the caller's to wait for:
+        `answered` for a request, `wait_for_nothing` for none.
         """
         self.page.locator("iframe").first.click(
             position={"x": 300, "y": 300}, force=True
         )
-        self.page.wait_for_timeout(300)
+        self.frame.wait_for_function("() => document.hasFocus()")
         self.page.keyboard.press(combination)
-        # The request is a synchronous XHR from the page, but the keystroke
-        # that triggers it is not: give it a moment to arrive.
-        self.page.wait_for_timeout(1500)
 
 
 @pytest.fixture
@@ -149,8 +179,10 @@ def editor_with(tmp_path, sample_document, monkeypatch):
     editor.
     """
 
-    def _open(owned: list[dict], document: Path) -> Iterator[Editor]:
-        monkeypatch.setattr(server.get, "list_owned_keys", lambda: owned)
+    def _open(
+        owned: list[dict], document: Path, locked_by: str | None
+    ) -> Iterator[Editor]:
+        monkeypatch.setattr(server.editor, "list_owned_keys", lambda: owned)
         sessions.SESSIONS.clear()
         opened = Session(
             payload=payload_mod.resolve().root,
@@ -159,6 +191,8 @@ def editor_with(tmp_path, sample_document, monkeypatch):
         )
         sessions.configure(opened)
         opening.open_document(opened, document)
+        # What `locking.hold` records in a window; `--serve` never locks.
+        opened.locked_by = locked_by
 
         port = find_free_port()
         httpd = server.make_server(port, opened)
@@ -167,17 +201,24 @@ def editor_with(tmp_path, sample_document, monkeypatch):
 
     made: list = []
 
-    def open_editor(owned: list[dict], document: Path | None = None) -> Editor:
+    def open_editor(
+        owned: list[dict],
+        document: Path | None = None,
+        locked_by: str | None = None,
+    ) -> Editor:
         document = document or sample_document
-        httpd, port, opened = _open(owned, document)
+        httpd, port, opened = _open(owned, document, locked_by)
         made.append(httpd)
         play = sync_playwright().start()
         made.append(play)
+        # Chromium unless E2E_BROWSER says otherwise: webkit is the engine of
+        # the macOS window, and the Save As race was WebKit's alone.
+        engine = os.environ.get("E2E_BROWSER", "chromium")
         try:
-            browser = play.chromium.launch()
+            browser = getattr(play, engine).launch()
         except Error as e:  # the browser was never downloaded
             pytest.skip(
-                f"needs Playwright's chromium: uv run playwright install chromium ({e})"
+                f"needs Playwright's {engine}: uv run playwright install {engine} ({e})"
             )
         made.append(browser)
         page = browser.new_page()
@@ -189,6 +230,7 @@ def editor_with(tmp_path, sample_document, monkeypatch):
             "window.__keys = [];"
             "window.addEventListener('keydown', (e) => window.__keys.push(e), true);"
         )
+        page.add_init_script(SYNC_REPORTS)
         editor = Editor(page, port)  # before the page loads: it watches requests
         page.goto(server.make_editor_url(port, opened, document.name))
         editor.wait_until_ready()

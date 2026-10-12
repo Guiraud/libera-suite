@@ -17,8 +17,8 @@ from support import ScriptedShell
 
 from libera import payload as payload_mod
 from libera.host import apps, hooks, opening, session as sessions
-from libera.host.convert import export, find_misread_rows
-from libera.host.saving import save_document
+from libera.host.convert import ConversionError, export
+from libera.host.saving import SaveRequest, save_document
 from libera.host.session import Session
 
 if TYPE_CHECKING:
@@ -48,9 +48,7 @@ def test_every_format_every_editor_offers_is_one_x2t_writes(
     """
     blank = open_blank(app)
     out = tmp_path / f"out.{ext}"
-    assert export(blank, out, app.ids_by_ext[ext], None), (
-        f"x2t would not write .{ext} for {app.name}"
-    )
+    export(blank, out, app.ids_by_ext[ext], None)
     assert out.stat().st_size > 0
 
 
@@ -62,7 +60,7 @@ def test_no_editor_offers_a_format_its_converter_does_not_know(app: apps.App):
 def test_plain_save_overwrites_the_document_that_is_open(opened: Session):
     """fileType 0 means "whatever it already was", and no dialog is involved."""
     before = opened.document.stat().st_mtime_ns
-    result = save_document(opened, {"fileType": 0})
+    result = save_document(opened, SaveRequest())
 
     assert result == {"error": 0, "path": str(opened.document)}
     assert opened.document.stat().st_mtime_ns != before
@@ -85,7 +83,7 @@ def test_save_as_follows_the_extension_the_user_typed(
         ScriptedShell(choose_save_path=lambda _name, _formats, _start_in: str(chosen)),
     )
 
-    result = save_document(opened, {"fileType": 65, "params": "saveas=true"})
+    result = save_document(opened, SaveRequest(file_type=65, save_as=True))
 
     assert result == {"error": 0, "path": str(chosen)}
     assert chosen.read_bytes()[:2] == b"PK"  # an ODF package, not a docx
@@ -108,9 +106,14 @@ def test_a_failed_save_as_leaves_the_session_on_the_open_document(
         "shell",
         ScriptedShell(choose_save_path=lambda _name, _formats, _start_in: elsewhere),
     )
-    monkeypatch.setattr("libera.host.convert.export", lambda *_: False)
 
-    result = save_document(opened, {"fileType": 65, "params": "saveas=true"})
+    def fails(*_a):
+        msg = "x2t could not write elsewhere.odt (exit status 1)"
+        raise ConversionError(msg)
+
+    monkeypatch.setattr("libera.host.convert.export", fails)
+
+    result = save_document(opened, SaveRequest(file_type=65, save_as=True))
 
     assert result["error"] == 2
     assert opened.current_file.read_text() == str(opened.document)
@@ -127,7 +130,7 @@ def test_a_cancelled_save_as_writes_nothing_and_says_nothing(
     )
     before = opened.document.stat().st_mtime_ns
 
-    assert save_document(opened, {"fileType": 65, "params": "saveas=true"}) == {
+    assert save_document(opened, SaveRequest(file_type=65, save_as=True)) == {
         "error": 1
     }
     assert opened.document.stat().st_mtime_ns == before
@@ -140,18 +143,78 @@ def test_printing_makes_a_pdf_beside_the_session_not_over_the_document(
     monkeypatch.setattr("libera.host.desktop.open_externally", lambda _p: True)
     before = opened.document.stat().st_mtime_ns
 
-    result = save_document(opened, {"fileType": 513, "isPrint": True})
+    result = save_document(opened, SaveRequest(file_type=513, printing=True))
 
     assert result["error"] == 0
     assert result["path"].endswith(f"{opened.document.stem}.pdf")
     assert opened.document.stat().st_mtime_ns == before
 
 
+def printing_where(monkeypatch, answer):
+    """A windowed shell whose save panel answers `answer`, recording what it
+    was asked; and the viewer, recording what it was handed."""
+    asked: list = []
+    shown: list = []
+
+    def choose(name, formats, start_in):
+        asked.append((name, formats, start_in))
+        return answer
+
+    monkeypatch.setattr(hooks, "shell", ScriptedShell(choose_save_path=choose))
+    monkeypatch.setattr(
+        "libera.host.desktop.open_externally", lambda path: shown.append(path) or True
+    )
+    return asked, shown
+
+
+def test_a_print_asks_where_starting_beside_the_document(
+    opened: Session, monkeypatch, tmp_path
+):
+    chosen = tmp_path / "elsewhere" / "Printed.pdf"
+    chosen.parent.mkdir()
+    asked, shown = printing_where(monkeypatch, str(chosen))
+
+    result = save_document(opened, SaveRequest(file_type=513, printing=True))
+
+    [(name, formats, start_in)] = asked
+    assert name == f"{opened.document.stem}.pdf"
+    assert start_in == opened.document.parent
+    assert [ext for _, ext in formats] == ["pdf"], "a print offers PDF only"
+    assert chosen.read_bytes()[:5] == b"%PDF-"
+    assert shown == [chosen], "the viewer is handed the file the user kept"
+    assert result["path"] == str(chosen)
+    assert opened.read_current_document() == opened.document, (
+        "a print is not a Save As: the window stays on its document"
+    )
+
+
+def test_a_cancelled_print_makes_nothing(opened: Session, monkeypatch):
+    _asked, shown = printing_where(monkeypatch, "")
+
+    assert (
+        save_document(opened, SaveRequest(file_type=513, printing=True))["error"] == 1
+    )
+    assert shown == []
+
+
+def test_a_print_is_a_pdf_whatever_name_was_typed(
+    opened: Session, monkeypatch, tmp_path
+):
+    _asked, shown = printing_where(monkeypatch, str(tmp_path / "Printed"))
+
+    save_document(opened, SaveRequest(file_type=513, printing=True))
+
+    assert shown == [tmp_path / "Printed.pdf"]
+    assert (tmp_path / "Printed.pdf").read_bytes()[:5] == b"%PDF-"
+
+
 def test_a_print_nothing_opens_is_a_failed_print(opened: Session, monkeypatch):
     """The PDF is made, but nothing will show it: that is not a print."""
     monkeypatch.setattr("libera.host.desktop.open_externally", lambda _p: False)
 
-    assert save_document(opened, {"fileType": 513, "isPrint": True})["error"] == 2
+    assert (
+        save_document(opened, SaveRequest(file_type=513, printing=True))["error"] == 2
+    )
 
 
 @pytest.mark.parametrize("app", apps.ALL, ids=lambda a: a.name)
@@ -175,7 +238,7 @@ def test_a_viewer_refuses_to_save(opened: Session, tmp_path: pathlib.Path):
         app=apps.DIAGRAMS,
     )
     sessions.configure(viewer)
-    assert save_document(viewer, {"fileType": 0}) == {"error": 1}
+    assert save_document(viewer, SaveRequest()) == {"error": 1}
 
 
 def open_in(app: apps.App, document: pathlib.Path, work: pathlib.Path) -> Session:
@@ -208,7 +271,7 @@ def test_a_csv_opens_and_saves_the_way_it_was_written(tmp_path, name):
     for n in range(2):
         table = open_in(apps.TABLES, document, tmp_path / f"session{n}")
         assert table.editor_bin.read_bytes()[:5] == b"XLSY;"
-        assert save_document(table, {"fileType": 0}) == {
+        assert save_document(table, SaveRequest()) == {
             "error": 0,
             "path": str(document),
         }
@@ -230,7 +293,7 @@ def test_save_as_tsv_writes_tabs(tmp_path, monkeypatch):
     )
     table = open_in(apps.TABLES, document, tmp_path / "session")
 
-    assert save_document(table, {"fileType": 0, "params": "saveas=true"})["error"] == 0
+    assert save_document(table, SaveRequest(save_as=True))["error"] == 0
     assert chosen.read_bytes().decode("cp1252") == text.replace(";", "\t")
 
 
@@ -245,11 +308,11 @@ def test_plain_save_writes_the_document_in_the_format_it_has(
     """It used to go into the session as a .docx, and the .odt stayed as it was."""
     blank = open_blank(app)
     document = tmp_path / f"mine.{ext}"
-    assert export(blank, document, app.ids_by_ext[ext], None)
+    export(blank, document, app.ids_by_ext[ext], None)
     reopened = open_in(app, document, tmp_path / "reopened")
     before = document.stat().st_mtime_ns
 
-    assert save_document(reopened, {"fileType": 0}) == {
+    assert save_document(reopened, SaveRequest()) == {
         "error": 0,
         "path": str(document),
     }
@@ -268,33 +331,34 @@ def test_closing_a_format_it_cannot_write_refuses_rather_than_asks(
     old.write_bytes(b"")
     opened.current_file.write_text(str(old), encoding="utf-8")
 
-    assert save_document(opened, {"fileType": 0}, may_ask=False) == {"error": 2}
+    assert save_document(opened, SaveRequest(), may_ask=False) == {"error": 2}
 
 
-def test_text_x2t_would_garble_does_not_replace_the_document(tmp_path):
-    """A character outside the BMP, and x2t writes one byte per character.
+def test_a_csv_with_an_emoji_saves_in_utf8(tmp_path):
+    """A character outside the BMP, and x2t wrote one byte per character.
 
-    Its converter to UTF-8 sizes its buffer one unit per character, an emoji
-    needs two, and the fallback writes "é" as the single byte E9 throughout the
-    file -- exiting 0. The save has to fail rather than write that over a CSV.
+    Its converter to UTF-8 sized its buffer one unit per character, an emoji
+    needs two, and the fallback wrote "é" as the single byte E9 throughout the
+    file -- exiting 0. Patch 0030 fixes it; convert.export still refuses text
+    that is not the UTF-8 it asked for, should it come back.
     """
-    text = "Nom,Description\nCleed,🎯 Échange sécurisé\n".encode()
     document = tmp_path / "list.csv"
-    document.write_bytes(text)
+    document.write_text("Nom,Description\nCleed,🎯 Échange sécurisé\n", "utf-8")
     table = open_in(apps.TABLES, document, tmp_path / "session")
 
-    assert save_document(table, {"fileType": 0})["error"] == 2
-    assert document.read_bytes() == text
+    assert save_document(table, SaveRequest()) == {"error": 0, "path": str(document)}
+    assert "Cleed,🎯 Échange sécurisé" in document.read_text(encoding="utf-8-sig")
 
 
 def test_a_text_file_opens_past_an_emoji(tmp_path):
-    """Without a byte-order mark, x2t's reader stopped at the first emoji."""
+    """Without a byte-order mark, x2t's reader stopped at the first emoji: the
+    same buffer as in the CSV writer, which patch 0030 sizes."""
     document = tmp_path / "notes.txt"
     document.write_text("avant\n🎯 cible\naprès\n", encoding="utf-8")
     notes = open_in(apps.WORDS, document, tmp_path / "session")
     docx = tmp_path / "out.docx"
 
-    assert export(notes, docx, apps.WORDS.ids_by_ext["docx"], None)
+    export(notes, docx, apps.WORDS.ids_by_ext["docx"], None)
     assert "après" in zipfile.ZipFile(docx).read("word/document.xml").decode()
 
 
@@ -304,18 +368,16 @@ def test_markdown_opens_and_saves(tmp_path):
     document.write_text("Un *mot* et cœur 🎯\n", encoding="utf-8")
     notes = open_in(apps.WORDS, document, tmp_path / "session")
 
-    assert save_document(notes, {"fileType": 0}) == {"error": 0, "path": str(document)}
+    assert save_document(notes, SaveRequest()) == {"error": 0, "path": str(document)}
     assert "cœur 🎯" in document.read_text(encoding="utf-8")
 
 
-# --- x2t's CSV reader skips a character every 500,000 ----------------------
+# --- x2t's CSV reader skipped a character every 500,000 --------------------
 #
-# CSVReader drops the text it has read once it passes 500,000 characters and
-# never looks at the first character after the cut. Patch 0029 in
-# build/patches/core fixes it, for payload 0.4; until then the host works out
-# which rows that damages and says so when the file opens. These two tests turn
-# over together when the payload does: the first stops matching, the second
-# starts passing, and both mean the warning in opening.py can go.
+# CSVReader drops the text it has read once it passes 500,000 characters, and
+# until patch 0029 never looked at the first character after the cut: a quote,
+# a delimiter or a newline there split a cell or merged two. Payload 0.3's
+# host modelled the loop to name the damaged rows; 0.4's converter reads them.
 
 # 5000 rows of 100 characters: the last newline is character 499,999.
 LONG = ("x" * 99 + "\n") * 5000
@@ -341,7 +403,7 @@ def rows_x2t_changes(document: pathlib.Path, work: pathlib.Path) -> list[int]:
     """The first row x2t's round trip reads differently from the file, if any."""
     table = open_in(apps.TABLES, document, work)
     out = work / "out.csv"
-    assert export(table, out, apps.TABLES.ids_by_ext["csv"], document)
+    export(table, out, apps.TABLES.ids_by_ext["csv"], document)
     wanted, got = read_rows(document), read_rows(out)
     for number, row in enumerate(wanted, 1):
         if number > len(got) or got[number - 1] != row:
@@ -350,20 +412,6 @@ def rows_x2t_changes(document: pathlib.Path, work: pathlib.Path) -> list[int]:
 
 
 @pytest.mark.parametrize("case", CUTS)
-def test_the_rows_the_host_warns_about_are_the_rows_x2t_damages(tmp_path, case):
-    """find_misread_rows is a model of x2t's loop, so it is checked against x2t."""
-    document = tmp_path / "list.csv"
-    document.write_text(CUTS[case], encoding="utf-8")
-
-    assert find_misread_rows(document) == rows_x2t_changes(document, tmp_path / "s")
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="x2t skips the character after each 500,000-character cut: "
-    "patch 0029, payload 0.4",
-)
-@pytest.mark.parametrize("case", [c for c in CUTS if c != "a letter"])
 def test_x2t_reads_every_row_of_a_large_csv(tmp_path, case):
     document = tmp_path / "list.csv"
     document.write_text(CUTS[case], encoding="utf-8")

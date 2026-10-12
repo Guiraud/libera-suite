@@ -7,14 +7,28 @@
 // Python.app and the event is delivered to a bundle that no longer exists.
 //
 // So this catches the event, then hands the paths to the Python entry point as
-// ordinary arguments.
+// ordinary arguments -- and runs that entry point in this process, with the
+// interpreter embedded, rather than exec'ing it. An exec was the second half
+// of the same problem: from then on macOS took the running application for
+// Python.app (lsappinfo: bundleID "org.python.python"), so a document dropped
+// on the Dock icon was refused in Python's name, against Python.app's empty
+// list of document types, before anything of ours saw it. Embedded, the
+// process stays this bundle's, with this bundle's document types.
 //
-//   clang -framework Cocoa -DLIBERA_PYTHON='"/path/to/python3"' launcher.m
+//   clang -framework Cocoa -I<python include> <libpython> \
+//       -DLIBERA_PYTHON='"/path/to/python3"' launcher.m
+//
+// LIBERA_PYTHON is the interpreter the bundle runs as. Absolute, it is a
+// virtualenv's python3 on the machine that built the bundle, whose pyvenv.cfg
+// is how the embedded interpreter finds its packages. Relative, it is inside
+// the bundle, under Contents, and the bundle carries everything
+// (STANDALONE=1 build/macos/macos-app.sh).
 
+// First, as Python asks: it sets feature macros the system headers read.
+#include <Python.h>
 #import <Cocoa/Cocoa.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 static NSMutableArray<NSString *> *gDocuments;
 static BOOL gLaunched;
@@ -87,31 +101,56 @@ int main(int argc, const char *argv[]) {
         // src/libera/host/apps.py -- and with no documents this opens the
         // start window, which is what double-clicking the icon should do.
         NSMutableArray<NSString *> *args = [NSMutableArray array];
-        [args addObject:@LIBERA_PYTHON];
+        NSString *python = @LIBERA_PYTHON;
+        BOOL inside = ![python isAbsolutePath];
+        if (inside)
+            python = [[[[NSBundle mainBundle] bundlePath]
+                stringByAppendingPathComponent:@"Contents"]
+                stringByAppendingPathComponent:python];
+        [args addObject:python];
         [args addObject:@"-m"];
         [args addObject:@"libera"];
         [args addObjectsFromArray:gDocuments];
+        // AppKit also reads the command line: started from a terminal with a
+        // file, it delivers that file as an open-documents event too, so it
+        // was passed twice, and `-v --serve FILE` was refused with "unrecognized
+        // arguments: FILE" (measured: LIBERA_LAUNCHER_LOG said docs=1 for a
+        // launch with no Finder in it). An argument already caught is skipped.
+        NSMutableSet<NSString *> *caught = [NSMutableSet set];
+        for (NSString *d in gDocuments) [caught addObject:[d stringByStandardizingPath]];
+        NSString *cwd = [[NSFileManager defaultManager] currentDirectoryPath];
         for (int i = 1; i < argc; i++) {
             NSString *a = [NSString stringWithUTF8String:argv[i]];
             // LaunchServices appends a process serial number on some launches.
-            if (![a hasPrefix:@"-psn_"]) [args addObject:a];
+            if ([a hasPrefix:@"-psn_"]) continue;
+            NSString *full = [a isAbsolutePath] ? a : [cwd stringByAppendingPathComponent:a];
+            if (![a hasPrefix:@"-"] && [caught containsObject:[full stringByStandardizingPath]])
+                continue;
+            [args addObject:a];
         }
 
-        char **cargs = calloc([args count] + 1, sizeof(char *));
-        for (NSUInteger i = 0; i < [args count]; i++)
-            cargs[i] = strdup([args[i] UTF8String]);
+        // The interpreter's own idea of where it is, set in its configuration
+        // rather than in PYTHONEXECUTABLE, which every child would inherit.
+        // From it comes everything else: the virtualenv beside it, and so
+        // the libera package. A library that cannot be loaded never gets
+        // here -- dyld stops the process first -- and the bundle has to be
+        // rebuilt (build/macos/macos-app.sh).
+        int count = (int)[args count];
+        char **cargs = calloc(count + 1, sizeof(char *));
+        for (int i = 0; i < count; i++) cargs[i] = strdup([args[i] UTF8String]);
 
-        execv(cargs[0], cargs);
-        // Only reached if the interpreter is gone -- say so where a user can
-        // see it, since a bundle's stderr goes to the system log.
-        NSString *msg = [NSString stringWithFormat:
-            @"Libera Suite could not start its Python interpreter:\n%@\n\n"
-             "The application bundle points at the interpreter it was built "
-             "with. Rebuild it with build/macos-app.sh.", @LIBERA_PYTHON];
-        NSAlert *alert = [[NSAlert alloc] init];
-        [alert setMessageText:@"Libera Suite could not start"];
-        [alert setInformativeText:msg];
-        [alert runModal];
-        return 1;
+        PyConfig config;
+        PyConfig_InitPythonConfig(&config);
+        // Nothing is written into a bundle, which signing seals: its
+        // bytecode was compiled when it was built.
+        if (inside) config.write_bytecode = 0;
+        PyStatus status =
+            PyConfig_SetBytesString(&config, &config.executable, [python UTF8String]);
+        if (!PyStatus_Exception(status))
+            status = PyConfig_SetBytesArgv(&config, count, cargs);
+        if (!PyStatus_Exception(status)) status = Py_InitializeFromConfig(&config);
+        PyConfig_Clear(&config);
+        if (PyStatus_Exception(status)) Py_ExitStatusException(status);
+        return Py_RunMain();
     }
 }

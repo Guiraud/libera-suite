@@ -1,0 +1,49 @@
+From 5c8305ec122dbc3c42cd04cf4a9edfca95893488 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:23:43 +0200
+Subject: [PATCH 127/142] OdfFile writer: a chart series writes its domain
+ before its data points
+
+chart:series serialised its children in the order the converter added
+them, and it adds the data points before the x values of a scatter or
+bubble chart. The schema wants chart:domain first, then the mean value,
+regression curves, error indicators and data points, so every such
+series was invalid: 33 of LibreOffice's ODF test documents after the
+fourth batch. The children are now written in the schema's order.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/office_chart.cpp | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/office_chart.cpp b/OdfFile/Writer/Format/office_chart.cpp
+index d37143c30f..b2d4b5360f 100644
+--- a/OdfFile/Writer/Format/office_chart.cpp
++++ b/OdfFile/Writer/Format/office_chart.cpp
+@@ -430,9 +430,22 @@ void chart_series::serialize(std::wostream & _Wostream)
+         {
+ 			chart_series_attlist_.serialize(CP_GET_XML_NODE());
+ 
++			// In the schema's order, whatever the order they were added in: the converter adds the
++			// data points before the domain
++			const ElementType order[] = { typeChartDomain, typeChartMeanValue, typeChartRegressionCurve,
++				typeChartErrorIndicator, typeChartDataPoint };
++			for (size_t t = 0; t < sizeof(order) / sizeof(order[0]); t++)
++			{
++				for (size_t i = 0; i < content_.size(); i++)
++				{
++					if (content_[i]->get_type() == order[t])
++						content_[i]->serialize(CP_XML_STREAM());
++				}
++			}
+ 			for (size_t i = 0; i < content_.size(); i++)
+ 			{
+-				content_[i]->serialize(CP_XML_STREAM());
++				if (std::find(order, order + sizeof(order) / sizeof(order[0]), content_[i]->get_type()) == order + sizeof(order) / sizeof(order[0]))
++					content_[i]->serialize(CP_XML_STREAM());
+ 			}
+ 		}
+ 	}
+-- 
+2.55.0
+

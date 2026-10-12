@@ -11,11 +11,12 @@ from __future__ import annotations
 import logging
 import pathlib
 import shutil
-from dataclasses import dataclass
+import tempfile
+from dataclasses import dataclass, replace
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
-from libera.host import apps, convert, desktop, hooks
+from libera.host import apps, convert, desktop, hooks, locking
 from libera.host.session import is_inside
 
 if TYPE_CHECKING:
@@ -34,11 +35,42 @@ class SaveOutcome(IntEnum):
 
 
 @dataclass(frozen=True)
+class SaveRequest:
+    """What the editor asked of a save: a format, 0 for the one the document
+    has, and whether it is a Save As or a print.
+
+    Read once from LocalFileSave's body, by `from_body`: the body itself used
+    to reach the core as a dict, and a save on close had to fake one.
+    """
+
+    file_type: int = 0
+    save_as: bool = False
+    printing: bool = False
+
+    @classmethod
+    def from_body(cls, body: dict) -> SaveRequest:
+        """Raises TypeError for a format that is not an id."""
+        file_type = body.get("fileType") or 0
+        if isinstance(file_type, bool) or not isinstance(file_type, int):
+            msg = f"fileType is not a format id: {file_type!r}"
+            raise TypeError(msg)
+        return cls(
+            file_type=file_type,
+            save_as="saveas=true" in str(body.get("params") or ""),
+            printing=bool(body.get("isPrint")),
+        )
+
+
+# A plain Save: the format the document has, where it already is.
+PLAIN_SAVE = SaveRequest()
+
+
+@dataclass(frozen=True)
 class Destination:
     """Where a save is going, and in what format.
 
-    `target` is None when nothing is to be copied out of the session -- a
-    print, whose file is a means to an end.
+    `target` is None when nothing is to be copied out of the session before
+    asking: a print asks where its PDF goes, every time.
     """
 
     ext: str
@@ -47,13 +79,24 @@ class Destination:
     printing: bool
     asks_where: bool
 
+    def to(self, chosen: pathlib.Path, app: apps.App) -> Destination:
+        """Where the user chose, in the format its extension names. A print
+        stays a PDF, whatever was typed."""
+        if self.printing:
+            return replace(self, target=chosen)
+        ext = chosen.suffix.lstrip(".").lower() or self.ext
+        return replace(
+            self, target=chosen, ext=ext, fmt=app.ids_by_ext.get(ext, self.fmt)
+        )
+
 
 def plan_save(
-    body: dict,
+    request: SaveRequest,
     app: apps.App,
     open_file: pathlib.Path | None,
     *,
     untitled: bool = False,
+    locked: bool = False,
 ) -> Destination:
     """What the editor's save request means, before anything touches the disk.
 
@@ -62,14 +105,20 @@ def plan_save(
     can be read in one place and tested without a session, a dialog or x2t.
 
     Print arrives as a PDF save with isPrint set, which is why it is not simply
-    "the user chose PDF".
+    "the user chose PDF". It asks where the PDF goes, every time, starting in
+    the document's folder: it went into the session's own directory, where
+    nobody could find it, and which is swept when the session ends.
 
     `untitled` is a document File > New made: a copy of a blank in our own
     state directory. It is a real file, so plain Save would overwrite it, and
     did -- "saving" a new document where nobody could find it, and out of the
     Recent list, which refuses that directory. Its first save asks where.
+
+    `locked` is a document someone else has open, by their lock file. Its file
+    is theirs, so every save asks where, as the editor's locked mode promises:
+    "you can make changes and save its local copy later".
     """
-    requested = body.get("fileType") or 0
+    requested = request.file_type
     own = open_file.suffix.lstrip(".").lower() if open_file else ""
     # 0 is what the editor sends for a plain Save, and it means the format the
     # document already has. Read as the editor's first format, it saved an
@@ -79,7 +128,7 @@ def plan_save(
         ext, fmt = own, app.ids_by_ext[own]
     else:
         ext, fmt = app.formats.get(requested, app.formats[0])
-    printing = bool(body.get("isPrint"))
+    printing = request.printing
     # Plain Save overwrites the document that is open -- but only if the format
     # still matches it. Asking for .odt from an open .docx is a Save As whether
     # or not the editor said so.
@@ -90,14 +139,79 @@ def plan_save(
     return Destination(
         ext=ext,
         fmt=fmt,
-        target=None if printing or untitled or not keeps_open_file else open_file,
+        target=None
+        if printing or untitled or locked or not keeps_open_file
+        else open_file,
         printing=printing,
-        asks_where=not printing
-        and ("saveas=true" in body.get("params", "") or cannot_keep or untitled),
+        asks_where=printing or request.save_as or cannot_keep or untitled or locked,
     )
 
 
-def save_document(session: Session, body: dict, *, may_ask: bool = True) -> dict:
+# What a print offers to save as: the PDF it is about to show, nothing else.
+PRINT_FORMATS = (("PDF (.pdf)", "pdf"),)
+
+
+def _ask_where(
+    app: apps.App,
+    open_file: pathlib.Path | None,
+    ext: str,
+    *,
+    untitled: bool,
+    printing: bool,
+) -> pathlib.Path | None:
+    """The file the user chose to save to, or None: cancelled, or a file
+    someone else has open."""
+    suggested = f"{open_file.stem if open_file else 'document'}.{ext}"
+    # In the document's own folder, as Save As is in every desktop editor;
+    # it started wherever the last save went. Not for an untitled document,
+    # whose folder is our state directory: there the toolkit chooses.
+    start_in = open_file.parent if open_file is not None and not untitled else None
+    formats = PRINT_FORMATS if printing else app.save_formats
+    chosen = hooks.shell.choose_save_path(suggested, formats, start_in)
+    if not chosen:
+        logger.info("save cancelled")
+        return None
+    target = pathlib.Path(chosen)
+    if printing and target.suffix.lower() != ".pdf":
+        # A PDF whatever was typed: the viewer is about to be handed it.
+        target = target.with_name(f"{target.name}.pdf")
+    holder = locking.read_owner(target)
+    if holder is not None and not holder.is_us():
+        # Overwriting a file someone has open loses their work, or ours.
+        hooks.shell.tell(
+            f"\u201c{target.name}\u201d is open somewhere else",
+            f"{holder.name} has had it open since {holder.since}. "
+            "Save under another name, or once they have closed it.",
+        )
+        return None
+    return target
+
+
+def _put_in_place(
+    session: Session,
+    staged: pathlib.Path,
+    target: pathlib.Path,
+    open_file: pathlib.Path | None,
+    *,
+    printing: bool,
+) -> None:
+    """Copy the exported file where it was asked for, and follow it if it was
+    a Save As."""
+    shutil.copyfile(staged, target)
+    # A print leaves the session on its document: only Save As moves it.
+    if target != open_file and not printing:
+        # Save As moves the session onto the new file -- once there is one:
+        # moved before the export, a failed Save As left the session pointing
+        # at a file never written, and the next plain Save went there. The
+        # lock moves with it.
+        locking.let_go(session)
+        session.write_current_document(target)
+        locking.hold(session, target)
+
+
+def save_document(
+    session: Session, request: SaveRequest, *, may_ask: bool = True
+) -> dict:
     """Export the document where plan_save says it goes.
 
     Separate from the request so that closing a window can save without one:
@@ -105,7 +219,7 @@ def save_document(session: Session, body: dict, *, may_ask: bool = True) -> dict
     Editor.bin plus the change log the editor has been streaming as you type.
 
     The error code, a `SaveOutcome`, goes back through
-    DesktopOfflineAppDocumentEndSave.
+    DesktopOfflineAppDocumentEndSave, with the path of the file written.
 
     `may_ask` is False on the GUI thread, where the save panel would wait for
     itself: a save that needs to ask where fails there instead.
@@ -118,53 +232,65 @@ def save_document(session: Session, body: dict, *, may_ask: bool = True) -> dict
 
     open_file = session.read_current_document()
     untitled = open_file is not None and is_inside(session.scratch, open_file)
-    plan = plan_save(body, app, open_file, untitled=untitled)
-    ext, fmt, target, printing = plan.ext, plan.fmt, plan.target, plan.printing
-
+    plan = plan_save(
+        request, app, open_file, untitled=untitled, locked=session.locked_by is not None
+    )
     if plan.asks_where and not may_ask:
-        logger.error("save refused: .%s needs asking where, and cannot ask here", ext)
+        logger.error(
+            "save refused: .%s needs asking where, and cannot ask here", plan.ext
+        )
         return {"error": SaveOutcome.FAILED}
     # With nobody to ask -- `--serve`, the harness -- it goes into the session.
     if plan.asks_where and hooks.shell.windowed:
-        suggested = f"{open_file.stem if open_file else 'document'}.{ext}"
-        # In the document's own folder, as Save As is in every desktop editor;
-        # it started wherever the last save went. Not for an untitled document,
-        # whose folder is our state directory: there the toolkit chooses.
-        start_in = open_file.parent if open_file is not None and not untitled else None
-        chosen = hooks.shell.choose_save_path(suggested, app.save_formats, start_in)
-        if not chosen:
-            logger.info("save cancelled")
+        chosen = _ask_where(
+            app, open_file, plan.ext, untitled=untitled, printing=plan.printing
+        )
+        if chosen is None:
             return {"error": SaveOutcome.DECLINED}
-        target = pathlib.Path(chosen)
-        ext = target.suffix.lstrip(".").lower() or ext
-        fmt = app.ids_by_ext.get(ext, fmt)
+        plan = plan.to(chosen, app)
 
+    final = _export(session, plan, open_file)
+    if final is None:
+        # convert has logged what x2t said; the editor is told the save failed.
+        logger.error("save -> %s FAILED", plan.target or "the session")
+        return {"error": SaveOutcome.FAILED}
+    logger.info("save -> %s", final)
+    if plan.printing:
+        # A PDF nothing opens is a print that did not happen. The one the user
+        # chose, which outlives the session; the staged copy, headless.
+        opened = desktop.open_externally(final)
+        return {
+            "error": SaveOutcome.SAVED if opened else SaveOutcome.FAILED,
+            "path": str(final),
+        }
+    # The file now matches the editor, so there is nothing to recover.
+    session.mark_modified(False)
+    return {"error": SaveOutcome.SAVED, "path": str(final)}
+
+
+def _export(
+    session: Session, plan: Destination, open_file: pathlib.Path | None
+) -> pathlib.Path | None:
+    """Export, then copy out where the plan says: the file the document went
+    to, or None when x2t could not write it.
+
+    Into a directory of this save's own first, so a failure never leaves a
+    half-written file where the user's document should be. Of its own, because
+    every save shared out/saved.<ext>: an export that wrote nothing found the
+    last save's file there and passed, and a save on close during a Cmd-S
+    wrote the same path.
+    """
     session.out_dir.mkdir(exist_ok=True)
-    # Convert into the session directory and copy out afterwards, so a failure
-    # never leaves a half-written file where the user's document should be.
-    stem = (open_file.stem if open_file else "document") if printing else "saved"
-    staged = session.out_dir / f"{stem}.{ext}"
-    ok = convert.export(session, staged, fmt, open_file)
-    if ok and target and target != staged:
-        shutil.copyfile(staged, target)
-        # Save As moves the session onto the new file -- once there is one.
-        # Moved before the export, a failed Save As left the session pointing
-        # at a file never written, and the next plain Save went there.
-        session.write_current_document(target)
-    final = target or staged
-    logger.log(
-        logging.INFO if ok else logging.ERROR,
-        "save -> %s%s",
-        final,
-        "" if ok else " FAILED",
-    )
-    if ok and printing:
-        # A PDF nothing opens is a print that did not happen.
-        ok = desktop.open_externally(staged)
-    if ok and not printing:
-        # The file now matches the editor, so there is nothing to recover.
-        session.mark_modified(False)
-    return {
-        "error": SaveOutcome.SAVED if ok else SaveOutcome.FAILED,
-        "path": str(final),
-    }
+    stem = (open_file.stem if open_file else "document") if plan.printing else "saved"
+    aside = pathlib.Path(tempfile.mkdtemp(dir=session.out_dir, prefix="save-"))
+    staged = aside / f"{stem}.{plan.ext}"
+    try:
+        convert.export(session, staged, plan.fmt, open_file)
+    except convert.ConversionError:
+        shutil.rmtree(aside, ignore_errors=True)
+        return None
+    if plan.target is None:
+        return staged
+    _put_in_place(session, staged, plan.target, open_file, printing=plan.printing)
+    shutil.rmtree(aside, ignore_errors=True)
+    return plan.target

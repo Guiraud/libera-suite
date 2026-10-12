@@ -31,13 +31,14 @@ I tuoi documenti, mai.
 
 Libera Suite non ha **nessuna telemetria**, nessuna statistica d'uso, nessuna segnalazione di crash, nessun account: non ci invia nulla su di te, sui tuoi documenti o sul modo in cui la usi. Se mai venisse aggiunto qualcosa del genere, resterebbe disattivato finché non lo attivi tu.
 
-Si collega però al nostro server per scaricare dei file. Oggi si tratta degli editor, durante l'installazione di Libera Suite e di nuovo quando una nuova versione ne richiede di nuovi. Quando Libera Suite inizierà a cercare aggiornamenti, ti avviserà dell'uscita di una nuova versione e ti chiederà il permesso prima di scaricarla. Come ogni richiesta web, ciascuno di questi download mostra al nostro server il tuo indirizzo IP, e nient'altro su di te.
+Si collega però al nostro server per scaricare dei file. Oggi si tratta degli editor, durante l'installazione di Libera Suite e di nuovo quando una nuova versione ne richiede di nuovi. Al massimo una volta al giorno controlla anche se è uscita una versione più recente, e te lo dice una volta; non scarica nulla, e ti indica come aggiornare. Come ogni richiesta web, ciascuno di questi download mostra al nostro server il tuo indirizzo IP, e nient'altro su di te.
 
 La tabella elenca ogni connessione che l'applicazione stabilisce oggi, così puoi verificarlo. Ogni nuova connessione, ricerca degli aggiornamenti compresa, comparirà qui con la versione che la introduce.
 
 | | |
 | :--- | :--- |
 | **Gli editor** | Scaricati da `cdn.abilian.com` durante l'installazione di Libera Suite, e di nuovo solo quando una nuova versione ne richiede di nuovi. Ogni download viene verificato con le impronte fornite nell'applicazione. |
+| **La ricerca degli aggiornamenti** | Al massimo una volta al giorno, il numero dell'ultima versione, letto da `cdn.abilian.com`. Una versione più recente viene segnalata una volta; non si scarica nulla. Senza connessione, non succede nulla. `check_updates = false` nel [file di configurazione](guide/documents.md#your-name-in-documents) la disattiva. |
 | **Il traffico proprio dell'editor** | Un server web su `127.0.0.1`, parte dell'applicazione, che serve l'editor a una finestra sulla stessa macchina. Non è raggiungibile da nessun altro luogo. |
 | **I link su cui fai clic** | La guida e simili si aprono nel *tuo* browser. Libera Suite non li scarica. |
 

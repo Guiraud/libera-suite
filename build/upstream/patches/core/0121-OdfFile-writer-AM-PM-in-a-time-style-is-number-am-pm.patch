@@ -1,0 +1,118 @@
+From fbe3e890f7e017f331824a21aa39a2753cb29c4f Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 19:26:45 +0200
+Subject: [PATCH 121/142] OdfFile writer: AM/PM in a time style is
+ number:am-pm, not three texts
+
+create_time_style lowercased the format code with XmlUtils::GetLower(s),
+which returns the lowered string and leaves its argument alone. Its
+matching was written for lower case, so in an upper-case code such as
+Excel's built-in 18, "h:mm AM/PM", the AM/PM was never recognised and
+came out as three literal texts, "AM", "/" and "PM". The schema allows
+no two number:text in a row, so every such style was invalid: 92 of
+LibreOffice's ODF test documents after the third batch.
+
+Tokens are now matched on a lowercased copy, so a literal keeps its case;
+AM/PM becomes one number:am-pm, its "/" and "PM" consumed with it; and
+consecutive literals are merged into one number:text.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ .../Format/odf_number_styles_context.cpp      | 31 +++++++++++++++----
+ 1 file changed, 25 insertions(+), 6 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/odf_number_styles_context.cpp b/OdfFile/Writer/Format/odf_number_styles_context.cpp
+index 62b598ca62..bcd22f1ff2 100644
+--- a/OdfFile/Writer/Format/odf_number_styles_context.cpp
++++ b/OdfFile/Writer/Format/odf_number_styles_context.cpp
+@@ -848,20 +848,24 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+ 	
+ 	// state.language_code == L"F400")//System time format
+ 	std::wstring s = state.format_code[0];
+-	XmlUtils::GetLower(s);
+ 	
+ 	boost::wregex re(L"([a-zA-Z]+)(\\W+)");//(L"(\\w+)");
+ 	std::list<std::wstring> result;
+ 	bool b = boost::regex_split(std::back_inserter(result),s, re);
+ 	if (b)result.push_back(s);//the last one ..is taken out - that's how boost.regex_split works
+ 
++	// The schema allows no two number:text in a row, so consecutive dividers are merged
++	number_text* last_text = NULL;
++
+ 	size_t sz=0;
+ 	for (std::list<std::wstring>::iterator it = result.begin(); it != result.end(); ++it)
+ 	{
+ 		office_element_ptr elm;
+ 		s = *it;
+ 		sz = s.length();
+-		if (std::wstring::npos != s.find(L"h"))
++		// Codes are matched case-insensitively; a divider keeps its case
++		std::wstring l = XmlUtils::GetLower(s);
++		if (std::wstring::npos != l.find(L"h"))
+ 		{
+ 			create_element(L"number", L"hours", elm, odf_context_);
+ 			number_hours* number_hours_ = dynamic_cast<number_hours*>(elm.get());		
+@@ -871,11 +875,19 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+ 				if (sz == 2) number_hours_->number_style_ = L"long";
+ 			}
+ 		}
+-		else if (std::wstring::npos != s.find(L"am"))  //unnecessary..
++		else if (std::wstring::npos != l.find(L"am"))  //unnecessary..
+ 		{
+ 			create_element(L"number", L"am-pm", elm, odf_context_);
++
++			// AM/PM is one element: its "/" and "PM" are not dividers
++			std::list<std::wstring>::iterator slash = it, pm = it;
++			if (++slash != result.end() && *slash == L"/" && ++(pm = slash) != result.end()
++				&& std::wstring::npos != XmlUtils::GetLower(*pm).find(L"pm"))
++			{
++				it = pm;
++			}
+ 		}
+-		else if (std::wstring::npos != s.find(L"m") && std::wstring::npos == s.find(L"am") && std::wstring::npos == s.find(L"pm")) 
++		else if (std::wstring::npos != l.find(L"m") && std::wstring::npos == l.find(L"am") && std::wstring::npos == l.find(L"pm")) 
+ 		{
+ 			create_element(L"number", L"minutes", elm, odf_context_);
+ 			number_minutes* number_minutes_ = dynamic_cast<number_minutes*>(elm.get());
+@@ -885,7 +897,7 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+ 				if (sz == 2)number_minutes_->number_style_ = L"long";
+ 			}
+ 		}
+-		else if (std::wstring::npos != s.find(L"s"))
++		else if (std::wstring::npos != l.find(L"s"))
+ 		{
+ 			create_element(L"number", L"seconds", elm, odf_context_);
+ 			number_seconds* number_seconds_ = dynamic_cast<number_seconds*>(elm.get());
+@@ -896,7 +908,7 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+ 				//number_decimal_places_
+ 			}
+ 		}
+-		else if (std::wstring::npos == s.find(L"pm"))//that's how the format is divided .. and we don't need this text
++		else if (std::wstring::npos == l.find(L"pm"))//that's how the format is divided .. and we don't need this text
+ 		{
+ 		//////////////////// divider ////////////////////
+ 			if(sz > 1) 
+@@ -904,6 +916,11 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+ 				//Remove the "extra" slashes
+ 				XmlUtils::replace_all( s, L"\\", L"");
+ 			}
++			if (last_text)
++			{
++				last_text->add_text(s);
++				continue;
++			}
+ 			create_element(L"number", L"text", elm, odf_context_);
+ 			number_text* number_text_ = dynamic_cast<number_text*>(elm.get());
+ 			if (number_text_)number_text_->add_text(s); 
+@@ -912,6 +929,8 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+ 		{
+ 			root_elm->add_child_element(elm);
+ 			styles_elments.push_back(elm);
++
++			last_text = dynamic_cast<number_text*>(elm.get());
+ 		}
+ 	}
+ }
+-- 
+2.55.0
+

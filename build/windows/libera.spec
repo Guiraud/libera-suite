@@ -1,4 +1,4 @@
-# PyInstaller spec for Libera Suite on Windows. Run by build/windows-app.sh,
+# PyInstaller spec for Libera Suite on Windows. Run by build/windows/windows-app.sh,
 # which sets the environment variables read below.
 #
 # Two executables over one tree: Libera.exe (windowed) is what users run,

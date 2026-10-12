@@ -1,0 +1,47 @@
+From 5afa8b96137e87c694d7e50fdb9866101f0800d1 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 18:32:42 +0200
+Subject: [PATCH 152/156] OdfFile writer: no soft page break directly in a list
+
+A paragraph with "page break before" also gets a text:soft-page-break,
+a hint of where the page broke, next to the fo:break-before that carries
+it. On a list paragraph the hint landed between two list items, where
+a list allows only items: 5 of LibreOffice's ODF test documents after
+the eighth batch. There it is now left out.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/odf_text_context.cpp | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/odf_text_context.cpp b/OdfFile/Writer/Format/odf_text_context.cpp
+index ab73a12980..07a7eb8bb6 100644
+--- a/OdfFile/Writer/Format/odf_text_context.cpp
++++ b/OdfFile/Writer/Format/odf_text_context.cpp
+@@ -785,12 +785,17 @@ bool odf_text_context::set_type_break(int type, int clear)//TODO clear ???
+ 	}
+ 	else if (type == 1)//brtypePage
+ 	{
+-		office_element_ptr elm;
+-		create_element(L"text", L"soft-page-break", elm, odf_context_);
+-		
+-		start_element(elm);
+-		end_element();
+-		
++		// A hint where the page broke, which fo:break carries anyway; a list holds only list
++		// items, so between two of them there is no place for it.
++		if (current_level_.empty() || !dynamic_cast<text_list*>(current_level_.back().elm.get()))
++		{
++			office_element_ptr elm;
++			create_element(L"text", L"soft-page-break", elm, odf_context_);
++
++			start_element(elm);
++			end_element();
++		}
++
+ 		need_break_		= fo_break(fo_break::Page);
+ 		need_restart	= clear != 0; // brclearAll = 0,
+ 	}
+-- 
+2.55.0
+

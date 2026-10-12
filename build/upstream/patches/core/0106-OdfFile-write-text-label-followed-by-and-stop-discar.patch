@@ -1,0 +1,86 @@
+From 47503a641eca046cc47f37e81124eb302a9cdb0d Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 09:53:47 +0200
+Subject: [PATCH 106/142] OdfFile: write text:label-followed-by, and stop
+ discarding w:suff
+
+Every list level the writer produces is schema-invalid, and the OOXML
+value that should decide the attribute is read and thrown away.
+
+text:label-followed-by is mandatory on style:list-level-label-alignment
+in both ODF 1.2 and 1.3: it sits bare inside the interleave while all
+three sibling attributes are wrapped in <optional>. The writer creates
+that element for number, bullet and image levels alike and never sets the
+attribute, so every list level in every docx to odt and odt to odt
+conversion fails validation, silently, at exit 0.
+
+The reason it is never set is visible in DocxConverter: the w:suff value
+is tested and dropped into an empty block. Map it instead, with the same
+override precedence the surrounding code uses for w:start and w:lvlText.
+The OOXML default for w:suff is a tab, which is not the default of the
+simple type, so the fallback is spelled out rather than inherited.
+
+Serialising the attribute now always writes it, falling back to listtab.
+That is the single point every emission of the element routes through, so
+a caller that forgets to set it can no longer produce an invalid level.
+
+Measured before the fix: four minimal docx files differing only in
+<w:suff> produce byte-identical ODF output, and a full round trip turns
+w:suff="space" into w:suff="tab". The reader side already maps listtab to
+tab correctly; this is confined to the writer.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/DocxConverter.cpp | 17 ++++++++++++++++-
+ OdfFile/Writer/Format/styles_list.cpp      |  5 ++++-
+ 2 files changed, 20 insertions(+), 2 deletions(-)
+
+diff --git a/OdfFile/Writer/Converter/DocxConverter.cpp b/OdfFile/Writer/Converter/DocxConverter.cpp
+index e47ba74856..6afb61f79f 100644
+--- a/OdfFile/Writer/Converter/DocxConverter.cpp
++++ b/OdfFile/Writer/Converter/DocxConverter.cpp
+@@ -4161,9 +4161,24 @@ void DocxConverter::convert(OOX::Numbering::CLvl *oox_num_lvl, OOX::Numbering::C
+ 	if (start_value > 1)
+ 		odt_context->styles_context()->lists_styles().set_start_number(start_value);
+ //-------------------------------------------
+-	if (oox_num_lvl->m_oSuffix.IsInit())
++	// w:suff says what follows the number: a tab, a space, or nothing. ODF
++	// spells the same thing text:label-followed-by, and the attribute is
++	// mandatory on style:list-level-label-alignment. The OOXML default is a
++	// tab, which is not the simple type's own default, so do not lean on it.
++	std::wstring label_followed_by = L"listtab";
++	OOX::Numbering::CLvl *lvl_suffix = oox_num_lvl;
++	if ((lvl_over) && (lvl_over->m_oSuffix.IsInit()))
++		lvl_suffix = lvl_over;
++	if ((lvl_suffix->m_oSuffix.IsInit()) && (lvl_suffix->m_oSuffix->m_oVal.IsInit()))
+ 	{
++		switch (lvl_suffix->m_oSuffix->m_oVal->GetValue())
++		{
++		case SimpleTypes::levelsuffixSpace:		label_followed_by = L"space";	break;
++		case SimpleTypes::levelsuffixNothing:	label_followed_by = L"nothing";	break;
++		default:								label_followed_by = L"listtab";	break;
++		}
+ 	}
++	aligment_props->text_label_followed_by_ = label_followed_by;
+ //-------------------------------------------
+ 	std::wstring lvl_text;
+ 	if (oox_num_lvl->m_oLvlText.IsInit() && oox_num_lvl->m_oLvlText->m_sVal.IsInit())
+diff --git a/OdfFile/Writer/Format/styles_list.cpp b/OdfFile/Writer/Format/styles_list.cpp
+index aab487a99b..6d2eeebbb0 100644
+--- a/OdfFile/Writer/Format/styles_list.cpp
++++ b/OdfFile/Writer/Format/styles_list.cpp
+@@ -222,7 +222,10 @@ void style_list_level_label_alignment::serialize(std::wostream & strm)
+     {
+ 		CP_XML_NODE_SIMPLE()
+         {
+-			CP_XML_ATTR_OPT(L"text:label-followed-by",		text_label_followed_by_);
++			// Mandatory on this element in ODF 1.2 and 1.3, so never optional:
++			// an unset value would make every list level schema-invalid.
++			CP_XML_ATTR(L"text:label-followed-by",
++				text_label_followed_by_ ? *text_label_followed_by_ : std::wstring(L"listtab"));
+ 			CP_XML_ATTR_OPT(L"text:list-tab-stop-position",	text_list_tab_stop_position_);
+ 			CP_XML_ATTR_OPT(L"fo:text-indent",				fo_text_indent_);
+ 			CP_XML_ATTR_OPT(L"fo:margin-left",				fo_margin_left_);
+-- 
+2.55.0
+

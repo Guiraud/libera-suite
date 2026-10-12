@@ -48,7 +48,9 @@ class FakeWindow:
 
 def test_it_waits_until_the_first_window_is_shown(monkeypatch) -> None:
     """Nothing opens while `shown` is unset, however long the thread runs."""
-    monkeypatch.setattr(app, "SHOWN_TIMEOUT", 0.5)
+    # Far past anything this test waits for: `shown`, set below, is what
+    # releases the thread. At 0.5 s, 0.3 s past the join, load alone could.
+    monkeypatch.setattr(app, "SHOWN_TIMEOUT", 60.0)
     window = FakeWindow()
     opened: list[str] = []
 
@@ -58,13 +60,12 @@ def test_it_waits_until_the_first_window_is_shown(monkeypatch) -> None:
         daemon=True,
     )
     worker.start()
-    # Long enough to have finished if it were not waiting, short enough not to
-    # reach the timeout that lets it through anyway.
+    # Long enough to have finished if it were not waiting.
     worker.join(0.2)
     assert opened == [], "opened a window before the first one was on screen"
 
     window.events.shown.set()
-    worker.join(2)
+    worker.join(30)
     assert opened == ["b.pptx"]
 
 

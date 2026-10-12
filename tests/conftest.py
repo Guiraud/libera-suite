@@ -23,11 +23,11 @@ from support import build_roots, make_sample_docx
 
 from libera import logs, payload
 from libera.host import instance, session
-from libera.host.server import state
+from libera.host.server import diagnostics
 
 
 def _built_payload() -> Path | None:
-    """The tree build/payload.sh writes, if this checkout has built one.
+    """The tree build/engine/payload.sh writes, if this checkout has built one.
 
     Tests need *a* working payload, not the one a user would be given. The
     shipping resolution is deliberately strict -- an installed payload has to
@@ -38,10 +38,10 @@ def _built_payload() -> Path | None:
     test's business, and a CI job should not have to know the sequence.
 
     So the suite falls back to the build tree, which is where a payload is
-    after `make payload-all` and needs no install step. `payload.resolve` is
+    after `make payload` and needs no install step. `payload.resolve` is
     untouched.
 
-    The candidates are build/common.sh's, in its order, because a fallback
+    The candidates are build/engine/common.sh's, in its order, because a fallback
     that only fires on one platform is worse than none: it works on the box
     you tried it on and skips silently on the other. `support.build_roots`
     holds that list, because the dist lookup in test_payload.py needs the same
@@ -115,7 +115,7 @@ def pytest_report_header() -> list[str]:
         return [
             "libera payload: NONE -- every tier above a_unit will skip",
             (
-                f"  wanted {payload.PAYLOAD_VERSION}: `make payload-all`,"
+                f"  wanted {payload.PAYLOAD_VERSION}: `make payload`,"
                 " `libera --payload-install`, or LIBERA_PAYLOAD=DIR"
             ),
         ]
@@ -128,7 +128,7 @@ def pytest_report_header() -> list[str]:
 
 NEEDS_PAYLOAD = pytest.mark.skip(
     reason=(
-        "needs a payload: `make payload-all` builds one, or "
+        "needs a payload: `make payload` builds one, or "
         "`libera --payload-install` installs one, or set LIBERA_PAYLOAD"
     )
 )
@@ -163,21 +163,28 @@ def pytest_runtest_teardown(item):
     failed in a full run.
 
     And the logging any test turned up, so the next one is not louder than it
-    asked to be; the server's counters, which `/__host__/calls` reports and
+    asked to be; the server's counters, which `/__host__/report` reports and
     tests count; and an announcement a test that ran the real `app.run` left
     where every later hand-off would find it.
     """
     session.SESSIONS.clear()
     logs.setup(0)
-    state.reset()
-    state.ROUTES.clear()
-    state.NOT_FOUND.clear()
+    diagnostics.reset()
+    diagnostics.ASKED.clear()
+    diagnostics.NOT_FOUND.clear()
     NO_INSTANCE.unlink(missing_ok=True)
 
 
 def pytest_collection_modifyitems(config, items):
-    """Mark each test by the level it sits at, and skip what cannot run here."""
+    """Mark each test by the level it sits at, and skip what cannot run here.
+
+    pytest hands this hook every item collected, build/tests' as well, which
+    mark themselves; only the ones under this directory are touched here.
+    """
+    here = Path(__file__).parent
     for item in items:
+        if here not in Path(item.fspath).parents:
+            continue
         parts = Path(item.fspath).parts
         if "a_unit" in parts:
             item.add_marker(pytest.mark.unit)

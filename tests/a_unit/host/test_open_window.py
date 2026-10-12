@@ -10,10 +10,15 @@ answered by a dropped connection, started a whole second instance.
 
 from __future__ import annotations
 
+import threading
+from collections import UserList
+
 import pytest
 
-from libera.host import app
-from libera.host.session import SESSIONS, NotReadyError, Session, configure
+from libera.host import app, locking
+from libera.host.convert import ConversionError
+from libera.host.session import SESSIONS, Session, configure
+from libera.host.window import windows
 
 
 @pytest.fixture
@@ -23,13 +28,11 @@ def running(tmp_path, monkeypatch):
     configure(Session(payload=tmp_path / "payload", work=tmp_path / "sessions" / "0"))
 
     def refuse(_session, document):
-        msg = f"could not open {document}"
-        raise NotReadyError(msg)
+        msg = f"x2t could not convert {document.name} (exit status 1)"
+        raise ConversionError(msg)
 
     monkeypatch.setattr(app.opening, "open_document", refuse)
-    monkeypatch.setattr(
-        app, "_create_window", lambda *_a, **_k: pytest.fail("a window")
-    )
+    monkeypatch.setattr(app, "create_window", lambda *_a, **_k: pytest.fail("a window"))
     said: list[str] = []
     monkeypatch.setattr(
         app.dialogs, "say", lambda heading, _detail: said.append(heading)
@@ -77,19 +80,145 @@ def test_run_reaches_the_gui_loop_with_windows_to_open_in(tmp_path, monkeypatch)
     )
     monkeypatch.setattr(
         app,
-        "_create_window",
+        "create_window",
         lambda *_a, **_k: SimpleNamespace(
             uid="w", events=SimpleNamespace(closed=Event())
         ),
     )
+    monkeypatch.setattr(windows, "_start_windows", [])
     at_start: list = []
     monkeypatch.setattr(webview, "start", lambda **_: at_start.append(hooks.shell))
 
-    try:
-        app.run(tmp_path / "payload", tmp_path / "sessions", [])
-    finally:
-        app.START_WINDOW.clear()
+    hook = threading.excepthook
 
+    app.run(tmp_path / "payload", tmp_path / "sessions", [])
+
+    assert threading.excepthook is hook, "run() left its thread hook behind"
     assert len(at_start) == 1, "run() never reached the GUI loop"
     assert at_start[0].windowed
-    assert SESSIONS["0"].id == "0"
+    (first,) = SESSIONS.values()
+    assert first.work.parent == tmp_path / "sessions"
+
+
+class Hooks(UserList):
+    """A pywebview event: handlers are added with `+=`."""
+
+    def __iadd__(self, handler):
+        self.append(handler)
+        return self
+
+
+class FakeWindow:
+    """A pywebview window, reduced to what opening a document asks of it."""
+
+    def __init__(self, uid: str) -> None:
+        from types import SimpleNamespace
+
+        self.uid = uid
+        self.shown = 0
+        self.events = SimpleNamespace(closing=Hooks(), closed=Hooks())
+
+    def show(self) -> None:
+        self.shown += 1
+
+
+@pytest.fixture
+def showing(tmp_path, monkeypatch):
+    """A window already showing report.docx, and a converter that accepts."""
+    import webview
+
+    SESSIONS.clear()
+    report = tmp_path / "report.docx"
+    report.write_bytes(b"a document")
+    configure(Session(payload=tmp_path / "payload", work=tmp_path / "sessions" / "0"))
+    first = Session(
+        payload=tmp_path / "payload", work=tmp_path / "sessions" / "1", document=report
+    )
+    configure(first)
+    first.window = "w1"
+    window = FakeWindow("w1")
+    monkeypatch.setattr(webview, "windows", [window])
+    monkeypatch.setattr(app.opening, "open_document", lambda *_: None)
+    created: list[str] = []
+
+    def create(title, _url, *_a, **_k):
+        created.append(title)
+        return FakeWindow("new")
+
+    monkeypatch.setattr(app, "create_window", create)
+    monkeypatch.setattr(app, "close_start_window", lambda: None)
+    yield report, window, created
+    SESSIONS.clear()
+
+
+def test_a_document_already_open_comes_to_the_front_instead(showing):
+    """Two windows on one file each converted and saved on their own, and the
+    last save won: the other window's edits were gone, with no warning."""
+    report, window, created = showing
+
+    assert app.WindowedShell(43110).open_window(report)
+
+    assert window.shown == 1
+    assert created == [], "a second window was opened on the same document"
+    assert sorted(SESSIONS) == ["0", "1"]
+
+
+def test_the_same_file_by_another_path_is_the_same_document(showing, tmp_path):
+    report, window, created = showing
+    (tmp_path / "link.docx").symlink_to(report)
+
+    app.WindowedShell(43110).open_window(tmp_path / "link.docx")
+
+    assert (window.shown, created) == (1, [])
+
+
+def test_another_document_still_gets_a_window_of_its_own(showing, tmp_path):
+    _report, window, created = showing
+    other = tmp_path / "other.docx"
+    other.write_bytes(b"another document")
+
+    app.WindowedShell(43110).open_window(other)
+
+    assert window.shown == 0
+    assert len(created) == 1
+
+
+def test_the_first_window_lets_go_of_its_document_when_it_closes(tmp_path, monkeypatch):
+    """The first window was made apart from the others, wired to ask before
+    closing but not to let go after: its lock file outlived Libera Suite, and
+    LibreOffice took the document for one still open."""
+    SESSIONS.clear()
+    report = tmp_path / "report.docx"
+    report.write_bytes(b"a document")
+    first = Session(
+        payload=tmp_path / "payload", work=tmp_path / "sessions" / "a", document=report
+    )
+    configure(first)
+    locking.take(report)
+    monkeypatch.setattr(app, "create_window", lambda *_a, **_k: FakeWindow("w1"))
+
+    window = app._open_first_window(43110, first, None)
+    for closed in window.events.closed:
+        closed()
+
+    assert not locking.lock_path(report).exists(), "the lock outlived the window"
+    assert first.id not in SESSIONS
+
+
+def test_a_thread_that_fails_says_so_on_screen(monkeypatch):
+    """Opening, a menu action, a drop: each runs on a thread of its own, and
+    launched from Finder or Explorer its traceback went to a stderr nobody
+    sees."""
+    said: list[str] = []
+    monkeypatch.setattr(app.dialogs, "say", lambda heading, _: said.append(heading))
+    monkeypatch.setattr(threading, "excepthook", app._say_thread_failed)
+
+    def fails():
+        msg = "the disk went away"
+        raise OSError(msg)
+
+    worker = threading.Thread(target=fails)
+    worker.start()
+    worker.join()
+
+    assert said == ["Libera Suite ran into a problem"]

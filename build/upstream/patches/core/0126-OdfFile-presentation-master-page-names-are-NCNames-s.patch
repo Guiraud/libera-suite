@@ -1,0 +1,94 @@
+From c62a34cad1efc1c79f8dac7908b57a6eea918f9e Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 06:27:38 +0200
+Subject: [PATCH 126/142] OdfFile: presentation master page names are NCNames,
+ shown as they were
+
+A presentation's master pages are named after the PowerPoint master and
+layout, "User Theme: 1_0" for instance, and style:name and the
+draw:master-page-name that refers to it must be NCNames: 25 of
+LibreOffice's ODF test documents after the fourth batch, with both
+messages. The writer now escapes such a name as LibreOffice does, _20_
+for a space, and keeps the name as it was in style:display-name. The
+reader named each PPTX layout after the master page's style:name; it now
+takes the display name when there is one, so the layout keeps its name
+across a round trip, and a LibreOffice master page with an escaped name
+comes to PowerPoint with its readable one.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ .../Converter/pptx_conversion_context.cpp     |  8 +++++-
+ .../Writer/Format/odp_conversion_context.cpp  | 27 +++++++++++++++++++
+ 2 files changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Reader/Converter/pptx_conversion_context.cpp b/OdfFile/Reader/Converter/pptx_conversion_context.cpp
+index ea266b2719..ca27a0f4dd 100644
+--- a/OdfFile/Reader/Converter/pptx_conversion_context.cpp
++++ b/OdfFile/Reader/Converter/pptx_conversion_context.cpp
+@@ -482,7 +482,13 @@ namespace cpdoccore {
+ 			current_master_page_name_ = layouts.content[layout_index].master_name;
+ 			current_layout_page_name_ = L"";
+ 
+-			current_layout().set_name(current_master_page_name_);
++			// The name as the user gave it: a style name is escaped when it is not an NCName
++			odf_reader::style_master_page* master_page =
++				root()->odf_context().pageLayoutContainer().master_page_by_name(current_master_page_name_);
++			if (master_page && master_page->attlist_.style_display_name_)
++				current_layout().set_name(*master_page->attlist_.style_display_name_);
++			else
++				current_layout().set_name(current_master_page_name_);
+ 
+ 			std::pair<int, std::wstring> master_id = //std::pair<int,std::wstring>(1, L"smId1");
+ 				root()->odf_context().styleContainer().presentation_masters().add_or_find(layouts.content[layout_index].master_name);
+diff --git a/OdfFile/Writer/Format/odp_conversion_context.cpp b/OdfFile/Writer/Format/odp_conversion_context.cpp
+index 09002922e0..c5c2ab8a68 100644
+--- a/OdfFile/Writer/Format/odp_conversion_context.cpp
++++ b/OdfFile/Writer/Format/odp_conversion_context.cpp
+@@ -134,10 +134,35 @@ void odp_conversion_context::end_slide()
+ {
+ 	slide_context_.end_page();
+ }
++// A style name is an NCName; PowerPoint's names hold spaces and colons. Escaped as LibreOffice
++// escapes them, _20_ for a space, with the name as it was kept as the display name.
++static std::wstring ncname(const std::wstring & name)
++{
++	std::wstring out;
++	for (size_t i = 0; i < name.size(); i++)
++	{
++		wchar_t c = name[i];
++		bool keep = (c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') || c == L'_' ||
++			(i > 0 && ((c >= L'0' && c <= L'9') || c == L'-' || c == L'.'));
++		if (keep)
++			out += c;
++		else
++		{
++			wchar_t hex[16];
++			swprintf(hex, 16, L"_%x_", (unsigned int)c);
++			out += hex;
++		}
++	}
++	return out;
++}
++
+ void odp_conversion_context::start_master_slide(std::wstring & name)
+ {
+ 	slide_context_.set_styles_context(page_layout_context()->get_local_styles_context());
+ 
++	std::wstring display_name = name;
++	name = ncname(name);
++
+ 	std::map<std::wstring, int>::iterator pFind = map_masterNames_.find(name);
+ 	if (map_masterNames_.end() == pFind)
+ 	{
+@@ -149,6 +174,8 @@ void odp_conversion_context::start_master_slide(std::wstring & name)
+ 	}
+ 	
+ 	page_layout_context()->add_master_page(name);	
++	if (display_name != name)
++		page_layout_context()->last_master()->set_display_name(display_name);
+ 	slide_context_.start_page(page_layout_context()->last_master()->get_root());
+ 	
+ 	drawing_context()->set_presentation(1);	
+-- 
+2.55.0
+

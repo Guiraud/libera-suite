@@ -7,8 +7,8 @@
        of its three readers is the running application. The host sets it as the
        Dock icon at startup (host/menu/macos.py), because outside the .app
        bundle the process wears the interpreter's identity and the Dock shows
-       Python's rocket. build/macos-icon.py rasterises it into Libera.icns, and
-       build/flatpak.sh copies it next to the Flatpak manifest, which exports it
+       Python's rocket. build/macos/macos-icon.py rasterises it into Libera.icns, and
+       build/src/libera_build/flatpak.py copies it next to the Flatpak manifest, which exports it
        as the desktop icon. So the three platforms cannot drift.
 
        The geometry is the brand's, on a tile of 80 units: corner radius 18,

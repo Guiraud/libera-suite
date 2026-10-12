@@ -17,7 +17,7 @@ Libera Suite include componenti di [**Euro-Office**](https://github.com/Euro-Off
 
 Siamo grati a entrambi. La parte più difficile di una suite per ufficio sono vent'anni passati a leggere correttamente i file `.docx` degli altri. Quella parte la ereditiamo.
 
-## Codice sorgente corrispondente
+## Codice sorgente corrispondente {#corresponding-source}
 
 Gli editor sono sotto AGPL, che richiede che tu possa ottenere il codice sorgente di ciò che esegui, comprese le nostre modifiche.
 

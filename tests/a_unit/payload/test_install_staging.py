@@ -13,12 +13,17 @@ import shutil
 
 import pytest
 
+from libera.manifest import Artifact
 from libera.payload import PayloadError, installer
+
+
+def sized(size: int) -> Artifact:
+    return Artifact(f"a-{size}.tar.gz", "core", "p", size, "0" * 64)
 
 
 def test_room_check_refuses_when_the_disk_is_too_small(tmp_path, monkeypatch):
     """A number the manifest already knows, checked before the first byte."""
-    artifacts = [{"size": 68_000_000}, {"size": 45_000_000}]
+    artifacts = [sized(68_000_000), sized(45_000_000)]
     monkeypatch.setattr(
         shutil, "disk_usage", lambda _p: shutil._ntuple_diskusage(0, 0, 50_000_000)
     )
@@ -34,7 +39,7 @@ def test_room_check_refuses_when_the_disk_is_too_small(tmp_path, monkeypatch):
 
 
 def test_room_check_passes_with_headroom(tmp_path, monkeypatch):
-    artifacts = [{"size": 10_000_000}]
+    artifacts = [sized(10_000_000)]
     monkeypatch.setattr(
         shutil, "disk_usage", lambda _p: shutil._ntuple_diskusage(0, 0, 999_000_000)
     )

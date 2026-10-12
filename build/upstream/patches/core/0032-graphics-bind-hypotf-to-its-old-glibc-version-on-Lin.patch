@@ -1,0 +1,67 @@
+From d94b0ed1abf69821c232dd771306ff6118969cd8 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sfermigier@gmail.com>
+Date: Mon, 5 Oct 2026 22:17:59 +0200
+Subject: [PATCH] graphics: bind hypotf to its old glibc version on Linux
+
+libgraphics was the only library in the Linux core that needed
+GLIBC_2.35, for one hypotf call in HarfBuzz's hb-outline.hh: glibc 2.35
+added a new version of hypotf and kept the old one, and a build on a
+newer glibc binds the new one. The converter then could not load on
+RHEL 9 and its rebuilds (glibc 2.34). A force-included header binds the
+old version, GLIBC_2.2.5 on x86_64 and GLIBC_2.17 on arm64.
+---
+ DesktopEditor/graphics/cmake/CMakeLists.txt |  3 +++
+ DesktopEditor/graphics/cmake/glibc-hypotf.h | 27 +++++++++++++++++++++
+ 2 files changed, 30 insertions(+)
+ create mode 100644 DesktopEditor/graphics/cmake/glibc-hypotf.h
+
+diff --git a/DesktopEditor/graphics/cmake/CMakeLists.txt b/DesktopEditor/graphics/cmake/CMakeLists.txt
+index 274a71cb19..0afa9ed60a 100644
+--- a/DesktopEditor/graphics/cmake/CMakeLists.txt
++++ b/DesktopEditor/graphics/cmake/CMakeLists.txt
+@@ -1082,6 +1082,9 @@ endif()
+ if(LINUX)
+     target_compile_options(graphics PRIVATE
+         -fpermissive
++        # hypotf at its old symbol version, so the core loads on glibc 2.34
++        # (RHEL 9): see glibc-hypotf.h.
++        -include ${CMAKE_CURRENT_SOURCE_DIR}/glibc-hypotf.h
+     )
+ endif()
+ 
+diff --git a/DesktopEditor/graphics/cmake/glibc-hypotf.h b/DesktopEditor/graphics/cmake/glibc-hypotf.h
+new file mode 100644
+index 0000000000..cf2510164a
+--- /dev/null
++++ b/DesktopEditor/graphics/cmake/glibc-hypotf.h
+@@ -0,0 +1,27 @@
++/*
++ * Bind hypotf to the version glibc has always had, not to GLIBC_2.35.
++ *
++ * glibc 2.35 added a faster hypotf under a new symbol version and kept the old
++ * one exported. A library built on a newer glibc binds the newest, and then
++ * cannot load where glibc is older: libgraphics was the only library in the
++ * Linux core needing GLIBC_2.35, for one call, in HarfBuzz's
++ * hb_outline_vector_t::normalize_len, so the whole converter refused to start
++ * on RHEL 9 (glibc 2.34) and its rebuilds. Measured with objdump -T over every
++ * binary in the core: without this symbol the core needs GLIBC 2.34.
++ *
++ * Force-included into the graphics target on Linux (see CMakeLists.txt), since
++ * the call is in a header of HarfBuzz, which the build fetches.
++ */
++#if defined(__linux__)
++/* Force-included, so before any system header: __GLIBC__ is not defined until
++ * features.h is read, and testing it first skipped all of this. Measured: the
++ * first build of this patch still bound hypotf@GLIBC_2.35. */
++#  include <features.h>
++#endif
++#if defined(__linux__) && defined(__GLIBC__)
++#  if defined(__x86_64__)
++__asm__(".symver hypotf,hypotf@GLIBC_2.2.5");
++#  elif defined(__aarch64__)
++__asm__(".symver hypotf,hypotf@GLIBC_2.17");
++#  endif
++#endif
+-- 
+2.55.0
+

@@ -2,7 +2,7 @@
 
 Four surfaces carry it and three of them are outside Python: the editor's About
 panel reads the theme's `attribution` token, the Flatpak's AppStream metadata
-is read by software centres, and `build/macos-app.sh` writes a copyright line
+is read by software centres, and `build/macos/macos-app.sh` writes a copyright line
 into `Info.plist`. `host/about.py` holds the text the host itself shows.
 
 They drifted once already in the other direction: the theme said the right
@@ -27,9 +27,9 @@ from support import repo_root
 from libera.host import about
 
 ROOT = repo_root()
-THEME = ROOT / "build" / "theme" / "libera" / "meta" / "config.json"
+THEME = ROOT / "build" / "payload" / "theme" / "libera" / "meta" / "config.json"
 METAINFO = ROOT / "build" / "flatpak" / "eu.liberasuite.Libera.metainfo.xml"
-MACOS_APP = ROOT / "build" / "macos-app.sh"
+MACOS_APP = ROOT / "build" / "macos" / "macos-app.sh"
 
 
 def test_the_theme_and_the_host_say_the_same_thing() -> None:
@@ -89,7 +89,7 @@ def test_the_desktop_about_gate_is_patched_out() -> None:
     running editor before the patch: `#left-btn-about` and `#about-menu-panel`
     both display:none, and the attribution nowhere in visible text.
     """
-    patch = ROOT / "build" / "patches" / "web-apps"
+    patch = ROOT / "build" / "upstream" / "patches" / "web-apps"
     about_patches = list(patch.glob("*keep-About-reachable*.patch"))
     assert about_patches, f"no About patch in {patch}"
 
@@ -109,3 +109,23 @@ def test_the_desktop_about_gate_is_patched_out() -> None:
         "-                            this.appOptions.customization.about = false;"
         in body
     )
+
+
+def test_about_says_which_versions_first() -> None:
+    """A bug report needs them, and About on Linux and Windows named only who
+    wrote what."""
+    first = about.format_notice().split("\n\n")[0]
+    assert first == about.format_version()
+    assert about.app_version() in first
+
+
+def test_the_macos_about_panel_reads_both_versions() -> None:
+    """Outside `Libera.app` the bundle is the interpreter's, and its version is
+    what the panel showed."""
+    macos = pytest.importorskip("libera.host.window.macos", reason="AppKit")
+
+    macos._name_the_application()
+
+    info = macos.Foundation.NSBundle.mainBundle().infoDictionary()
+    assert info["CFBundleShortVersionString"] == about.app_version()
+    assert info["CFBundleVersion"] == f"payload {macos.locate.PAYLOAD_VERSION}"

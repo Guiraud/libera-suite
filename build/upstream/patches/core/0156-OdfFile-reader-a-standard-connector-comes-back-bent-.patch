@@ -1,0 +1,43 @@
+From 545edffaddb59b2b638d3eff723e2393b2f32af1 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 18:32:43 +0200
+Subject: [PATCH 156/156] OdfFile reader: a standard connector comes back bent,
+ not straight
+
+The reader compared draw:type with "standart", so ODF's "standard"
+connectors, which x2t's writer spells out, became straightConnector1 and
+lost their shape; only a connector with no type, as LibreOffice writes
+the default, came through bent. In the 6 of LibreOffice's test
+presentations with connectors, every connector now survives the second
+trip; tdf147164.odp had lost all six.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Reader/Format/draw_shapes_pptx.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/OdfFile/Reader/Format/draw_shapes_pptx.cpp b/OdfFile/Reader/Format/draw_shapes_pptx.cpp
+index 49fe33b45a..c608e2a88d 100644
+--- a/OdfFile/Reader/Format/draw_shapes_pptx.cpp
++++ b/OdfFile/Reader/Format/draw_shapes_pptx.cpp
+@@ -367,7 +367,7 @@ void draw_connector::pptx_convert(oox::pptx_conversion_context & Context)
+ 		connector_size = v < min ? min : (v > max ? max : v); // clamp(v, min, max)
+ 	}
+ 	
+-	std::wstring drawType = draw_connector_attlist_.draw_type_.get_value_or(L"standart");
++	std::wstring drawType = draw_connector_attlist_.draw_type_.get_value_or(L"standard");
+ 	std::wstring pptx_prst;
+ 
+ 	if (drawType == L"curve")
+@@ -376,7 +376,7 @@ void draw_connector::pptx_convert(oox::pptx_conversion_context & Context)
+ 		pptx_prst = L"bentConnector" + std::to_wstring(connector_size);
+ 	else if (drawType == L"line")
+ 		pptx_prst = L"straightConnector1";
+-	else if (drawType == L"standart")
++	else if (drawType == L"standard") // was "standart", so ODF's standard connectors came back straight
+ 		pptx_prst = L"bentConnector" + std::to_wstring(connector_size);
+ 	else
+ 		pptx_prst = L"straightConnector1";
+-- 
+2.55.0
+

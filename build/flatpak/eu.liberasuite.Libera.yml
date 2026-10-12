@@ -6,7 +6,7 @@
 # this, gui.why_no_window() has nothing to say.
 #
 # Measured in the runtime, not assumed (flatpak run --command=... or
-# build/flatpak.sh shell):
+# lb app flatpak-shell):
 #
 #   bin/python3.13
 #   lib/python3.13/site-packages/gi
@@ -71,7 +71,7 @@ modules:
     build-options:
       no-debuginfo: true
     build-commands:
-      # Offline: build/flatpak.sh fills wheels/ before flatpak-builder runs,
+      # Offline: build/src/libera_build/flatpak.py fills wheels/ before flatpak-builder runs,
       # because flatpak-builder gives the build no network -- which is the
       # property that makes the result reproducible, so it is worth the step.
       - pip3 install --no-index --find-links=wheels --prefix=/app libera
@@ -100,7 +100,7 @@ modules:
       - type: dir
         path: wheels
         dest: wheels
-      # The release artifacts and their manifest, staged by build/flatpak.sh.
+      # The release artifacts and their manifest, staged by build/src/libera_build/flatpak.py.
       # flatpak-builder gives the build no network, which is the property that
       # makes it reproducible, so the tarballs have to arrive as a source.
       - type: dir

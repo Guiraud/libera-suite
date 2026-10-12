@@ -1,0 +1,86 @@
+From 439e8081adbc1f666a1d8f0a63d008f5ea57ead2 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 18:32:42 +0200
+Subject: [PATCH 151/156] OdfFile writer: a bitmap tile's size is a percentage
+ of the image
+
+OOXML's a:tile gives sx and sy in thousandths of a percent of the
+image's size. The converter multiplied them by the image's size in
+inches and set_bitmap_tile_scale took the result for points, so every
+tile was 72 times too small, and it was written in "inch", which is not
+an ODF unit: 5 of LibreOffice's ODF test documents after the eighth
+batch. The size is now written as the percentage it is, which the
+reader turns straight back into sx and sy; 0, the image's own size, is
+left out. Lengths in inches are written "in".
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/DataTypes/length.cpp                  |  2 +-
+ OdfFile/Writer/Converter/ConvertDrawing.cpp   | 10 ++++++----
+ OdfFile/Writer/Format/odf_drawing_context.cpp |  7 +++----
+ 3 files changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/OdfFile/DataTypes/length.cpp b/OdfFile/DataTypes/length.cpp
+index 3a03fed18d..ca6a9a9a50 100644
+--- a/OdfFile/DataTypes/length.cpp
++++ b/OdfFile/DataTypes/length.cpp
+@@ -46,7 +46,7 @@ std::wostream & operator<< (std::wostream & _Wostream, const length::unit _Unit)
+         _Wostream << L"px";
+         break;
+     case length::inch:
+-        _Wostream << L"inch";
++        _Wostream << L"in"; // ODF's spelling; "inch" is read but is not valid
+         break;
+     case length::pt:
+         _Wostream << L"pt";
+diff --git a/OdfFile/Writer/Converter/ConvertDrawing.cpp b/OdfFile/Writer/Converter/ConvertDrawing.cpp
+index 95c5c85fab..856c09830c 100644
+--- a/OdfFile/Writer/Converter/ConvertDrawing.cpp
++++ b/OdfFile/Writer/Converter/ConvertDrawing.cpp
+@@ -1427,13 +1427,15 @@ void OoxConverter::convert(PPTX::Logic::BlipFill *oox_bitmap_fill)
+ 
+ 			if (oox_bitmap_fill->tile->flip.IsInit())	{}
+ 
+-			if (oox_bitmap_fill->tile->sx.IsInit() && Width > 0)	
++			// The scale is in thousandths of a percent of the image's size; the value was taken for a
++			// size in points and written 72 times too small. 0 means the image's own size.
++			if (oox_bitmap_fill->tile->sx.IsInit() && *oox_bitmap_fill->tile->sx > 0)
+ 			{
+-				odf_context()->drawing_context()->set_bitmap_tile_scale_x(*oox_bitmap_fill->tile->sx / 100000. * Width);
++				odf_context()->drawing_context()->set_bitmap_tile_scale_x(*oox_bitmap_fill->tile->sx / 1000.);
+ 			}
+-			if (oox_bitmap_fill->tile->sy.IsInit()&& Height > 0)
++			if (oox_bitmap_fill->tile->sy.IsInit() && *oox_bitmap_fill->tile->sy > 0)
+ 			{
+-				odf_context()->drawing_context()->set_bitmap_tile_scale_y(*oox_bitmap_fill->tile->sy / 100000. * Height);
++				odf_context()->drawing_context()->set_bitmap_tile_scale_y(*oox_bitmap_fill->tile->sy / 1000.);
+ 			}		
+ 			if (oox_bitmap_fill->tile->tx.IsInit() && Width > 0)
+ 			{
+diff --git a/OdfFile/Writer/Format/odf_drawing_context.cpp b/OdfFile/Writer/Format/odf_drawing_context.cpp
+index 310a68a00b..33eaa3f641 100644
+--- a/OdfFile/Writer/Format/odf_drawing_context.cpp
++++ b/OdfFile/Writer/Format/odf_drawing_context.cpp
+@@ -4209,16 +4209,15 @@ void odf_drawing_context::set_bitmap_tile_scale_x(double scale_x)
+ {
+ 	if (!impl_->current_graphic_properties)return;
+ 	
+-	impl_->current_graphic_properties->common_draw_fill_attlist_.draw_fill_image_width_ = 
+-				length(length(scale_x,length::pt).get_value_unit(length::inch), length::inch);
++	// a percentage of the image's own width, as OOXML's tile scale is
++	impl_->current_graphic_properties->common_draw_fill_attlist_.draw_fill_image_width_ = percent(scale_x);
+ 
+ }
+ void odf_drawing_context::set_bitmap_tile_scale_y(double scale_y)
+ {
+ 	if (!impl_->current_graphic_properties)return;
+ 	
+-	impl_->current_graphic_properties->common_draw_fill_attlist_.draw_fill_image_height_ = 
+-				length(length(scale_y,length::pt).get_value_unit(length::inch), length::inch);
++	impl_->current_graphic_properties->common_draw_fill_attlist_.draw_fill_image_height_ = percent(scale_y);
+ 
+ }
+ void odf_drawing_context::set_bitmap_tile_translate_y(double y)
+-- 
+2.55.0
+

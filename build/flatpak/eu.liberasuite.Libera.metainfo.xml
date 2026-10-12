@@ -61,6 +61,35 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="0.4.0" date="2026-10-12">
+      <description>
+        <p>
+          New editors, downloaded once: OpenDocument files are written and
+          read more faithfully, and CSV files with emoji or of any size save
+          and open whole. A document open somewhere else says so, a window
+          shows when it has unsaved edits, and Libera Suite says when a newer
+          version is out. Drag and drop, a personal dictionary that keeps its
+          words, and your name in tracked changes.
+        </p>
+      </description>
+    </release>
+    <release version="0.3.3" date="2026-10-02">
+      <description>
+        <p>
+          Save As starts in the document's folder, a new document asks where
+          to be saved, and a crash while typing no longer loses edits. Other
+          web pages can no longer reach your documents.
+        </p>
+      </description>
+    </release>
+    <release version="0.3.2" date="2026-10-01">
+      <description>
+        <p>
+          Save writes the document in the format it has, and CSV and TSV
+          files open.
+        </p>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-09-30">
       <description>
         <p>

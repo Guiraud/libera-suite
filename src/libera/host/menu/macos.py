@@ -148,14 +148,21 @@ def make_menubar() -> list:
     return []
 
 
-def _add_item(menu, title, selector, key="", mask=COMMAND):
-    item = menu.addItemWithTitle_action_keyEquivalent_(title, selector, key)
+def _item(title, selector, key="", mask=COMMAND, *, target=TARGET):
+    """A menu item sent to `target`, for its menu to add or insert.
+
+    None for a standard selector, which goes to the responder chain and must
+    have no target; ours is never reached without one. Said by the caller:
+    guessed from the selector's prefix, `toggleFormattingMarks:` would have
+    gone to the responder chain, and five items were built by hand to avoid it.
+    """
+    item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+        title, selector, key
+    )
     if key:
         item.setKeyEquivalentModifierMask_(mask)
-    # A standard selector goes to the responder chain and must have no target;
-    # ours would never be reached without one.
-    if selector and not selector.startswith(("perform", "toggle", "arrangeInFront")):
-        item.setTarget_(TARGET)
+    if target is not None:
+        item.setTarget_(target)
     return item
 
 
@@ -176,13 +183,13 @@ def install() -> None:
     new_menu = AppKit.NSMenu.alloc().initWithTitle_("New")
     new_menu.setDelegate_(NEW_DELEGATE)
     for app in actions.list_creatable():
-        _add_item(new_menu, app.noun, "newDocumentOfKind:").setRepresentedObject_(
-            app.name
-        )
+        kind = _item(app.noun, "newDocumentOfKind:")
+        kind.setRepresentedObject_(app.name)
+        new_menu.addItem_(kind)
     give_new_its_key(new_menu, actions.choose_new_kind())
     new_item = file_menu.addItemWithTitle_action_keyEquivalent_("New", None, "")
     new_item.setSubmenu_(new_menu)
-    _add_item(file_menu, "Open…", "openDocument:", "o")
+    file_menu.addItem_(_item("Open…", "openDocument:", "o"))
 
     recent = AppKit.NSMenu.alloc().initWithTitle_("Open Recent")
     recent.setDelegate_(RECENT_DELEGATE)
@@ -194,15 +201,15 @@ def install() -> None:
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
     # No key equivalent. Reloading is rare, and a shortcut here would be one
     # more key the page also handles -- see PAGE_YIELDS.
-    _add_item(file_menu, "Reload", "reloadDocument:")
+    file_menu.addItem_(_item("Reload", "reloadDocument:"))
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
     # performClose: is the standard one: it goes through the window's delegate,
     # which is where Libera Suite asks about unsaved changes.
-    _add_item(file_menu, "Close", "performClose:", "w")
-    _add_item(file_menu, "Save", "saveDocument:", "s")
-    _add_item(file_menu, "Save As…", "saveDocumentAs:", "s", COMMAND | SHIFT)
+    file_menu.addItem_(_item("Close", "performClose:", "w", target=None))
+    file_menu.addItem_(_item("Save", "saveDocument:", "s"))
+    file_menu.addItem_(_item("Save As…", "saveDocumentAs:", "s", COMMAND | SHIFT))
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
-    _add_item(file_menu, "Print…", "printDocument:", "p")
+    file_menu.addItem_(_item("Print…", "printDocument:", "p"))
 
     file_item = AppKit.NSMenuItem.alloc().init()
     file_item.setTitle_("File")
@@ -264,25 +271,12 @@ def _extend_edit(main) -> None:
     edit = _find_submenu(main, "Edit")
     if edit is None:
         return
-    undo = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-        "Undo", "undo:", "z"
-    )
-    undo.setTarget_(TARGET)
-    redo = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-        "Redo", "redo:", "z"
-    )
-    redo.setKeyEquivalentModifierMask_(COMMAND | SHIFT)
-    redo.setTarget_(TARGET)
-    edit.insertItem_atIndex_(undo, 0)
-    edit.insertItem_atIndex_(redo, 1)
+    edit.insertItem_atIndex_(_item("Undo", "undo:", "z"), 0)
+    edit.insertItem_atIndex_(_item("Redo", "redo:", "z", COMMAND | SHIFT), 1)
     edit.insertItem_atIndex_(AppKit.NSMenuItem.separatorItem(), 2)
 
-    find = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-        "Find…", "find:", "f"
-    )
-    find.setTarget_(TARGET)
     edit.addItem_(AppKit.NSMenuItem.separatorItem())
-    edit.addItem_(find)
+    edit.addItem_(_item("Find…", "find:", "f"))
 
 
 def _fill_view(main) -> None:
@@ -310,22 +304,17 @@ def _fill_view(main) -> None:
     for index, (title, selector, key, mask) in enumerate(items):
         if title is None:
             view.insertItem_atIndex_(AppKit.NSMenuItem.separatorItem(), index)
-            continue
-        item = AppKit.NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            title, selector, key
-        )
-        item.setKeyEquivalentModifierMask_(mask)
-        item.setTarget_(TARGET)
-        view.insertItem_atIndex_(item, index)
+        else:
+            view.insertItem_atIndex_(_item(title, selector, key, mask), index)
 
 
 def _add_window_menu(main) -> None:
     """A Window menu, which macOS then keeps the window list in itself."""
     window_menu = AppKit.NSMenu.alloc().initWithTitle_("Window")
-    _add_item(window_menu, "Minimize", "performMiniaturize:", "m")
-    _add_item(window_menu, "Zoom", "performZoom:")
+    window_menu.addItem_(_item("Minimize", "performMiniaturize:", "m", target=None))
+    window_menu.addItem_(_item("Zoom", "performZoom:", target=None))
     window_menu.addItem_(AppKit.NSMenuItem.separatorItem())
-    _add_item(window_menu, "Bring All to Front", "arrangeInFront:")
+    window_menu.addItem_(_item("Bring All to Front", "arrangeInFront:", target=None))
 
     item = AppKit.NSMenuItem.alloc().init()
     item.setTitle_("Window")
@@ -338,7 +327,7 @@ def _add_window_menu(main) -> None:
 
 def _add_help_menu(main) -> None:
     help_menu = AppKit.NSMenu.alloc().initWithTitle_("Help")
-    _add_item(help_menu, "Libera Help", "showHelp:", "?")
+    help_menu.addItem_(_item("Libera Help", "showHelp:", "?"))
 
     item = AppKit.NSMenuItem.alloc().init()
     item.setTitle_("Help")

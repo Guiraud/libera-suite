@@ -176,7 +176,7 @@ def close_window() -> None:
         if front is None:
             logger.warning("menu Close: no window")
             return
-        front.destroy()
+        window.native.close_window(front)
 
     _run_in_background(close)
 
@@ -257,7 +257,7 @@ def show_about() -> None:
     `NSHumanReadableCopyright` out of the main bundle, so this is the Linux
     route to the same sentences. The editor has an About panel of its own,
     which upstream switches off whenever `isDesktopApp` on the assumption that
-    the native shell provides one; `build/patches/web-apps/0007` turns it back
+    the native shell provides one; `build/upstream/patches/web-apps/0007` turns it back
     on, and this is what the shell owes either way.
     """
 
@@ -271,7 +271,7 @@ def read_recent_documents() -> list[str]:
     the first, rather than binding it to the thread asking -- AppKit's menu
     delegate, or `run()` itself -- which is what this used to do.
     """
-    first = next(iter(session.SESSIONS.values()), None)
+    first = next(iter(list(session.SESSIONS.values())), None)
     if first is None:
         return []
     return [entry["path"] for entry in recents.read_recents(first)]

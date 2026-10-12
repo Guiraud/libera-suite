@@ -199,3 +199,10 @@ def choose_for(document: pathlib.Path) -> App:
     """
     ext = document.suffix.lstrip(".").lower()
     return next((app for app in ALL if ext in app.opens), WORDS)
+
+
+def is_document(path: pathlib.Path) -> bool:
+    """Whether one of the editors opens this file: what a drop opens in a
+    window rather than handing to the document it was dropped on."""
+    ext = path.suffix.lstrip(".").lower()
+    return any(ext in app.opens for app in ALL)

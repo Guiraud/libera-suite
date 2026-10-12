@@ -1,0 +1,44 @@
+From d0202536336e1e4e6aa951ce30832b74c6965cc7 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 16:13:20 +0200
+Subject: [PATCH 114/142] OdfFile writer: master page notes after the shapes,
+ and only once
+
+style_master_page::add_child_element had no break after storing
+presentation:notes, so the notes fell through into style_style_, which
+serialize writes before the shapes; presentation_notes_ itself was
+never written. The schema wants presentation:notes last, after every
+shape. draw_page already defers its notes for the same reason.
+
+Found in 312 of LibreOffice's 3794 ODF test documents after a round
+trip, every one a presentation.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/styles.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/OdfFile/Writer/Format/styles.cpp b/OdfFile/Writer/Format/styles.cpp
+index 84114118bd..d64a5ad8ac 100644
+--- a/OdfFile/Writer/Format/styles.cpp
++++ b/OdfFile/Writer/Format/styles.cpp
+@@ -1315,6 +1315,7 @@ void style_master_page::add_child_element( const office_element_ptr & child)
+ 		break;
+ 	case typePresentationNotes:
+         presentation_notes_ = child;     
++		break;
+ 	case typeStyleStyle:
+ 		style_style_.push_back(child);
+ 		break;
+@@ -1351,6 +1352,8 @@ void style_master_page::serialize(std::wostream & strm)
+ 			{
+ 				content_[i]->serialize(CP_XML_STREAM());
+ 			}
++			// Last: the schema puts presentation:notes after every shape.
++			if (presentation_notes_)	presentation_notes_->serialize(CP_XML_STREAM());
+ 		}
+ 	}
+ }
+-- 
+2.55.0
+

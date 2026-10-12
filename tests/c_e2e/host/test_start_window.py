@@ -14,14 +14,26 @@ from __future__ import annotations
 import json
 import threading
 import urllib.request
+from urllib.parse import urlparse
 
 import pytest
-from playwright.sync_api import Error, sync_playwright
+from playwright.sync_api import Error, expect, sync_playwright
 from support import find_free_port
 
 from libera import payload as payload_mod
 from libera.host import recents, server, session as sessions
 from libera.host.session import Session
+
+# How long to watch for a request that must not come, after a sync point.
+ABSENCE = 1_000
+
+
+def answered(page, route: str):
+    """Around a click: wait until the host has answered the request to `route`
+    that the click makes. A count read after a fixed wait missed a request that
+    arrived late, and a loaded machine makes them late."""
+    path = f"/__host__/{route}"
+    return page.expect_response(lambda r: urlparse(r.url).path == path)
 
 
 @pytest.fixture
@@ -57,7 +69,7 @@ def start_window(tmp_path):
 
     def asked_for(route: str) -> int:
         with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/__host__/calls", timeout=30
+            f"http://127.0.0.1:{port}/__host__/report", timeout=30
         ) as r:
             return json.load(r)["routes"].get(route, 0)
 
@@ -85,8 +97,8 @@ def test_new_asks_the_host_for_that_kind(start_window):
     The session behind the start window shows no document at all, so the kind
     cannot come from it -- it travels with the request.
     """
-    start_window.locator("#new button", has_text="Spreadsheet").click()
-    start_window.wait_for_timeout(1500)
+    with answered(start_window, "new"):
+        start_window.locator("#new button", has_text="Spreadsheet").click()
 
     assert start_window.asked_for("new") == 1
 
@@ -97,16 +109,16 @@ def test_it_lists_the_recent_documents_newest_first(start_window):
 
 
 def test_a_recent_document_opens_by_the_path_the_host_handed_out(start_window):
-    start_window.locator("#recent button").first.click()
-    start_window.wait_for_timeout(1500)
+    with answered(start_window, "open-recent"):
+        start_window.locator("#recent button").first.click()
 
     assert start_window.asked_for("open-recent") == 1
 
 
 def test_open_asks_the_host_to_put_a_panel_up(start_window):
     """Only a process with a window can show a file dialog, so the page asks."""
-    start_window.locator("#open").click()
-    start_window.wait_for_timeout(1500)
+    with answered(start_window, "open-document"):
+        start_window.locator("#open").click()
 
     assert start_window.asked_for("open-document") == 1
 
@@ -122,10 +134,12 @@ def test_one_click_is_all_it_takes(start_window):
     """The window is about to be closed by the host; a second click must not
     send a second request into a window that is going away."""
     button = start_window.locator("#new button", has_text="Document")
-    button.click()
-    start_window.wait_for_timeout(400)
+    with answered(start_window, "new"):
+        button.click()
     button.click(force=True)
-    start_window.wait_for_timeout(1500)
+    # A request that must not come has no event to wait for. The first one has
+    # been answered, so a second would already be on its way.
+    start_window.wait_for_timeout(ABSENCE)
 
     assert start_window.asked_for("new") == 1
 
@@ -144,12 +158,15 @@ def test_a_failed_click_leaves_the_window_usable(start_window, tmp_path):
     (tmp_path / "Documents" / "Deck.pptx").unlink()
 
     button = start_window.locator("#recent button").first
-    button.click()
-    start_window.wait_for_timeout(1500)
+    with answered(start_window, "open-recent"):
+        button.click()
 
     assert start_window.asked_for("open-recent") == 1, "the host was never asked"
-    assert not button.is_disabled(), "a failed click left the window dead"
-    assert start_window.locator("#problem").is_visible(), "and said nothing about it"
+    # What the page does with the answer comes after it: expect() waits.
+    expect(button, "a failed click left the window dead").to_be_enabled()
+    expect(
+        start_window.locator("#problem"), "and said nothing about it"
+    ).to_be_visible()
 
 
 def test_a_cancelled_open_leaves_the_window_usable(start_window):
@@ -157,8 +174,59 @@ def test_a_cancelled_open_leaves_the_window_usable(start_window):
     buttons stayed disabled for good. With no window to put a panel on, the
     host answers as a cancelled panel does: 200, and nothing opened."""
     button = start_window.locator("#open")
-    button.click()
-    start_window.wait_for_timeout(1500)
+    with answered(start_window, "open-document"):
+        button.click()
 
     assert start_window.asked_for("open-document") == 1, "the host was never asked"
-    assert not button.is_disabled(), "a cancelled Open left the window dead"
+    # What the page does with the answer comes after it: expect() waits.
+    expect(button, "a cancelled Open left the window dead").to_be_enabled()
+
+
+def test_a_document_dropped_on_it_opens(start_window, monkeypatch, tmp_path):
+    """Its own page, with no bridge, so its own drop handler: the host is asked
+    by name, and the drop is cancelled so the page stays."""
+    from support import ScriptedShell
+
+    from libera.host import hooks
+
+    report = tmp_path / "report.docx"
+    opened: list = []
+    monkeypatch.setattr(
+        hooks,
+        "shell",
+        ScriptedShell(
+            take_dropped=lambda names: [report] if report.name in names else [],
+            open_window=lambda document, _app=None: opened.append(document) or True,
+        ),
+    )
+
+    with answered(start_window, "drop"):
+        prevented = start_window.evaluate(
+            """() => {
+              const data = new DataTransfer();
+              data.items.add(new File(['x'], 'report.docx'));
+              const drop = new DragEvent('drop',
+                {bubbles: true, cancelable: true, dataTransfer: data});
+              document.body.dispatchEvent(drop);
+              return drop.defaultPrevented;
+            }"""
+        )
+
+    assert prevented
+    assert opened == [report]
+
+
+def test_a_file_dragged_over_it_is_shown_to_be_welcome(start_window):
+    """A drop that works with nothing on screen to say it will: an outline
+    while the drag is over the window. (The pointer's "copy" cannot be read
+    here: a script-made DataTransfer keeps dropEffect at "none".)"""
+    start_window.evaluate(
+        """() => {
+          const data = new DataTransfer();
+          data.items.add(new File(['x'], 'report.docx'));
+          document.body.dispatchEvent(new DragEvent('dragover',
+            {bubbles: true, cancelable: true, dataTransfer: data}));
+        }"""
+    )
+
+    assert "dropping" in start_window.evaluate("document.body.className")

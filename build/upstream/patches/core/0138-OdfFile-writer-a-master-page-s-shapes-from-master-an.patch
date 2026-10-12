@@ -1,0 +1,82 @@
+From d72ae02e861171c0a2a52eb95fa66a7c725ecd7c Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 08:56:29 +0200
+Subject: [PATCH 138/142] OdfFile writer: a master page's shapes from master
+ and layout get distinct ids
+
+An ODF master page is made of a PPTX master's shapes and then its
+layout's, and each shape's xml:id came from a map keyed by the PPTX shape
+id per page. PPTX shape ids are unique within a master or within a
+layout, not across both, so a master shape and a layout shape could get
+the same xml:id: 13 of LibreOffice's ODF test documents after the sixth
+batch. The master's and the layout's shapes are now mapped in separate
+scopes. Slides, whose ids animations look up, are unchanged, and a
+master page's timing is not converted.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Converter/PptxConverter.cpp       | 3 +++
+ OdfFile/Writer/Format/odp_conversion_context.cpp | 1 +
+ OdfFile/Writer/Format/odp_conversion_context.h   | 3 +++
+ 3 files changed, 7 insertions(+)
+
+diff --git a/OdfFile/Writer/Converter/PptxConverter.cpp b/OdfFile/Writer/Converter/PptxConverter.cpp
+index 0e247be2a9..44bdc50144 100644
+--- a/OdfFile/Writer/Converter/PptxConverter.cpp
++++ b/OdfFile/Writer/Converter/PptxConverter.cpp
+@@ -1402,16 +1402,19 @@ void PptxConverter::convert_slides()
+ 
+ 					current_slide = slide->Master.GetPointer();
+ 					
++					odp_context->set_identifier_scope(L"master:");
+ 					if (bShowLayoutMasterSp && bShowMasterSp)
+ 						convert_slide(&slide->Master->cSld, current_txStyles, false, true, Master);
+ 					else
+ 						convert(slide->Master->cSld.bg.GetPointer());
++					odp_context->set_identifier_scope(L"layout:");
+ 
+ 					if (slide->Layout->clrMapOvr.IsInit() && slide->Layout->clrMapOvr->overrideClrMapping.IsInit())
+ 						current_clrMap	= slide->Layout->clrMapOvr->overrideClrMapping.GetPointer();
+ 					current_slide = slide->Layout.GetPointer();
+ 					
+ 					convert_slide(&slide->Layout->cSld, current_txStyles, true, bShowLayoutMasterSp, Layout);	
++					odp_context->set_identifier_scope(L"");
+ 
+ 					if (slide->Layout->transition.IsInit())	convert	(slide->Layout->transition.GetPointer());
+ 					else									convert	(slide->Master->transition.GetPointer());
+diff --git a/OdfFile/Writer/Format/odp_conversion_context.cpp b/OdfFile/Writer/Format/odp_conversion_context.cpp
+index c5c2ab8a68..777e92f90f 100644
+--- a/OdfFile/Writer/Format/odp_conversion_context.cpp
++++ b/OdfFile/Writer/Format/odp_conversion_context.cpp
+@@ -289,6 +289,7 @@ std::wstring odp_conversion_context::map_indentifier(std::wstring id)
+ 
+ 	IdentifierMap& map = map_identifiers_[page_index];
+ 
++	id = identifier_scope_ + id;
+ 	IdentifierMap::iterator it = map.find(id);
+ 	if (it != map.end())
+ 		return it->second;
+diff --git a/OdfFile/Writer/Format/odp_conversion_context.h b/OdfFile/Writer/Format/odp_conversion_context.h
+index 5b18d869b0..67fd68297f 100644
+--- a/OdfFile/Writer/Format/odp_conversion_context.h
++++ b/OdfFile/Writer/Format/odp_conversion_context.h
+@@ -87,6 +87,8 @@ public:
+ 	int next_id();
+ 	std::wstring map_indentifier(std::wstring id);
+ 	std::wstring get_mapped_identifier(const std::wstring& id);
++	// A master page is made of a PPTX master's shapes and its layout's, whose ids may coincide
++	void set_identifier_scope(const std::wstring& scope) { identifier_scope_ = scope; }
+ 
+ 	void add_page_name(const std::wstring& page_name);
+ 
+@@ -95,6 +97,7 @@ public:
+ 	// Key - PPTX identifier, value - ODP identifier
+ 	using IdentifierMap = std::unordered_map<std::wstring, std::wstring>;
+ 	std::vector<IdentifierMap> map_identifiers_;
++	std::wstring identifier_scope_;
+ 
+ 	// Key - slide name in pptx (e.g. slide1.xml), Value - slide name in odp (e.g. "This is a title")
+ 	using SlidenameMap = std::map<std::wstring, std::wstring>;
+-- 
+2.55.0
+

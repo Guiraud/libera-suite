@@ -31,13 +31,14 @@ Ihre Dokumente verlassen ihn nie.
 
 Libera Suite hat **keine Telemetrie**, keine Nutzungsstatistik, keine Absturzberichte und keine Konten: Sie sendet uns nichts über Sie, Ihre Dokumente oder Ihre Nutzung. Sollte je etwas dieser Art hinzukommen, bleibt es ausgeschaltet, bis Sie es einschalten.
 
-Für Downloads verbindet sie sich allerdings mit unserem Server. Heute betrifft das die Editoren, bei der Installation von Libera Suite und erneut, wenn eine neue Version neue Editoren braucht. Sobald Libera Suite nach Updates sucht, wird sie Ihnen eine neue Version melden und fragen, bevor sie sie herunterlädt. Wie jede Anfrage im Web zeigt jeder dieser Downloads unserem Server Ihre IP-Adresse, und sonst nichts über Sie.
+Für Downloads verbindet sie sich allerdings mit unserem Server. Heute betrifft das die Editoren, bei der Installation von Libera Suite und erneut, wenn eine neue Version neue Editoren braucht. Höchstens einmal am Tag fragt sie außerdem, ob eine neuere Version erschienen ist, und meldet das einmal; sie lädt nichts herunter und sagt Ihnen, wie Sie aktualisieren. Wie jede Anfrage im Web zeigt jeder dieser Downloads unserem Server Ihre IP-Adresse, und sonst nichts über Sie.
 
 Die Tabelle führt jede Verbindung auf, die die Anwendung heute herstellt, damit Sie die Aussage prüfen können. Jede neue, die Suche nach Updates eingeschlossen, erscheint hier mit der Version, die sie einführt.
 
 | | |
 | :--- | :--- |
 | **Die Editoren** | Bei der Installation von Libera Suite von `cdn.abilian.com` heruntergeladen, und erneut nur, wenn eine neue Version neue Editoren braucht. Jeder Download wird anhand der Prüfsummen geprüft, die in der Anwendung mitgeliefert werden. |
+| **Die Suche nach Updates** | Höchstens einmal am Tag die Versionsnummer der neuesten Ausgabe, gelesen von `cdn.abilian.com`. Eine neuere wird einmal gemeldet; heruntergeladen wird nichts. Offline geschieht nichts. `check_updates = false` in der [Konfigurationsdatei](guide/documents.md#your-name-in-documents) schaltet sie ab. |
 | **Der eigene Verkehr des Editors** | Ein Webserver auf `127.0.0.1`, Teil der Anwendung, der den Editor an ein Fenster auf demselben Rechner ausliefert. Von anderswo ist er nicht erreichbar. |
 | **Links, die Sie anklicken** | Die Hilfe und Ähnliches öffnen sich in *Ihrem* Browser. Libera Suite ruft sie nicht selbst ab. |
 

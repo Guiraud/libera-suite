@@ -58,7 +58,8 @@ def make_x2t_write(monkeypatch, content: bytes) -> None:
 def test_a_failed_conversion_leaves_the_session_as_it_was(edited, monkeypatch):
     make_x2t_fail(monkeypatch)
 
-    assert convert.convert_to_editor_bin(edited, edited.document) is False
+    with pytest.raises(convert.ConversionError):
+        convert.convert_to_editor_bin(edited, edited.document)
 
     assert edited.editor_bin.read_bytes() == b"as opened"
     assert edited.change_log
@@ -67,7 +68,7 @@ def test_a_failed_conversion_leaves_the_session_as_it_was(edited, monkeypatch):
 def test_a_conversion_that_works_replaces_the_document_and_its_log(edited, monkeypatch):
     make_x2t_write(monkeypatch, b"converted")
 
-    assert convert.convert_to_editor_bin(edited, edited.document) is True
+    convert.convert_to_editor_bin(edited, edited.document)
 
     assert edited.editor_bin.read_bytes() == b"converted"
     assert not edited.change_log
@@ -76,11 +77,12 @@ def test_a_conversion_that_works_replaces_the_document_and_its_log(edited, monke
 def test_a_reload_that_cannot_reopen_its_fold_keeps_the_edits(edited, monkeypatch):
     """The fold exports fine and then cannot read its own output back."""
     monkeypatch.setattr(
-        convert, "export", lambda _s, staged, *_: staged.write_bytes(b"merged") or True
+        convert, "export", lambda _s, staged, *_: staged.write_bytes(b"merged")
     )
     make_x2t_fail(monkeypatch)
 
-    assert window.windows.fold_changes_in(edited) is False
+    with pytest.raises(convert.ConversionError):
+        window.windows.fold_changes_in(edited)
 
     assert edited.editor_bin.read_bytes() == b"as opened"
     assert edited.change_log
@@ -95,7 +97,12 @@ def test_a_reload_whose_fold_fails_leaves_the_window_and_says_so(edited, monkeyp
     shown = SimpleNamespace(uid="shown", load_url=loaded.append)
 
     monkeypatch.setattr(window.windows, "find_window", lambda _session: shown)
-    monkeypatch.setattr(window.windows, "fold_changes_in", lambda _session: False)
+
+    def fold_fails(_session):
+        msg = "x2t could not write recovered.docx (exit status 1)"
+        raise convert.ConversionError(msg)
+
+    monkeypatch.setattr(window.windows, "fold_changes_in", fold_fails)
     monkeypatch.setattr(window.dialogs, "say", lambda heading, _: said.append(heading))
 
     window.dialogs.reload(edited, 8080)

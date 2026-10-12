@@ -17,7 +17,7 @@ Libera Suite intègre des composants d'[**Euro-Office**](https://github.com/Euro
 
 Nous leur en sommes reconnaissants. Le plus difficile dans une suite bureautique, ce sont vingt ans de lecture correcte des fichiers `.docx` des autres. Cette partie, nous en héritons.
 
-## Code source correspondant
+## Code source correspondant {#corresponding-source}
 
 Les éditeurs sont sous AGPL, qui exige que vous puissiez obtenir le code source des programmes que vous exécutez, modifications comprises.
 

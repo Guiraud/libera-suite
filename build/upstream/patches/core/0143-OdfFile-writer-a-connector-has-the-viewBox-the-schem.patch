@@ -1,0 +1,66 @@
+From b05fcc5c533794a618c479b0b701edecc35f8015 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Fri, 25 Sep 2026 16:55:47 +0200
+Subject: [PATCH 143/148] OdfFile writer: a connector has the viewBox the
+ schema requires
+
+draw:connector was written with its end points and no svg:viewBox, which
+ODF requires: 8 of LibreOffice's ODF test documents after the seventh
+batch, all presentations. A connector without a path now gets the box
+of its line, in 1/100 mm as LibreOffice writes it, taken from the ends
+as they are written so that the next trip computes the same box. The
+reader draws a connector from its path and end points and ignores the
+box.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/draw_shapes.cpp | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/OdfFile/Writer/Format/draw_shapes.cpp b/OdfFile/Writer/Format/draw_shapes.cpp
+index e5137f4948..3ac3bb0c9e 100644
+--- a/OdfFile/Writer/Format/draw_shapes.cpp
++++ b/OdfFile/Writer/Format/draw_shapes.cpp
+@@ -27,6 +27,7 @@
+ 
+ #include <ostream>
+ #include <sstream>
++#include <iomanip>
+ #include <string>
+ 
+ #include <boost/foreach.hpp>
+@@ -534,12 +535,31 @@ void draw_connector_attlist::serialize(CP_ATTR_NODE)
+ const wchar_t * draw_connector::ns = L"draw";
+ const wchar_t * draw_connector::name = L"connector";
+ 
++// A length in cm as it is written: four significant digits in its own unit.
++static double as_written(const _CP_OPT(odf_types::length) & value)
++{
++	if (!value) return 0;
++	std::wstringstream s;
++	s << std::setprecision(4) << value->get_value();
++	return odf_types::length(std::stod(s.str()), value->get_unit()).get_value_unit(odf_types::length::cm);
++}
++
+ void draw_connector::serialize(std::wostream & _Wostream)
+ {
+ 	sub_type_ = 9; //connector is a line, if it is a polyline (defined below) then it is a path
+ 
+ 	reset_svg_path();
+ 
++	// svg:viewBox is required: without a path, the box of the line, in 1/100 mm as LibreOffice has it,
++	// from the ends as they are written, so that it reads back the same
++	if (!draw_connector_attlist_.svg_viewbox_)
++	{
++		const double width	= fabs(as_written(draw_line_attlist_.svg_x2_) - as_written(draw_line_attlist_.svg_x1_));
++		const double height	= fabs(as_written(draw_line_attlist_.svg_y2_) - as_written(draw_line_attlist_.svg_y1_));
++		draw_connector_attlist_.svg_viewbox_ = L"0 0 " + std::to_wstring((long)(width * 1000 + 0.5)) + L" " +
++			std::to_wstring((long)(height * 1000 + 0.5));
++	}
++
+ 	CP_XML_WRITER(_Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+-- 
+2.55.0
+

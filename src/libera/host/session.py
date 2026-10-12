@@ -14,9 +14,12 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import pathlib
 import secrets
 import shutil
+import tempfile
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -53,6 +56,18 @@ class Session:
     # Whether a reload has been offered for an error already: an editor that
     # throws once throws again, and a dialog per repeat is worse than the fault.
     reload_offered: bool = False
+    # Who else has this document open, as their lock file says, when it was
+    # found locked on opening: "Ada Lovelace, since 03.10.2026 20:20".
+    locked_by: str | None = None
+    # The files the shell has handed this window's page by path -- chosen in
+    # an open dialog, or dropped -- and so the only ones the page may ask the
+    # host to copy in. A path of the page's own choosing reads any file the
+    # user can.
+    offered: set[pathlib.Path] = field(default_factory=set)
+    # Held while the change log is written and while x2t reads it: the editor
+    # streams edits on one thread while a save, a close or a reload converts
+    # on another, and a log read half-appended loses the last edit.
+    lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     @property
     def id(self) -> str:
@@ -73,13 +88,9 @@ class Session:
 
     # --- the payload, read-only
     @property
-    def sdkjs_common(self) -> pathlib.Path:
-        return self.payload / "sdkjs" / "common"
-
-    @property
-    def fonts(self) -> pathlib.Path:
-        """The obfuscated copies the browser downloads."""
-        return self.payload / "fonts"
+    def layout(self) -> locate.Layout:
+        """Where each part of the payload is: see locate.Layout."""
+        return locate.Layout(self.payload)
 
     @property
     def unsaved_marker(self) -> pathlib.Path:
@@ -115,16 +126,6 @@ class Session:
         return self.work.parent / "recents.json"
 
     @property
-    def all_fonts(self) -> pathlib.Path:
-        """The doctrenderer font index: absolute paths to the real TTFs.
-
-        Not sdkjs/common/AllFonts.js, which is the browser's copy and carries
-        no paths at all -- hand that one to x2t and it fails deep inside sdkjs
-        with "Cannot read property 'length' of null".
-        """
-        return self.payload / "AllFonts.js"
-
-    @property
     def blank(self) -> pathlib.Path:
         """What File > New starts from, for the editor this session is."""
         return self.choose_blank(None)
@@ -139,11 +140,7 @@ class Session:
         if app.blank is None:
             msg = f"{app.title} cannot create documents"
             raise NotReadyError(msg)
-        return self.payload / "empty" / app.blank
-
-    @property
-    def x2t(self) -> pathlib.Path:
-        return self.payload / "bin" / f"x2t{locate.EXE}"
+        return self.layout.blanks / app.blank
 
     # --- session state, written
     @property
@@ -181,7 +178,7 @@ class Session:
         return pathlib.Path(text) if text else None
 
     def write_current_document(self, document: pathlib.Path) -> None:
-        self.current_file.write_text(str(document), encoding="utf-8")
+        write_atomically(self.current_file, str(document))
 
     def mark_modified(self, modified: bool) -> None:
         """Record whether the editor has edits the file does not.
@@ -192,12 +189,12 @@ class Session:
         """
         if modified:
             self.work.mkdir(parents=True, exist_ok=True)
-            self.unsaved_marker.write_text(
+            write_atomically(
+                self.unsaved_marker,
                 json.dumps({
                     "document": str(self.read_current_document() or ""),
                     "at": time.time(),
                 }),
-                encoding="utf-8",
             )
         else:
             self.unsaved_marker.unlink(missing_ok=True)
@@ -209,6 +206,10 @@ class Session:
 # every window; a server per window would give each one its own port and its
 # own empty settings.
 SESSIONS: dict[str, Session] = {}
+# Request threads, the GUI thread and pywebview's event threads all add, drop
+# and look up sessions. Adding and dropping are single operations, safe as
+# they are; whoever walks the registry walks a snapshot, `list(SESSIONS...)`,
+# or the walk can fail with "dictionary changed size during iteration".
 
 
 def lookup(session_id: str) -> Session:
@@ -224,7 +225,8 @@ def lookup(session_id: str) -> Session:
     an undo index truncated that document's log.
     """
     if not session_id:
-        session_id = next(iter(SESSIONS), "")
+        # A snapshot: another thread may be adding or dropping a window.
+        session_id = next(iter(list(SESSIONS)), "")
     found = SESSIONS.get(session_id)
     if found is None:
         msg = f"no session {session_id!r}" if session_id else "no sessions"
@@ -241,6 +243,12 @@ def configure(session: Session) -> None:
         session.write_current_document(session.document)
 
 
+def new_work(root: pathlib.Path) -> pathlib.Path:
+    """A session directory of its own under `root`. The first window's was
+    `0` in every process, so two at once shared one."""
+    return root / secrets.token_hex(6)
+
+
 def create_session(document: pathlib.Path | None = None) -> Session:
     """A second window's worth of state, beside the first.
 
@@ -248,14 +256,32 @@ def create_session(document: pathlib.Path | None = None) -> Session:
     its own working copy, change log and unsaved marker, because each is
     editing a different document.
     """
-    template = next(iter(SESSIONS.values()))
+    template = next(iter(list(SESSIONS.values())))
     made = Session(
         payload=template.payload,
-        work=template.work.parent / secrets.token_hex(6),
+        work=new_work(template.work.parent),
         document=document,
     )
     configure(made)
     return made
+
+
+def find_session_showing(document: pathlib.Path) -> Session | None:
+    """The live session that has this document open, if one does.
+
+    Compared as files, not as spellings: a symlink, or another case on a
+    case-insensitive disk, names the same document, and a second window on it
+    would save over the first.
+    """
+    for found in list(SESSIONS.values()):
+        current = found.read_current_document()
+        try:
+            if current is not None and current.samefile(document):
+                return found
+        except OSError:
+            # One of the two is gone; then they are not the same open file.
+            continue
+    return None
 
 
 def drop_session(session_id: str) -> None:
@@ -299,3 +325,20 @@ def sweep_sessions(root: pathlib.Path, keep: set[str]) -> None:
         if not (d / "doc").is_dir() and not (d / "out").is_dir():
             continue
         shutil.rmtree(d, ignore_errors=True)
+
+
+def write_atomically(path: pathlib.Path, text: str) -> None:
+    """Replace a file in one step: a reader sees the old file or the new one.
+
+    `write_text` empties the file and then fills it, and a reader in between
+    -- another window, the start window -- saw it empty or half-written, took
+    that for "nothing there", and saved its own view over everyone else's.
+    """
+    # A name of its own, so that two writers -- two threads, or two copies of
+    # Libera Suite after a failed hand-off -- never share a staging file.
+    fd, staged = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    )
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(text)
+    pathlib.Path(staged).replace(path)

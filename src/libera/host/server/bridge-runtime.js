@@ -52,11 +52,22 @@
     xhr.send(null);
   }
 
+  // A small body is JSON, and says so; the change log and the canvas shot are
+  // text, and say that instead.
   function postToHost(path, body, done, contentType) {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", hostUrl(path), true);
     xhr.setRequestHeader("Content-Type", contentType || "application/json");
-    if (done) xhr.onloadend = () => done(xhr);
+    // An XHR answers a 500 without throwing, so a caller with no `done` would
+    // never hear of one: say it, for the host's log. Not as an "error", which
+    // offers a reload: a caller whose failure is worth one checks for itself.
+    xhr.onloadend = done
+      ? () => done(xhr)
+      : () => {
+          if (xhr.status < 200 || xhr.status > 299) {
+            report("host", `${path} answered HTTP ${xhr.status}`);
+          }
+        };
     xhr.send(body === undefined ? null : body);
   }
 
@@ -67,9 +78,10 @@
     return xhr.status === 200 ? xhr.responseText : null;
   }
 
-  function postToHostSync(path, body) {
+  function postToHostSync(path, body, contentType) {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", hostUrl(path), false);
+    xhr.setRequestHeader("Content-Type", contentType || "application/json");
     xhr.send(body === undefined ? null : body);
     return xhr;
   }
@@ -87,13 +99,23 @@
   // Did the host put the document in *this* window? Opening a document gets
   // it a window of its own, and reloading this one would then throw away
   // whatever is open here -- which is the bug that made windows necessary.
-  // Only a host with nowhere else to put it answers "here".
+  // Only a host with nowhere else to put it answers "here", and only a
+  // document that opened is worth a reload: a cancelled File > Open answers
+  // "here" too, and the window reloaded for nothing.
   function openedHere(xhr) {
-    return !!answer(xhr).here;
+    const said = answer(xhr);
+    return !!(said.opened && said.here);
   }
-  // One log for the whole window, shared by every frame's bridge.
-  w.top.__libera_calls = w.top.__libera_calls || [];
-  const calls = w.top.__libera_calls;
+  // One log for the whole window, shared by every frame's bridge: the top
+  // frame's, whose bridge runs before the editor's iframe exists.
+  const shared = w === w.top ? null : w.top.__libera__;
+  const calls = shared ? shared.calls : [];
+  // Every name called, kept. `calls` is emptied into each report, and the
+  // report goes at once when the document is ready, so a test reading `calls`
+  // for onDocumentContentReady could find it gone: the PDF editor's always was.
+  // A global of its own, by this name, because tests/c_e2e reads it.
+  w.top.__libera_seen = w.top.__libera_seen || new Set();
+  const seen = w.top.__libera_seen;
 
   function preview(args) {
     return Array.prototype.map
@@ -107,6 +129,7 @@
   function log(name, args, ret) {
     const p = preview(args);
     calls.push({ frame: TAG, name: name, args: p });
+    seen.add(name);
     console.log(
       "[libera:" +
         TAG +
@@ -137,13 +160,17 @@
 
   // Ship what we saw back to the host, so a run is checkable without a human
   // reading a console. Errors included -- those are the real signal.
-  setInterval(() => {
+  function sendReport() {
     if (!out.length && !calls.length) return;
     postToHost(
-      "/__host__/report",
+      "/__host__/page-log",
       JSON.stringify({ events: out.splice(0), calls: calls.splice(0) }),
+      // Not reported when it fails: the report would go the same way, and
+      // one more would queue every second the host is not there.
+      () => {},
     );
-  }, 1000);
+  }
+  setInterval(sendReport, 1000);
 
   // Everything the other two files need from this one. A namespace rather
   // than a closure, because they are separate scripts.
@@ -160,6 +187,7 @@
     openedHere,
     log,
     report,
+    sendReport,
     calls,
   };
 })(window);

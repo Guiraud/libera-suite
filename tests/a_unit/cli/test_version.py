@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from libera import cli
-from libera.cli import dispatch
+from libera.host import about
 from libera.payload import locate
 
 
@@ -21,7 +21,7 @@ def test_version_names_the_application_and_the_payload():
     from new upstream pins should not need a host release -- so a bug report
     naming only one of them does not say which halves were in play.
     """
-    text = dispatch.format_version()
+    text = about.format_version()
     assert text.startswith("libera ")
     assert f"payload {locate.PAYLOAD_VERSION}" in text
 
@@ -36,7 +36,7 @@ def test_version_prints_and_exits_cleanly(flag, capsys):
     with pytest.raises(SystemExit) as exit_info:
         cli.main([flag])
     assert exit_info.value.code == 0
-    assert capsys.readouterr().out.strip() == dispatch.format_version()
+    assert capsys.readouterr().out.strip() == about.format_version()
 
 
 def test_the_two_v_flags_stay_distinct(capsys):

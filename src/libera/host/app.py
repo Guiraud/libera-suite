@@ -21,30 +21,49 @@ from typing import TYPE_CHECKING
 
 import webview
 
-from libera import payload as payload_mod
-from libera.host import apps, hooks, instance, menu, opening, server
+from libera import payload as payload_mod, timeline
+from libera.host import (
+    apps,
+    hooks,
+    instance,
+    locking,
+    menu,
+    opening,
+    server,
+    updates,
+)
+from libera.host.convert import ConversionError
 from libera.host.session import (
-    NotReadyError,
+    SESSIONS,
     Session,
     configure,
     create_session,
     drop_session,
+    find_session_showing,
+    new_work,
     sweep_sessions,
 )
 from libera.host.window import (
-    _create_window,
     ask_open_path,
     ask_save_path,
     ask_to_recover,
+    bring_start_window_forward,
+    close_session_window,
     close_start_window,
     confirm_close,
+    create_window,
     dialogs,
+    find_window,
+    forget_start_window,
+    listen_for_drops,
     make_new_document,
     native,
     offer_reload,
+    remember_start_window,
     set_fullscreen,
+    show_session_edited,
+    take_dropped,
 )
-from libera.host.window.windows import START_WINDOW
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -63,26 +82,41 @@ def _open_first_window(port: int, first: Session, title: str | None):
     """
     if first.document is None:
         return _open_start_window(port, title)
-    window = _create_window(
-        title or f"{first.document.name} — {first.editor.title}",
-        server.make_editor_url(port, first, first.document.name),
+    return _show_session(port, first, first.document, title)
+
+
+def _show_session(
+    port: int, session: Session, document: Path, title: str | None = None
+):
+    """A window on a session's document, and what ends with it.
+
+    Every document window comes through here. The first once made its own,
+    wired to ask before closing but not to let go after: its lock file
+    outlived Libera Suite, and its session stayed registered, so the edits
+    "Don't Save" left behind were never offered back.
+    """
+    window = create_window(
+        title or f"{document.name} — {session.editor.title}",
+        server.make_editor_url(port, session, document.name),
     )
-    first.window = window.uid
-    window.events.closing += lambda: confirm_close(first.id)
+    session.window = window.uid
+    window.events.closing += lambda: confirm_close(session.id)
+    # A closed window's session is over, and so is its lock. Its directory
+    # stays: it may hold edits that never reached the file, and those are
+    # offered back.
+    window.events.closed += lambda: close_session(session)
     return window
 
 
 def _open_start_window(port: int, title: str | None = None):
     """The start window, which offers every kind of document."""
-    window = _create_window(
+    window = create_window(
         title or "Libera Suite",
         f"http://127.0.0.1:{port}/__host__/start",
         size=(720, 640),
     )
-    START_WINDOW.append(window)
-    # Closed by hand rather than by opening a document, it has to leave the
-    # list too, or the next request to show it would find a dead window.
-    window.events.closed += lambda: _forget_start_window(window)
+    remember_start_window(window)
+    window.events.closed += lambda: forget_start_window(window)
     return window
 
 
@@ -98,7 +132,8 @@ def run(
     # A session either way. The start window shows no document, but everything
     # it asks the host for -- the recent list, a new blank, the payload -- is
     # answered for a session, and there has to be one to answer for.
-    first_session = Session(payload=payload_root, work=work / "0", document=first)
+    timeline.mark("host")
+    first_session = Session(payload=payload_root, work=new_work(work), document=first)
     configure(first_session)
 
     port = server.find_free_port()
@@ -109,11 +144,15 @@ def run(
     # whether to recover its unsaved edits.
     shell = WindowedShell(port)
     hooks.shell = shell
+    listen_for_drops()
+    previous_hook = threading.excepthook
+    threading.excepthook = _say_thread_failed
 
     if first is not None:
         # Before the window: opening a document destroys the previous session,
         # and that session is where unsaved edits live.
         opening.open_document(first_session, first)
+        timeline.mark("converted")
     # Anything left by earlier runs that holds nothing worth keeping.
     sweep_sessions(work, keep={first_session.id})
 
@@ -122,6 +161,7 @@ def run(
     native.prepare()
 
     window = _open_first_window(port, first_session, title)
+    timeline.mark("window")
     # The rest open once the GUI loop is running: pywebview can only create a
     # window after start() from a thread that is not the one running it.
     if len(documents) > 1:
@@ -152,13 +192,40 @@ def run(
     try:
         webview.start(
             func=native.complete_startup,
-            args=(menu.native.install,),
+            args=(_once_running,),
             private_mode=False,
             storage_path=str(payload_mod.get_state_dir()),
             menu=bar,
         )
     finally:
         instance.withdraw()
+        threading.excepthook = previous_hook
+        # However the windows went: a quit need not close each one first, and
+        # no lock of ours may outlive the process.
+        for left in list(SESSIONS.values()):
+            locking.let_go(left)
+
+
+def _say_thread_failed(args: threading.ExceptHookArgs) -> None:
+    """A failure on one of our threads -- opening, a menu action, a drop --
+    said where the user is looking. Launched from Finder, Explorer or a
+    launcher, stderr goes nowhere, and the traceback was all there was."""
+    if args.exc_type is SystemExit:
+        return
+    where = args.thread.name if args.thread else "a thread"
+    logger.error("%s failed", where, exc_info=args.exc_value)
+    dialogs.say(
+        "Libera Suite ran into a problem",
+        f"{args.exc_value or args.exc_type.__name__}. The details are in the log.",
+    )
+
+
+def _once_running() -> None:
+    """What waits for the GUI loop: the menus, and the update check, whose one
+    message is a dialog."""
+    timeline.mark("gui-loop")
+    menu.native.install()
+    updates.check_in_background()
 
 
 class WindowedShell:
@@ -182,11 +249,18 @@ class WindowedShell:
         a session stayed registered with no window, and a second launch whose
         hand-off failed that way started a second instance.
         """
+        # One window per document. Two windows on one file each converted and
+        # saved it on their own, and the last save silently won.
+        shown = find_session_showing(document) if document else None
+        window = find_window(shown) if shown else None
+        if window is not None:
+            window.show()
+            return True
         document = document or make_new_document(app)
         made = create_session(document)
         try:
             opening.open_document(made, document)
-        except NotReadyError:
+        except ConversionError:
             # convert has logged what x2t said; the user needs to hear it too.
             drop_session(made.id)
             dialogs.say(
@@ -196,16 +270,8 @@ class WindowedShell:
             )
             return False
 
-        opened = _create_window(
-            f"{document.name} — {made.editor.title}",
-            server.make_editor_url(self.port, made, document.name),
-        )
-        made.window = opened.uid
-        opened.events.closing += lambda: confirm_close(made.id)
+        _show_session(self.port, made, document)
         close_start_window()
-        # A closed window's session is over. Its directory stays: it may hold
-        # edits that never reached the file, and those are offered back.
-        opened.events.closed += lambda: drop_session(made.id)
         return True
 
     def show_start_window(self) -> None:
@@ -214,10 +280,8 @@ class WindowedShell:
         One of it. Asked again, by a second click on the editor's Create New or a
         second launch with no document, the one on screen comes to the front.
         """
-        if START_WINDOW:
-            START_WINDOW[0].show()
-            return
-        _open_start_window(self.port)
+        if not bring_start_window_forward():
+            _open_start_window(self.port)
 
     def choose_save_path(
         self, suggested: str, formats: Sequence[tuple[str, str]], start_in: Path | None
@@ -229,6 +293,9 @@ class WindowedShell:
 
     def set_fullscreen(self, on: bool) -> None:
         set_fullscreen(on)
+
+    def close_window(self, session: Session) -> None:
+        close_session_window(session)
 
     def offer_reload(self, session: Session, message: str) -> None:
         offer_reload(session, message, self.port)
@@ -244,10 +311,16 @@ class WindowedShell:
     def tell(self, heading: str, detail: str) -> None:
         dialogs.say(heading, detail)
 
+    def show_edited(self, session: Session, edited: bool) -> None:
+        show_session_edited(session, edited)
 
-def _forget_start_window(window) -> None:
-    if window in START_WINDOW:
-        START_WINDOW.remove(window)
+    def take_dropped(self, names: list[str]) -> list[Path]:
+        return take_dropped(names)
+
+
+def close_session(session: Session) -> None:
+    locking.let_go(session)
+    drop_session(session.id)
 
 
 def _open_rest(window, documents: list[Path], open_window) -> None:
@@ -263,9 +336,9 @@ def _open_rest(window, documents: list[Path], open_window) -> None:
     conversion's worth of time -- which is why this mostly worked.
 
     It is the same bug as `_install_menu`, from the same cause, and
-    `notes/lessons-learned.md` is about exactly this: a docstring is not a test,
-    so read the condition and the sentence next to each other and ask whether
-    one implies the other.
+    `notes/lessons-learned/threads.md` is about exactly this: a docstring is
+    not a test, so read the condition and the sentence next to each other and
+    ask whether one implies the other.
 
     `shown` fires from the GUI loop with the window on screen, so unlike a list
     that `create_window` fills, it cannot be set before `start()`. It is also

@@ -27,7 +27,7 @@ import zlib
 def find_template() -> pathlib.Path:
     """The blank this document is built on.
 
-    LIBERA_BLANK when set -- build/smoke.sh points it at the pinned
+    LIBERA_BLANK when set -- build/engine/smoke.sh points it at the pinned
     document-templates checkout, because it runs before there is a payload.
     Otherwise the installed payload's own blank, which is the one `libera
     words` starts from.

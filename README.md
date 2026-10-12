@@ -48,7 +48,7 @@ We implement it in Python, behind the webview your system already ships. The hos
 
 Five thousand lines is a codebase a small team can read in an afternoon and still be maintaining in ten years.
 
-**We do not fork the engine.** The patch queue is 28 patches across three upstream repositories: 24 of them make it build on macOS, 3 are configuration and branding, 1 fixes an upstream UI bug. **None touches the editing engine**, so following upstream means rebasing build configuration. Every release records the exact revisions it was built from, so the corresponding source is a commit plus a series that provably reapplies to it, and `make patches` checks that it still does.
+**We do not fork the engine.** The patch queue is 28 patches across three upstream repositories: 24 of them make it build on macOS, 3 are configuration and branding, 1 fixes an upstream UI bug. **None touches the editing engine**, so following upstream means rebasing build configuration. Every release records the exact revisions it was built from, so the corresponding source is a commit plus a series that provably reapplies to it, and `lb payload patches` checks that it still does.
 
 Everything we ship, we build. [`build/`](build/README.md) compiles the editors and the native converter from pinned upstream sources, including on macOS, where upstream publishes no binaries of its own.
 
@@ -56,7 +56,7 @@ Everything we ship, we build. [`build/`](build/README.md) compiles the editors a
 
 **Early, and running.** All four editors work today on **Windows** 10 and 11 (x64), **Linux** (x86_64 and arm64) and **macOS** (Apple Silicon).
 
-Tabs, file locking, and signing and notarisation on macOS are still to come. Linux has a menu bar and a launcher entry; neither has keyboard shortcuts, because pywebview's GTK menu has no way to attach them. [What works today](https://docs.liberasuite.eu/en/main/status/) lists the known issues, so an evening spent reporting one is an evening wasted. [The roadmap](https://docs.liberasuite.eu/en/develop/roadmap/) says what comes next and what we have decided against.
+Tabs, and signing and notarisation on macOS, are still to come. Linux has a menu bar and a launcher entry; neither has keyboard shortcuts, because pywebview's GTK menu has no way to attach them. [What works today](https://docs.liberasuite.eu/en/main/status/) lists the known issues, so an evening spent reporting one is an evening wasted. [The roadmap](https://docs.liberasuite.eu/en/develop/roadmap/) says what comes next and what we have decided against.
 
 The most useful thing you can send us is a document that renders wrongly, attached. The layout engine is upstream's and mature, so where output is wrong it is far more likely to be our packaging (a font we did not ship, a resource we failed to serve) than the engine.
 
@@ -104,17 +104,17 @@ libera --payload-install
 ```sh
 git clone https://github.com/abilian/libera-suite && cd libera-suite
 uv sync
-make payload-all                 # fetch, patch, build, assemble, smoke-test (long: V8 alone is ~30 min)
+make payload                     # fetch, patch, build, assemble, smoke-test (long: V8 alone is ~30 min)
 export LIBERA_PAYLOAD="$BUILD_ROOT/out/payload"
 uv run libera document.docx
 ```
 
 ```sh
-make verify      # everything below, in the order that fails fastest
-make test        # unit, the host over HTTP, the editor in headless Chromium
-make lint        # ruff, ty, pyrefly, mypy, biome — green, and expected to stay that way
-make smoke       # the converter: fonts, docx -> odt -> docx, docx -> pdf
-make patches     # does the patch queue still apply to the pinned SHAs?
+make verify                  # everything below, in the order that fails fastest
+make test                    # unit, the host over HTTP, the editor in headless Chromium
+make lint                    # ruff, ty, pyrefly, mypy, biome — green, and expected to stay that way
+lb payload smoke             # the converter: fonts, docx -> odt -> docx, docx -> pdf
+lb payload patches           # does the patch queue still apply to the pinned SHAs?
 ```
 
 The test suite enforces one house rule: **assert on content, never on exit codes.** A converter that writes an empty document exits zero. A PDF with no glyphs in it is the right size. So the end-to-end run photographs the editor's own canvas and measures the ink on it.

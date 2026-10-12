@@ -3,13 +3,13 @@
 Libera Suite does not fork upstream. It pins an upstream revision and applies a series of patches to it, each one a commit with a message explaining what it is for.
 
 ```
-build/pins.toml            the upstream revisions, by hash
-build/patches/core/        27 patches
-build/patches/web-apps/     6 patches
-build/patches/sdkjs/        1 patch
+build/upstream/pins.toml            the upstream revisions, by hash
+build/upstream/patches/core/        27 patches
+build/upstream/patches/web-apps/     6 patches
+build/upstream/patches/sdkjs/        1 patch
 ```
 
-`build/build.sh fetch` resets each repository to its pinned hash, cleans it, and applies the series with `git am`, which does not fuzz. A patch that has stopped applying is news: investigate it.
+`build/engine/build.sh fetch` resets each repository to its pinned hash, cleans it, and applies the series with `git am`, which does not fuzz. A patch that has stopped applying is news: investigate it.
 
 ## Why a queue
 

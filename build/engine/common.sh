@@ -1,0 +1,345 @@
+# Shared by build.sh, payload.sh, dist.sh and smoke.sh. Not executable; source it.
+
+# macOS: an external case-sensitive volume, because the internal disk is not
+# one and V8's checkout needs it. Linux: anywhere, since every normal Linux
+# filesystem is case-sensitive already. Override BUILD_ROOT on either.
+#
+# Windows: C:/b. Short, because V8's checkout is deep enough to meet the
+# 260-character limit from under a home directory, and in C:/ form rather than
+# /c/, because the path reaches cmake, Python and cmd as well as this shell.
+case "$(uname -s)" in
+Darwin) DEFAULT_BUILD_ROOT="/Volumes/T7-EXT-2T/euro-office-build" ;;
+MINGW* | MSYS* | CYGWIN*) DEFAULT_BUILD_ROOT="C:/b" ;;
+*)      DEFAULT_BUILD_ROOT="$HOME/euro-office-build" ;;
+esac
+
+# Git Bash puts its own /usr/bin ahead of everything Windows' PATH holds, and
+# its perl is a trimmed MSYS2 build without the modules OpenSSL's Configure
+# wants. Strawberry Perl, which build/windows/windows-setup.ps1 installs, goes in front
+# of it here, so that nobody has to remember an export in every new shell. Its
+# perl\bin only: c\bin beside it carries a MinGW gcc, which is the compiler
+# msvc-env.sh exists to keep cmake away from.
+case "$(uname -s)" in
+MINGW* | MSYS* | CYGWIN*)
+    # First, not merely present: Strawberry's installer already puts perl\bin
+    # on the machine PATH, which Git Bash then appends behind its own /usr/bin.
+    if [ -x /c/Strawberry/perl/bin/perl.exe ]; then
+        case "$PATH" in
+        /c/Strawberry/perl/bin:*) ;;
+        *) PATH="/c/Strawberry/perl/bin:$PATH" ;;
+        esac
+    fi
+    ;;
+esac
+
+BUILD_ROOT="${BUILD_ROOT:-$DEFAULT_BUILD_ROOT}"
+SRC="$BUILD_ROOT/src"
+OUT="$BUILD_ROOT/out"
+
+# /proc/meminfo reports the *host's* memory inside a container -- the cgroup
+# limit is invisible to it -- so a 64 GB builder running `docker run -m 8g`
+# reads 64 and starts thirty compilers in an 8 GB box. Ask the cgroup first
+# and fall back to meminfo, which is right when there is no limit.
+usable_gb() {
+    # Darwin has no /proc: without this the awk below fails and the caller
+    # prints "from  GB usable" with an awk error beside it, which is what the
+    # native core build has been doing.
+    if [ "$(uname -s)" = "Darwin" ]; then
+        sysctl -n hw.memsize | awk '{print int($1 / 1073741824)}'
+        return
+    fi
+    physical="$(awk '/MemTotal/ {print int($2 / 1048576)}' /proc/meminfo)"
+    limit=""
+    for f in /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory/memory.limit_in_bytes; do
+        if [ -r "$f" ]; then
+            v="$(cat "$f")"
+            # "max" (v2) and a 64-bit sentinel (v1) both mean unlimited.
+            case "$v" in
+            max | 9223372036854771712 | 18446744073709551615) continue ;;
+            esac
+            limit=$(( v / 1073741824 ))
+            break
+        fi
+    done
+
+    # The *lesser* of the two, which is the only one that is a fact. A cgroup
+    # limit above physical memory grants nothing -- `docker run -m 8g` on a
+    # 4 GB machine still has 4 GB -- and believing it is how a build starts
+    # four compilers on a box that fits one and dies with
+    #
+    #     c++: fatal error: Killed signal terminated program cc1plus
+    #
+    # which is what happened on a 4 GB arm64 builder.
+    if [ -n "$limit" ] && [ "$limit" -lt "$physical" ]; then
+        echo "$limit"
+    else
+        echo "$physical"
+    fi
+}
+
+# One compiler per 2 GB, capped at the core count. The divisor is not folklore:
+# the OOXML and OdfFile translation units instantiate enough templates to pass
+# 1.5 GB each, which is why this is the number that decides whether a build
+# ends in "Killed signal terminated program cc1plus".
+build_jobs() {
+    [ "$(uname -s)" = "Darwin" ] && { echo 4; return; }
+    gb="$(usable_gb)"
+    cpus=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)
+    # A gigabyte off the top for the kernel, the shell and everything else on
+    # the machine, then one compiler per two. Without the reservation a 4 GB
+    # box computes two jobs and has room for one.
+    jobs=$(( (gb - 1) / 2 ))
+    [ "$jobs" -gt "$cpus" ] && jobs="$cpus"
+    [ "$jobs" -lt 1 ] && jobs=1
+    echo "$jobs"
+}
+
+# Run one of the built binaries. They link ~30 libraries that sit beside them,
+# and on Linux nothing in the binary says where those are: DT_NEEDED records a
+# soname, never a path. The host sets the same variable before running x2t --
+# see convert.py -- so this is the build-side half of the same arrangement.
+# APPLICATION_NAME is what core stamps into the <Application> field of every
+# document it writes. It defaults to ONLYOFFICE, so anything that runs x2t has
+# to set it -- the host does the same in convert.py.
+# .exe where the platform wants one.
+#
+# Windows' library path is PATH. It looks for a DLL beside the executable
+# first, which covers x2t, but tools/allfontsgen.exe sits one level below the
+# DLLs it links and Windows never searches a parent: it failed with
+# "kernel.dll: cannot open shared object file", the loader's words for a DLL
+# that is right there in bin. So bin goes on PATH, in MSYS form: a `C:/...`
+# entry in a colon-separated list is split at the drive letter.
+if [ "${OS:-}" = "Windows_NT" ]; then
+    EXE=".exe"
+else
+    case "$(uname -s)" in
+    MINGW* | MSYS* | CYGWIN*) EXE=".exe" ;;
+    *) EXE="" ;;
+    esac
+fi
+
+built() {
+    exe="$1"
+    shift
+    bin_path="$PATH"
+    [ -n "$EXE" ] && bin_path="$(cygpath -u "$OUT/core/bin"):$PATH"
+    APPLICATION_NAME="${APPLICATION_NAME:-Libera Suite}" \
+    DYLD_LIBRARY_PATH="$OUT/core/bin" LD_LIBRARY_PATH="$OUT/core/bin" \
+    PATH="$bin_path" \
+        "$OUT/core/bin/$exe$EXE" "$@"
+}
+
+# A path a native Windows program will accept.
+#
+# MSYS2 rewrites command-line arguments that look like paths, so passing
+# "$W/in.docx" to x2t.exe works without help. It does not rewrite file
+# *contents*, so a path written into a params XML or a config file reaches the
+# program as `/tmp/tmp.XYZ/in.docx` and is simply not found. Mixed form (`C:/`)
+# rather than `cygpath -w`, because forward slashes survive being embedded in
+# XML and in JSON without escaping.
+winpath() {
+    if [ -n "$EXE" ]; then
+        cygpath -m "$1"
+    else
+        echo "$1"
+    fi
+}
+
+# The interpreter, resolved once and only when something wants it.
+#
+# Windows CPython installs python.exe and, depending on how it was installed,
+# no python3 at all, so a bare `python3` in a build script is a Windows-only
+# "command not found" several minutes into a run. Resolving it at first use
+# rather than at source time keeps the scripts that need no python working on a
+# machine that has none.
+#
+# Each candidate is *run*, not just found. Windows ships python3 and python as
+# App Execution Aliases in WindowsApps, which `command -v` finds on a machine
+# with no Python at all: run non-interactively, they print "Python was not
+# found" and exit 9009. With python.org's Python installed, python.exe is real
+# and the python3 alias is still the stub, so python3-first picked the stub.
+py() {
+    if [ -z "${PYTHON:-}" ]; then
+        for candidate in python3 python; do
+            p="$(command -v "$candidate" 2>/dev/null)" || continue
+            "$p" -c '' >/dev/null 2>&1 || continue
+            PYTHON="$p"
+            break
+        done
+        [ -n "${PYTHON:-}" ] || {
+            echo "FATAL: neither python3 nor python is on PATH" >&2
+            return 1
+        }
+    fi
+    "$PYTHON" "$@"
+}
+
+# core-fonts is a pinned repo, but fetching it costs 248 MB and a clone is
+# usually already lying around. Prefer whichever exists.
+resolve_core_fonts() {
+    for d in "${CORE_FONTS:-}" "$SRC/core-fonts" "$HOME/ghorg/euro-office/core-fonts"; do
+        if [ -n "$d" ] && [ -d "$d" ]; then
+            CORE_FONTS="$d"
+            return 0
+        fi
+    done
+    echo "FATAL: no core-fonts checkout (set CORE_FONTS)" >&2
+    exit 1
+}
+
+# allfontsgen writes two different AllFonts.js and they are not interchangeable:
+#
+#   --allfonts-web  lists numeric ids ("000", "001") that the browser fetches
+#                   over HTTP from the web font directory
+#   --allfonts      lists absolute filesystem paths, which is what doctrenderer
+#                   needs -- point DoctRenderer.config's <allfonts> at this one
+#                   or font loading fails inside V8
+#
+# It also treats an existing AllFonts.js as an up-to-date cache and exits 0
+# without writing anything, so callers must clear the outputs first.
+generate_fonts() {
+    payload="$1"
+    resolve_core_fonts
+    # The thumbnails too: allfontsgen skips any scale whose PNG already exists
+    # (ApplicationFontsWorker.cpp, `if Exists(strThumbnailPath) continue`), so
+    # a changed font set would keep pictures of the old one.
+    rm -rf "$payload/fonts" "$payload/AllFonts.js" \
+           "$payload/sdkjs/common/AllFonts.js" "$payload/sdkjs/common/font_selection.bin" \
+           "$payload/sdkjs/common/Images"/fonts_thumbnail*
+    mkdir -p "$payload/fonts" "$payload/sdkjs/common/Images"
+
+    echo "==> allfontsgen ($CORE_FONTS)"
+    built tools/allfontsgen \
+        --input="$CORE_FONTS" \
+        --allfonts-web="$payload/sdkjs/common/AllFonts.js" \
+        --allfonts="$payload/AllFonts.js" \
+        --images="$payload/sdkjs/common/Images" \
+        --selection="$payload/sdkjs/common/font_selection.bin" \
+        --output-web="$payload/fonts"
+
+    # The count, not the exit code. allfontsgen exits 0 having found nothing
+    # when its directory walk has no live branch for the platform, and writes a
+    # well-formed AllFonts.js holding zero fonts -- an editor built on that
+    # renders every glyph as a box, and nothing else anywhere says so.
+    n="$(ls "$payload/fonts" | wc -l | tr -d ' ')"
+    [ "$n" -gt 100 ] || { echo "FATAL: allfontsgen produced $n web fonts" >&2; exit 1; }
+    # And the thumbnails, which it draws last: on Windows it once wrote every
+    # web font and then aborted on the second PNG, and the count above passed.
+    # Ten: five scales (1x to 2x), plain and East Asian, measured.
+    t="$(ls "$payload/sdkjs/common/Images"/fonts_thumbnail*.png 2>/dev/null | wc -l | tr -d ' ')"
+    [ "$t" -ge 10 ] || { echo "FATAL: allfontsgen drew $t of 10 font thumbnails" >&2; exit 1; }
+    echo "    $n web fonts, $t thumbnails"
+}
+
+# Make the built binaries relocatable, and prove it.
+#
+# Dispatch by platform: the two linkers get this wrong in different ways, and
+# only one of them is fatal.
+relocate() {
+    case "$(uname -s)" in
+    Darwin) relocate_macos "$1" ;;
+    Linux)  relocate_linux "$1" ;;
+    esac
+}
+
+# Linux does not have the macOS problem: DT_NEEDED records a soname, never a
+# path, so a moved payload still finds its libraries through LD_LIBRARY_PATH --
+# which both the build (see `built`) and the host (convert.py) set.
+#
+# A recorded RPATH/RUNPATH is still worth knowing about, because it is searched
+# ahead of LD_LIBRARY_PATH: on a machine that happens to have the build
+# directory, the payload would silently load libraries from it. Report rather
+# than fail, and strip them when patchelf is there to do it.
+relocate_linux() {
+    dir="$1"
+    command -v readelf >/dev/null 2>&1 || {
+        echo "    relocatable: no readelf, not checked"
+        return 0
+    }
+    # An `if` with no else, so the loop ends with status 0 even when the last
+    # file is clean -- the same trap relocate_macos documents below: a `&&
+    # echo` as the last command makes the substitution exit non-zero, which
+    # set -e then treats as a failed build.
+    bad="$(find "$dir" -type f | while read -r f; do
+        n="$(readelf -d "$f" 2>/dev/null | grep -cE "R(UN)?PATH.*$BUILD_ROOT" || true)"
+        if [ "$n" -gt 0 ]; then
+            echo "$f"
+        fi
+    done)"
+    if [ -z "$bad" ]; then
+        echo "    relocatable: no build-tree RPATHs"
+        return 0
+    fi
+    n="$(echo "$bad" | wc -l | tr -d " ")"
+    if command -v patchelf >/dev/null 2>&1; then
+        echo "$bad" | while read -r f; do patchelf --set-rpath '$ORIGIN' "$f"; done
+        echo "    relocatable: rewrote $n RPATH(s) to \$ORIGIN"
+    else
+        echo "    WARNING: $n binaries record a build-tree RPATH." >&2
+        echo "             Harmless here; install patchelf to strip them." >&2
+    fi
+}
+
+#
+# Our own libraries link each other through @rpath, but ICU is built by its own
+# configure, which stamps an absolute -install_name of $libdir/libicuuc.74.dylib.
+# Every consumer records that path, so the payload runs where it was built and
+# nowhere else: moving it gives "dyld: Library not loaded". Copies of the ICU
+# dylibs are already shipped alongside the binaries -- only the recorded paths
+# are wrong.
+#
+# This rewrites them the way macdeployqt and delocate do, and then asserts that
+# nothing anywhere still points into the build tree. The assertion is the point:
+# it catches the next third-party library that does the same thing.
+# Every Mach-O under dir, subdirectories included. Listing binaries by name
+# missed tools/allfontsgen, which the installer runs -- so the artifact shipped
+# with absolute ICU paths and would have died on any machine but this one.
+macho_files() {
+    find "$1" -type f -perm -u+r 2>/dev/null | while read -r f; do
+        case "$(file -b "$f" 2>/dev/null)" in
+        *Mach-O*) echo "$f" ;;
+        esac
+    done
+}
+
+relocate_macos() {
+    dir="$1"
+    [ "$(uname -s)" = "Darwin" ] || return 0
+
+    macho_files "$dir" | while read -r f; do
+
+        # A library's own id, when it names a build path rather than @rpath.
+        case "$(otool -D "$f" 2>/dev/null | tail -1)" in
+        "$BUILD_ROOT"/*) install_name_tool -id "@rpath/$(basename "$f")" "$f" 2>/dev/null || true ;;
+        esac
+
+        # Then each dependency recorded as an absolute build path.
+        otool -L "$f" 2>/dev/null | sed -n '2,$p' | awk '{print $1}' |
+        while read -r dep; do
+            case "$dep" in
+            "$BUILD_ROOT"/*)
+                base="$(basename "$dep")"
+                # Only if we actually ship that library beside the binary.
+                if [ -f "$dir/$base" ]; then
+                    install_name_tool -change "$dep" "@rpath/$base" "$f" 2>/dev/null || true
+                fi
+                ;;
+            esac
+        done
+    done
+
+    # `[ ... ] && echo` as the loop's last command makes the substitution exit
+    # non-zero when the final file is clean, which set -e then treats as failure.
+    bad="$(macho_files "$dir" | while read -r f; do
+        n="$(otool -L "$f" 2>/dev/null | sed -n '2,$p' | grep -c "$BUILD_ROOT" || true)"
+        if [ "$n" -gt 0 ]; then
+            echo "$f ($n)"
+        fi
+    done)"
+    if [ -n "$bad" ]; then
+        echo "FATAL: build-tree references remain:" >&2
+        echo "$bad" | sed 's/^/  /' >&2
+        exit 1
+    fi
+    echo "    relocatable: no build-tree paths in $(macho_files "$dir" | wc -l | tr -d ' ') binaries"
+}

@@ -1,0 +1,71 @@
+From ef8ead073b28ca3ecd952aff234d36ca88949e90 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Thu, 24 Sep 2026 16:17:01 +0200
+Subject: [PATCH 119/142] OdfFile writer: draw:display-name, not
+ draw:display_name
+
+Five drawing styles (fill image, marker, gradient, hatch, opacity)
+wrote their display name as draw:display_name, an attribute ODF does
+not have, so readers dropped the name and validators rejected the
+style. All five elements take draw:display-name.
+
+Found in 99 of LibreOffice's 3794 ODF test documents after a round
+trip.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/styles.cpp | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/OdfFile/Writer/Format/styles.cpp b/OdfFile/Writer/Format/styles.cpp
+index f51e06aa0b..498ea7f3f3 100644
+--- a/OdfFile/Writer/Format/styles.cpp
++++ b/OdfFile/Writer/Format/styles.cpp
+@@ -302,7 +302,7 @@ void draw_fill_image::serialize(std::wostream & strm)
+ 		CP_XML_NODE_SIMPLE()
+         {
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:name",	draw_name_);
+-			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display_name", draw_display_name_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display-name", draw_display_name_);
+ 			
+ 			xlink_attlist_.serialize(CP_GET_XML_NODE());
+ 		}
+@@ -323,7 +323,7 @@ void draw_marker::serialize(std::wostream & strm)
+ 		CP_XML_NODE_SIMPLE()
+         {
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:name",	draw_name_);
+-			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display_name", draw_display_name_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display-name", draw_display_name_);
+ 			
+ 			CP_XML_ATTR_OPT(L"svg:d",	svg_d_);
+ 			CP_XML_ATTR_OPT(L"svg:viewBox",	svg_viewBox_);
+@@ -362,7 +362,7 @@ void draw_gradient::serialize(std::wostream & strm)
+ 			CP_XML_ATTR_OPT(L"draw:style", draw_style_);
+ 
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:name",	draw_name_);
+-			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display_name", draw_display_name_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display-name", draw_display_name_);
+ 			
+ 			for (size_t i = 0; i < content_.size(); i++)
+ 			{
+@@ -392,7 +392,7 @@ void draw_hatch::serialize(std::wostream & strm)
+ 			CP_XML_ATTR_OPT(L"draw:style",		draw_style_);
+ 
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:name",		draw_name_);
+-			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display_name", draw_display_name_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display-name", draw_display_name_);
+ 		}
+ 	}
+ }
+@@ -425,7 +425,7 @@ void draw_opacity::serialize(std::wostream & strm)
+ 			CP_XML_ATTR_OPT(L"draw:style", draw_style_);
+ 
+ 			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:name",			draw_name_);
+-			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display_name",	draw_display_name_);
++			CP_XML_ATTR_OPT_ENCODE_STRING(L"draw:display-name",	draw_display_name_);
+ 			
+ 			for (size_t i = 0; i < content_.size(); i++)
+ 			{
+-- 
+2.55.0
+

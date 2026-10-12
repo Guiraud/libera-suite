@@ -1,0 +1,76 @@
+From 136bd9f94c98feab385aa42da81d0faa7edf9da0 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Tue, 22 Sep 2026 09:52:45 +0200
+Subject: [PATCH 105/142] OdfFile: declare the ODF version on the manifest and
+ on settings.xml
+
+Every ODF package the writer produces fails schema validation in two
+places, on every output format.
+
+META-INF/manifest.xml carries only xmlns:manifest on the root element.
+manifest:version is mandatory there in the ODF 1.2 and 1.3 manifest
+schemas, declared without an <optional> wrapper and with a fixed value.
+The attribute is already written on the root file-entry, where it is
+optional, so the value was never in doubt, only its placement.
+
+settings.xml omits office:version because the line that writes it is
+commented out. Its three siblings in the same file, meta.xml, content.xml
+and styles.xml, all write it.
+
+Fixing office:version alone unmasks a second error, so a third change
+comes with it: the writer emits an empty <office:settings/> for sources
+that have no view settings, such as docx and pptx, and the schema
+requires at least one config-item-set inside that element when it is
+present. office_settings::serialize now writes nothing when it has no
+content, which is valid because the element itself is optional.
+
+Verified by applying the equivalent edits to the writer's own output and
+revalidating: a minimal .odt goes from two errors to none against the
+ODF 1.2 it declares, and still opens in LibreOffice.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ OdfFile/Writer/Format/object_package.cpp  | 3 ++-
+ OdfFile/Writer/Format/office_settings.cpp | 5 +++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/OdfFile/Writer/Format/object_package.cpp b/OdfFile/Writer/Format/object_package.cpp
+index 130e7108da..a91613a50e 100644
+--- a/OdfFile/Writer/Format/object_package.cpp
++++ b/OdfFile/Writer/Format/object_package.cpp
+@@ -346,6 +346,7 @@ namespace odf_writer
+ 				CP_XML_NODE(L"manifest:manifest")
+ 				{  
+ 					CP_XML_ATTR(L"xmlns:manifest", L"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0");
++					CP_XML_ATTR(L"manifest:version", L"1.2");
+ 
+ 					rels_.serialize(CP_XML_STREAM());
+ 				}
+@@ -695,7 +696,7 @@ namespace odf_writer
+ 			{
+ 				CP_XML_NODE(L"office:document-settings")
+ 				{  
+-					//CP_XML_ATTR(L"office:version",	L"1.2" );
++					CP_XML_ATTR(L"office:version",	L"1.2" );
+ 					CP_XML_ATTR(L"xmlns:ooo",		L"http://openoffice.org/2004/office" );
+ 					CP_XML_ATTR(L"xmlns:config",	L"urn:oasis:names:tc:opendocument:xmlns:config:1.0" ); 
+ 					CP_XML_ATTR(L"xmlns:xlink",		L"http://www.w3.org/1999/xlink" ); 
+diff --git a/OdfFile/Writer/Format/office_settings.cpp b/OdfFile/Writer/Format/office_settings.cpp
+index 1390e21682..b3371c5079 100644
+--- a/OdfFile/Writer/Format/office_settings.cpp
++++ b/OdfFile/Writer/Format/office_settings.cpp
+@@ -43,6 +43,11 @@ void office_settings::create_child_element(const std::wstring & Ns, const std::w
+ 
+ void office_settings::serialize(std::wostream & _Wostream)
+ {
++	// office:settings is optional, but the schema requires at least one
++	// config-item-set inside it when it is present. A docx or pptx source
++	// leaves it empty, so write nothing rather than an invalid element.
++	if (content_.empty()) return;
++
+ 	CP_XML_WRITER(_Wostream)
+     {
+ 		CP_XML_NODE_SIMPLE()
+-- 
+2.55.0
+

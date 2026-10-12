@@ -13,6 +13,8 @@ see as a browser dialog.
 
 from __future__ import annotations
 
+import json
+
 from libera.host import apps
 
 CHOOSER = "#libera-create-new"
@@ -27,6 +29,13 @@ def open_chooser(editor) -> None:
 def test_create_new_offers_every_kind_there_is_to_make(editor_with):
     editor = editor_with([])
     open_chooser(editor)
+    # Finished, loaded or not. An icon still on its way reads as width 0 too,
+    # and under a full run on Linux one sometimes was (2026-10-04); a missing
+    # icon is complete with width 0, so it still fails below.
+    editor.page.wait_for_function(
+        f"() => [...document.querySelectorAll('{CHOOSER} img')].every(i => i.complete)",
+        timeout=10_000,
+    )
 
     buttons = editor.page.eval_on_selector_all(
         f"{CHOOSER} button",
@@ -56,16 +65,17 @@ def test_the_kind_chosen_is_the_kind_asked_for(editor_with):
     asked: list[str] = []
     said: list[str] = []
     editor.page.on(
-        "request", lambda r: "/__host__/new" in r.url and asked.append(r.url)
+        "request",
+        lambda r: "/__host__/new" in r.url and asked.append(r.post_data or ""),
     )
     editor.page.on("dialog", lambda d: (said.append(d.message), d.dismiss()))
     open_chooser(editor)
 
-    editor.page.click(f"{CHOOSER} button[data-doctype=cell]")
-    editor.page.wait_for_timeout(1000)
+    with editor.page.expect_event("dialog"):
+        editor.page.click(f"{CHOOSER} button[data-doctype=cell]")
 
     assert len(asked) == 1
-    assert "type=cell" in asked[0]
+    assert json.loads(asked[0]) == {"type": "cell"}
     # No window to put a spreadsheet in, and the page is a word processor.
     assert said == ["A new spreadsheet needs a window of its own"]
     assert editor.page.query_selector(CHOOSER) is None

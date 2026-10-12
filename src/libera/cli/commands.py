@@ -10,16 +10,19 @@ parsed.
 
 from __future__ import annotations
 
+import glob
 import os
 import platform
 import shutil
 import sys
+import tempfile
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from libera import gui, launcher, payload as payload_mod
-from libera.host import instance, opening, server, session
+from libera.host import apps, convert, instance, opening, server, session
+from libera.host.convert import ConversionError
 from libera.host.session import NotReadyError
 from libera.payload import NoPayloadError, PayloadError
 
@@ -42,7 +45,17 @@ def _is_interactive() -> bool:
     return sys.stdin is not None and sys.stdin.isatty()
 
 
-def _refuse(message: str) -> None:
+def _fail(message: object) -> int:
+    """Say what went wrong, on stderr, and return the status that goes with it."""
+    print(f"libera: {message}", file=sys.stderr)
+    return 1
+
+
+# The heading of a refusal that has no more particular one.
+CANNOT_START = "Libera Suite could not start"
+
+
+def _refuse(heading: str, paragraphs: list[str], command: str = "") -> None:
     """Say why `libera` will not start, where somebody will see it.
 
     On stderr, and in a window as well when there is no terminal: launched
@@ -50,18 +63,18 @@ def _refuse(message: str) -> None:
     and vanishes. Only for what comes after `gui.explain_why_no_window`, because a
     machine that cannot open a window cannot be told in one.
     """
-    print(f"libera: {message}", file=sys.stderr)
+    said = [f"{heading}.", *paragraphs, *([command] if command else [])]
+    print("libera: " + "\n\n".join(said), file=sys.stderr)
     if not _is_interactive():
-        gui.show_problem("Libera Suite could not start", [message])
+        gui.show_problem(heading, paragraphs, command)
 
 
 def install_payload(args: argparse.Namespace) -> int:
     try:
         p = payload_mod.install(source=args.source, trust_manifest=args.trust_manifest)
     except PayloadError as e:
-        print(f"libera: {e}", file=sys.stderr)
-        return 1
-    print(f"installed payload {payload_mod.PAYLOAD_VERSION} in {p.root}")
+        return _fail(e)
+    print(f"Installed in {p.root}")
     # The one moment a Linux user is looking at this program in a terminal and
     # has just finished setting it up. Said here rather than done here: the
     # command is called payload-install, and writing to the desktop's own
@@ -74,8 +87,7 @@ def install_payload(args: argparse.Namespace) -> int:
 def install_launcher(_args: argparse.Namespace) -> int:
     why = launcher.explain_unsupported()
     if why:
-        print(f"libera: {why}", file=sys.stderr)
-        return 1
+        return _fail(why)
     for path in launcher.install():
         print(f"wrote {path}")
     print("Libera Suite is in the launcher, and offers to open the formats it reads.")
@@ -85,8 +97,7 @@ def install_launcher(_args: argparse.Namespace) -> int:
 def remove_launcher(_args: argparse.Namespace) -> int:
     why = launcher.explain_unsupported()
     if why:
-        print(f"libera: {why}", file=sys.stderr)
-        return 1
+        return _fail(why)
     gone = launcher.remove()
     if not gone:
         print("no desktop entry installed")
@@ -100,29 +111,40 @@ def show_payload_status(_args: argparse.Namespace) -> int:
     try:
         p = payload_mod.resolve()
     except PayloadError as e:
-        print(f"libera: {e}", file=sys.stderr)
-        return 1
+        return _fail(e)
 
+    record = _print_payload(p)
+    # Corresponding source, per AGPL. A user holding this binary is entitled to
+    # know exactly which revisions it was built from.
+    source = record.get("source") or {}
+    if not source:
+        print("source:    not recorded (local build)")
+        return 0
+    print("source:")
+    for url in source.get("repositories", []):
+        print(f"  {url}  @ {source.get('libera_commit', '?')}")
+    for repo, sha in sorted((source.get("pins") or {}).items()):
+        print(f"  {source.get('upstream', 'upstream')}/{repo} @ {sha}")
+    return 0
+
+
+def _print_payload(p: payload_mod.Payload) -> dict:
+    """Where the payload is and what it is, as --payload-status and --diagnose
+    both say it. Returns its record, for what each says after.
+
+    The first line is an interface: runtime-smoke.py, released-gui.sh and
+    windows-app.sh read the root off `payload:`, and lost it once when these
+    labels were respelled.
+    """
     record = p.read_record()
     print(f"payload:   {p.root}")
     print(f"found via: {p.origin}")
     print(f"version:   {record.get('payload_version', 'unknown (local build)')}")
-    if record.get("platform"):
-        print(f"platform:  {record['platform']}  fonts: {record.get('font_set', '?')}")
+    platform_, fonts = record.get("platform", "?"), record.get("font_set", "?")
+    print(f"platform:  {platform_}  fonts: {fonts}")
+    print(f"built:     {record.get('built', '?')}")
     print(f"x2t:       {'present' if p.x2t.is_file() else 'MISSING'}")
-
-    # Corresponding source, per AGPL. A user holding this binary is entitled to
-    # know exactly which revisions it was built from.
-    source = record.get("source") or {}
-    if source:
-        print("source:")
-        for url in source.get("repositories", []):
-            print(f"  {url}  @ {source.get('libera_commit', '?')}")
-        for repo, sha in sorted((source.get("pins") or {}).items()):
-            print(f"  {source.get('upstream', 'upstream')}/{repo} @ {sha}")
-    else:
-        print("source:    not recorded (local build)")
-    return 0
+    return record
 
 
 def remove_payload(_args: argparse.Namespace) -> int:
@@ -146,7 +168,7 @@ def _resolve_payload_or_offer() -> payload_mod.Payload | None:
     except NoPayloadError:
         return _offer_to_install()
     except PayloadError as e:
-        _refuse(str(e))
+        _refuse(CANNOT_START, [str(e)])
         return None
 
 
@@ -161,7 +183,7 @@ def _offer_to_install() -> payload_mod.Payload | None:
     try:
         return payload_mod.install()
     except PayloadError as e:
-        _refuse(str(e))
+        _refuse(CANNOT_START, [str(e)])
         return None
 
 
@@ -181,13 +203,9 @@ def _say_there_is_nothing_to_fetch() -> None:
     lines = (
         "  point at a local build:     export LIBERA_PAYLOAD=/path/to/out/payload\n"
         "  install built artifacts:    libera --payload-install --from DIR\n"
-        "  or build one (an afternoon; V8 alone is ~30 minutes):   make payload-all"
+        "  or build one (an afternoon; V8 alone is ~30 minutes):   make payload"
     )
-    print(f"libera: {heading}.\n\n{why}\n\n{lines}", file=sys.stderr)
-    if not _is_interactive():
-        # Same reason as in _ask_to_install: a launcher has no terminal, so
-        # stderr went nowhere and the icon just vanished.
-        gui.show_problem(heading, [why], lines)
+    _refuse(heading, [why], lines)
 
 
 def _format_install_command() -> str:
@@ -211,11 +229,9 @@ def _ask_to_install() -> bool:
     )
     command = _format_install_command()
     if not _is_interactive():
-        print(f"  run: {command}", file=sys.stderr)
-        # And on screen, because there may be no terminal to have read that.
         # Reached only from open_documents, which has already been past
         # gui.explain_why_no_window(), so a window can be opened here.
-        gui.show_problem(
+        _refuse(
             "Libera Suite has no editor payload yet",
             [
                 (
@@ -243,13 +259,11 @@ def serve(args: argparse.Namespace) -> int:
     try:
         p = payload_mod.resolve()
     except PayloadError as e:
-        print(f"libera: {e}", file=sys.stderr)
-        return 1
+        return _fail(e)
 
     document = Path(args.file[0]).expanduser().resolve()
     if not document.is_file():
-        print(f"libera: no such file: {document}", file=sys.stderr)
-        return 1
+        return _fail(f"no such file: {document}")
 
     # Beside the windowed application's sessions, not in a directory of its
     # own: sharing the parent is what makes them share a Recent list.
@@ -269,15 +283,132 @@ def serve(args: argparse.Namespace) -> int:
     try:
         opening.open_document(served, document)
         httpd = server.make_server(port, served)
-    except NotReadyError as e:
-        print(f"libera: {e}", file=sys.stderr)
-        return 1
+    except (NotReadyError, ConversionError) as e:
+        return _fail(e)
     except OSError as e:
-        print(f"libera: cannot listen on port {port}: {e.strerror}", file=sys.stderr)
-        return 1
+        return _fail(f"cannot listen on port {port}: {e.strerror}")
     print(server.make_editor_url(port, served, document.name), flush=True)
     httpd.serve_forever()
     return 0
+
+
+def expand_wildcards(names: list[str]) -> list[str]:
+    """`*.docx` as a POSIX shell would have expanded it, on Windows only.
+
+    cmd.exe and PowerShell pass it on as typed. Anywhere else the shell has
+    expanded it already, and expanding again would misread a file whose name
+    has a `*` in it. A pattern that matches nothing stays as typed, so it is
+    reported as a missing file.
+    """
+    if sys.platform != "win32":
+        return names
+    return [found for name in names for found in sorted(glob.glob(name)) or [name]]
+
+
+class CannotConvertError(ValueError):
+    """A `--convert` that cannot be done as asked, found before converting."""
+
+
+# One conversion: the document, where it goes (None: standard output), and
+# the extension of the format it is written in.
+Conversion = tuple[Path, Path | None, str]
+
+
+def plan_conversions(args: argparse.Namespace) -> list[Conversion]:
+    """Every conversion `--convert` was asked for, or the first reason not to.
+
+    All checked before any is made: a typo in the format, or two documents
+    that would land on one file, is cheaper to say before a hundred
+    conversions than after.
+    """
+    plan: list[Conversion] = []
+    for name in args.file:
+        src = Path(name).expanduser()
+        if not src.is_file():
+            msg = f"no such file: {src}"
+            raise CannotConvertError(msg)
+        ext = (args.to or Path(args.output).suffix).lstrip(".").lower()
+        _check_writes(apps.choose_for(src), src, ext)
+        plan.append((src, _choose_target(args, src, ext), ext))
+
+    targets = [t.resolve() for _, t, _ in plan if t is not None]
+    for src, target, _ in plan:
+        if target is None:
+            continue
+        if target.exists() and target.samefile(src):
+            msg = f"{src} would be written over itself"
+            raise CannotConvertError(msg)
+        if targets.count(target.resolve()) > 1:
+            msg = f"several documents would be written to {target}"
+            raise CannotConvertError(msg)
+    return plan
+
+
+def _check_writes(app: apps.App, src: Path, ext: str) -> None:
+    if not app.editable:
+        msg = f"{src.name}: {app.title} only shows documents, and writes none"
+        raise CannotConvertError(msg)
+    if ext not in app.ids_by_ext:
+        writes = ", ".join(e for _, e in app.save_formats)
+        msg = f"{src.name}: {app.title} cannot write .{ext}; it writes {writes}"
+        raise CannotConvertError(msg)
+
+
+def _choose_target(args: argparse.Namespace, src: Path, ext: str) -> Path | None:
+    if args.output == "-":
+        return None
+    if args.output is not None:
+        return Path(args.output).expanduser()
+    folder = Path(args.outdir).expanduser() if args.outdir else src.parent
+    return folder / f"{src.stem}.{ext}"
+
+
+def convert_documents(args: argparse.Namespace) -> int:
+    """Write each document in another format, with no window: `--convert`.
+
+    The conversions a Save makes -- x2t into Editor.bin, then out to the
+    format asked for -- so the file is the one Save As would have written.
+    Each document has a session of its own in a scratch directory, registered
+    nowhere: no Recent list, no lock file, nothing left behind. A document
+    that fails is reported and the others carry on; the exit status is 1 if
+    any failed.
+    """
+    try:
+        plan = plan_conversions(args)
+        p = payload_mod.resolve()
+    except (CannotConvertError, PayloadError) as e:
+        return _fail(e)
+    if args.outdir:
+        Path(args.outdir).expanduser().mkdir(parents=True, exist_ok=True)
+
+    failed = 0
+    with tempfile.TemporaryDirectory(prefix="libera-convert-") as scratch:
+        for index, (src, target, ext) in enumerate(plan):
+            try:
+                staged = _convert_one(p.root, Path(scratch) / str(index), src, ext)
+            except ConversionError as e:
+                failed += _fail(f"{src}: {e}")
+                continue
+            except NotReadyError as e:
+                return _fail(e)
+            if target is None:
+                sys.stdout.buffer.write(staged.read_bytes())
+                sys.stdout.flush()
+            else:
+                # Converted aside, then moved: a failure never leaves half a
+                # file where the old one was.
+                shutil.move(staged, target)
+    return 1 if failed else 0
+
+
+def _convert_one(payload: Path, work: Path, src: Path, ext: str) -> Path:
+    converting = session.Session(payload=payload, work=work, document=src)
+    convert.convert_to_editor_bin(converting, src)
+    converting.out_dir.mkdir(parents=True)
+    staged = converting.out_dir / f"{src.stem}.{ext}"
+    fmt = converting.editor.ids_by_ext[ext]
+    convert.export(converting, staged, fmt, src)
+    return staged
 
 
 def diagnose(_args: argparse.Namespace) -> int:
@@ -309,14 +440,7 @@ def diagnose(_args: argparse.Namespace) -> int:
         print(f"payload    MISSING\n  {e}")
         return 0
 
-    record = p.read_record()
-    print(f"payload    {record.get('payload_version', 'local build')}  ({p.origin})")
-    print(f"  at       {p.root}")
-    built_for, fonts = record.get("platform", "?"), record.get("font_set", "?")
-    print(f"  platform {built_for}  fonts: {fonts}")
-    print(f"  built    {record.get('built', '?')}")
-    print(f"  x2t      {'present' if p.x2t.is_file() else 'MISSING'}")
-
+    _print_payload(p)
     editors = sorted(d.name for d in (p.root / "web-apps" / "apps").glob("*editor"))
     print(f"  editors  {', '.join(editors) or 'none'}")
 
@@ -344,8 +468,7 @@ def open_documents(args: argparse.Namespace) -> int:
     for name in args.file:
         document = Path(name).expanduser()
         if not document.is_file():
-            print(f"libera: no such file: {document}", file=sys.stderr)
-            return 1
+            return _fail(f"no such file: {document}")
         documents.append(document.resolve())
 
     # A Libera Suite already running takes them, in a window of its own, and
@@ -359,20 +482,40 @@ def open_documents(args: argparse.Namespace) -> int:
     # one has no use for 116 MB of editor.
     cannot = gui.explain_why_no_window()
     if cannot:
-        print(f"libera: {cannot}", file=sys.stderr)
-        return 1
+        return _fail(cannot)
 
     p = _resolve_payload_or_offer()
     if p is None:
         return 1
+    return _run(p, documents)
 
+
+def _run(p: payload_mod.Payload, documents: list[Path]) -> int:
+    """The application, as the one instance; or the documents handed to the
+    instance another launch has just become."""
     # The one place the GUI is imported: pywebview and, on a Mac, AppKit cost
     # a third of a second, and only this command opens a window.
     from libera.host import app
 
     try:
-        app.run(p.root, payload_mod.get_sessions_dir(), documents)
-    except NotReadyError as e:
-        _refuse(str(e))
+        held = instance.become(documents)
+        if held is None:
+            return 0
+        with held:
+            app.run(p.root, payload_mod.get_sessions_dir(), documents)
+    except (NotReadyError, instance.BusyError) as e:
+        _refuse(CANNOT_START, [str(e)])
+        return 1
+    except ConversionError:
+        # As a later document's is: convert has logged what x2t said.
+        _refuse(
+            CANNOT_START,
+            [
+                (
+                    f"The converter could not read {documents[0].name}: it may "
+                    "be damaged, or in a format Libera Suite cannot open."
+                )
+            ],
+        )
         return 1
     return 0
