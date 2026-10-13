@@ -1,0 +1,209 @@
+# The Windows payload and installer, built on a hosted runner the way the
+# Windows builder builds them: `lb payload all`, then `lb app windows`.
+#
+#   patches     every push that touches build/: does the patch queue still apply
+#               on Windows, with line-ending conversion off? About a minute.
+#   third-party by hand, or on a version tag: V8, ICU, boost and the rest, the
+#               hour that dominates a cold build. Cached.
+#   payload     after it: the core, the editors, the dist tarballs, the smoke
+#               test, then the frozen application and its installer. Uploaded
+#               as artifacts.
+#
+# Two jobs because a hosted job stops at six hours, and a cold build on a
+# four-core runner can take more than one job's worth. The third-party tree is
+# saved even when its job runs out of time, so a second run continues from
+# where the first stopped rather than starting over.
+#
+# The artifacts are this commit's, built from the public mirror. Their manifest
+# names the mirror's commit, and their hashes are not the ones a release
+# published: a release still collects from the Windows builder (`lb release
+# ship`), and nothing here uploads anywhere but to this run.
+name: windows
+
+on:
+  push:
+    paths:
+      - 'build/**'
+      - '.github/workflows/windows.yml'
+      - '.github/actions/windows-toolchain/**'
+    tags:
+      - '[0-9]*'
+  workflow_dispatch:
+
+# A second push replaces the first patch check. A build is hours, and a tag's
+# or a hand-started one is not cancelled by the next push.
+concurrency:
+  group: windows-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  patches:
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: git, for the pinned sources
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global core.longpaths true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # The reason this job exists: Windows has mangled this series before, at
+      # 0001, through core.autocrlf. A failure here is the queue, not the runner.
+      - name: the patch queue applies to the pins
+        run: sh build/engine/check-patches.sh
+
+  third-party:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    timeout-minutes: 355
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/windows-toolchain
+
+      # Keyed on what decides the tree's content: the pins, the patch queue,
+      # and msvc-env.sh, which carries the toolset preference. The run id makes
+      # each save a new entry, so a tree saved after a timeout does not shadow
+      # the finished one; the restore takes the newest entry under the same
+      # hash, never one from other pins. Each component writes its ok_marker
+      # only once it is built, so a partial tree resumes rather than misleads.
+      - name: Restore the third-party tree
+        id: restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BUILD_ROOT }}/out/core/third_party/install
+          key: 3rdparty-${{ runner.os }}-${{ hashFiles('build/upstream/pins.toml', 'build/upstream/patches/**', 'build/windows/msvc-env.sh') }}-${{ github.run_id }}
+          restore-keys: |
+            3rdparty-${{ runner.os }}-${{ hashFiles('build/upstream/pins.toml', 'build/upstream/patches/**', 'build/windows/msvc-env.sh') }}-
+
+      - name: Components already built
+        id: before
+        run: echo "built=$(find "$BUILD_ROOT/out/core/third_party/install" -mindepth 2 -maxdepth 2 -name ok_marker 2>/dev/null | wc -l)" >> "$GITHUB_OUTPUT"
+
+      # configure is where the third-party builder runs: cmake asks for every
+      # dependency, and each one missing its ok_marker is built.
+      - name: lb payload fetch, then configure
+        run: |
+          lb() { PYTHONPATH="$PWD/build/src:$PWD/src" python -m libera_build "$@"; }
+          lb payload fetch
+          lb payload configure
+
+      - name: Components built now
+        id: after
+        if: always()
+        run: echo "built=$(find "$BUILD_ROOT/out/core/third_party/install" -mindepth 2 -maxdepth 2 -name ok_marker 2>/dev/null | wc -l)" >> "$GITHUB_OUTPUT"
+
+      # Whatever happened above, a timeout included, so the hour already spent
+      # is kept. Only when a component was added: a copy of an unchanged tree,
+      # several gigabytes each run, would evict the others from the cache.
+      - name: Save the third-party tree
+        if: always() && steps.after.outputs.built != steps.before.outputs.built
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.BUILD_ROOT }}/out/core/third_party/install
+          key: ${{ steps.restore.outputs.cache-primary-key }}
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-third-party-logs
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            ${{ env.BUILD_ROOT }}/out/**/*.log
+            ${{ env.BUILD_ROOT }}/out/**/makefile
+
+  payload:
+    needs: third-party
+    runs-on: windows-latest
+    timeout-minutes: 355
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/windows-toolchain
+
+      - name: Restore the third-party tree
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BUILD_ROOT }}/out/core/third_party/install
+          key: 3rdparty-${{ runner.os }}-${{ hashFiles('build/upstream/pins.toml', 'build/upstream/patches/**', 'build/windows/msvc-env.sh') }}-${{ github.run_id }}
+          restore-keys: |
+            3rdparty-${{ runner.os }}-${{ hashFiles('build/upstream/pins.toml', 'build/upstream/patches/**', 'build/windows/msvc-env.sh') }}-
+
+      # What the Windows builder runs for `lb release ship`'s build and bundles
+      # phases, in the same order: payload all ends with the smoke test, which
+      # converts a document and reads the text back, and app windows freezes
+      # the application and makes the installer.
+      - name: lb payload all
+        run: |
+          lb() { PYTHONPATH="$PWD/build/src:$PWD/src" python -m libera_build "$@"; }
+          lb payload all
+
+      - name: lb app windows
+        run: |
+          lb() { PYTHONPATH="$PWD/build/src:$PWD/src" python -m libera_build "$@"; }
+          lb app windows
+
+      # By name, from the version files, so a run that made something else
+      # fails here instead of uploading it.
+      - name: What was made
+        id: made
+        run: |
+          payload="$(sed -n 's/^version = "\(.*\)"$/\1/p' build/payload/payload.version)"
+          app="$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml)"
+          dist="$BUILD_ROOT/out/dist/$payload"
+          setup="build/out/bundles/Libera-Suite-Setup-$app.exe"
+          for f in "$dist/core-windows-x86_64.tar.gz" "$dist/manifest.json" "$setup" "$setup.sha256"; do
+            [ -s "$f" ] || { echo "FATAL: $f was not made" >&2; exit 1; }
+            ls -l "$f"
+          done
+          {
+            echo "dist=$dist"
+            echo "setup=$setup"
+            echo "app=$app"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload the core and its manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-core-${{ steps.made.outputs.app }}
+          retention-days: 30
+          path: |
+            ${{ steps.made.outputs.dist }}/core-windows-x86_64.tar.gz
+            ${{ steps.made.outputs.dist }}/manifest.json
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-${{ steps.made.outputs.app }}
+          retention-days: 30
+          path: |
+            ${{ steps.made.outputs.setup }}
+            ${{ steps.made.outputs.setup }}.sha256
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-payload-logs
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            ${{ env.BUILD_ROOT }}/out/**/*.log
+            ${{ env.BUILD_ROOT }}/out/**/makefile

@@ -1,0 +1,112 @@
+# What a hosted Windows runner needs to build the payload and the installer:
+# what build/windows/windows-setup.ps1 installs on a desktop, through
+# Chocolatey, because winget is unusable in a non-interactive runner session.
+#
+# Every tool is checked on the file the build uses, never on choco's exit
+# status: the SDK package installs cleanly and can still lack user32.lib or
+# cdb.exe, which V8 finds out an hour later. build/engine/toolchain.sh check
+# then asks the same questions it asks on the Windows builder.
+#
+# Leaves BUILD_ROOT and CYGWIN_ROOT in the job's environment.
+name: Windows toolchain
+description: Provision a hosted Windows runner for the payload build
+
+runs:
+  using: composite
+  steps:
+    # A full build tree is about 30 GB and the runners keep most of their space
+    # on D:. Deep paths are the other Windows tax, since V8's checkout is long
+    # enough to matter, so the root is one letter.
+    - name: Choose a build root
+      shell: bash
+      run: |
+        if [ -d /d ]; then drive=d; else drive=c; fi
+        mkdir -p "/$drive/b"
+        echo "BUILD_ROOT=${drive^^}:/b" >> "$GITHUB_ENV"
+        df -h "/$drive/b"
+
+    # Before any clone, including the ones build.sh makes. git's Windows default
+    # rewrites line endings on checkout, and build/upstream/patches/ does not
+    # survive that: `git am --keep-cr` applies a series whose context must match
+    # byte for byte.
+    - name: git, for the pinned sources
+      shell: bash
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+        # core's tree is deep, and Git for Windows still defaults to the
+        # 260-character limit: a clone fails partway with "Filename too long".
+        git config --global core.longpaths true
+        # build.sh refuses to fetch without one, because a build records the
+        # commit it came from.
+        git config --global user.name 'windows builder'
+        git config --global user.email 'builder@localhost'
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - uses: astral-sh/setup-uv@v6
+
+    # Git for Windows ships a trimmed perl that OpenSSL's tooling cannot use.
+    # common.sh puts Strawberry's first on PATH when it is at its usual place.
+    - name: Strawberry Perl, NASM, Ninja, Inno Setup
+      shell: bash
+      run: |
+        choco install --yes --no-progress strawberryperl nasm innosetup
+        command -v ninja >/dev/null || choco install --yes --no-progress ninja
+        /c/Strawberry/perl/bin/perl.exe -MFindBin -MIPC::Cmd -e 'exit 0' || {
+          echo "FATAL: no Strawberry perl with FindBin and IPC::Cmd" >&2; exit 1; }
+        [ -x "/c/Program Files/NASM/nasm.exe" ] || {
+          echo "FATAL: NASM is not at C:/Program Files/NASM" >&2; exit 1; }
+        echo "C:\\Program Files\\NASM" >> "$GITHUB_PATH"
+        [ -x "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" ] || {
+          echo "FATAL: Inno Setup has no ISCC.exe" >&2; exit 1; }
+
+    # ICU is built as Cygwin/MSVC, upstream's design: the shell and make come
+    # from Cygwin, the compiler is still MSVC. choco puts it in C:\tools\cygwin,
+    # so CYGWIN_ROOT says where. make and python3 are not in Cygwin's base, and
+    # each missing one fails only inside ICU's configure.
+    - name: Cygwin, for ICU
+      shell: bash
+      run: |
+        choco install --yes --no-progress cygwin
+        root='C:\tools\cygwin'
+        root_u="$(cygpath -u "$root")"
+        # Cygwin's own setup, not choco's cyg-get wrapper, which lands on a
+        # PATH this shell was started before.
+        setup="$(ls "$root_u"/*setup*.exe 2>/dev/null | head -1)"
+        [ -n "$setup" ] || { echo "FATAL: no Cygwin setup exe in $root" >&2; exit 1; }
+        "$setup" --quiet-mode --no-shortcuts --no-startmenu --no-desktop \
+          --root "$root" --local-package-dir "$(cygpath -w "$RUNNER_TEMP")" \
+          --site http://mirrors.kernel.org/sourceware/cygwin/ \
+          --packages make,python3
+        # Asked of Cygwin's bash: its python3 is a Cygwin symlink, which a
+        # `[ -x ]` from Git Bash calls missing while it works.
+        for tool in make python3; do
+          "$root_u/bin/bash.exe" -lc "command -v $tool" || {
+            echo "FATAL: Cygwin has no $tool after setup" >&2; exit 1; }
+        done
+        echo "CYGWIN_ROOT=$root" >> "$GITHUB_ENV"
+
+    # SDK 10.0.19041.0, because V8 8.9 pins it in its own vcvarsall call, and
+    # its Debugging Tools, because gn looks for cdb.exe. 2004 is the release
+    # name for build 19041.
+    - name: The Windows SDK V8 pins
+      shell: bash
+      run: |
+        kits='C:/Program Files (x86)/Windows Kits/10'
+        lib="$kits/Lib/10.0.19041.0/um/x64/user32.lib"
+        cdb="$kits/Debuggers/x64/cdb.exe"
+        if [ ! -f "$lib" ] || [ ! -f "$cdb" ]; then
+          choco install --yes --no-progress windows-sdk-10-version-2004-all
+        fi
+        for f in "$lib" "$cdb"; do
+          [ -f "$f" ] || { echo "FATAL: the SDK installed without $f" >&2; exit 1; }
+        done
+
+    # The same check the Windows builder passes, Visual Studio and Smart App
+    # Control included. In a fresh shell, so the PATH additions above apply.
+    - name: build/engine/toolchain.sh check
+      shell: bash
+      run: sh build/engine/toolchain.sh check
