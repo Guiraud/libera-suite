@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 Two versions move here and they move independently. The **application** is this package, `libera`. The **editor payload** is the Euro-Office build it fetches on first use, versioned separately so that a fix to the host does not force a 120 MB re-download. `libera --version` prints both.
 
+## [Unreleased]
+
+### Security
+
+- **Another account on the same computer could read the open document.** The editor's server, on `127.0.0.1`, checked the headers a web browser sends, which stop a web page and nothing else: `curl` read the open document and the recent list. Nothing in those checks depends on which account runs it. Every request now needs a key made at each launch: the windows have it in their address, and on disk only your account can read it. Measured on 0.4.0; fixed for every route, the editor's own files included.
+
 ## [0.4.0] - 2026-10-12
 
 The first with payload **0.4**, so the editors are downloaded again once, about 100 MB on macOS. It fixes the converter where 0.3's host could only refuse a save or warn.
