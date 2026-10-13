@@ -112,7 +112,7 @@ def _open_start_window(port: int, title: str | None = None):
     """The start window, which offers every kind of document."""
     window = create_window(
         title or "Libera Suite",
-        f"http://127.0.0.1:{port}/__host__/start",
+        f"http://127.0.0.1:{port}/__host__/start?key={instance.TOKEN}",
         size=(720, 640),
     )
     remember_start_window(window)

@@ -20,6 +20,7 @@ import os
 import threading
 
 import pytest
+from support import key_cookie
 
 from libera.host import session
 from libera.host.server import adapter, listener
@@ -51,7 +52,7 @@ def serve(tmp_path):
 
 def get(port, path, headers=None):
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-    conn.request("GET", path, headers=headers or {})
+    conn.request("GET", path, headers={**key_cookie(), **(headers or {})})
     response = conn.getresponse()
     body = response.read()
     conn.close()

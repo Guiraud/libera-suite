@@ -22,13 +22,14 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from support import find_free_port, repo_root
+from support import find_free_port, keyed, repo_root
 
 from libera import payload as payload_mod
 from libera.host import apps
@@ -279,7 +280,9 @@ def running_editor(document: Path, work: Path) -> Iterator[Editor]:
     # through the host's own report, not through the page.
     page.goto(url, wait_until="commit")
 
-    calls = f"http://127.0.0.1:{port}/__host__/report"
+    # The server's key is its own process's: the one in the URL it printed.
+    key = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)["key"][0]
+    calls = keyed(f"http://127.0.0.1:{port}/__host__/report", key)
     try:
         if not wait_until_ready(calls):
             # What the host was asked for, before giving up. The stall is

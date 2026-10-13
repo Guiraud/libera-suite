@@ -14,7 +14,7 @@ import urllib.parse
 from typing import TYPE_CHECKING
 
 from libera import timeline
-from libera.host import desktop, hooks, shortcuts
+from libera.host import desktop, hooks, instance, shortcuts
 from libera.host.desktop import lookup_local_user
 from libera.host.server import diagnostics
 from libera.host.server.api import NO_CONTENT, Refused, Request, Response, endpoint
@@ -203,6 +203,8 @@ def make_editor_url(port: int, session: Session, title: str) -> str:
     The editor loads itself in an iframe and forwards only the parameters it
     knows, so the session never reaches the inner frame's URL. It does not need
     to: the frames are same-origin, and the bridge reads it off the top window.
+    The key goes no further than this first request, whose answer sets the
+    cookie that carries it from then on: see `admission`.
     """
     user_id, user_name = lookup_local_user()
     app = session.editor
@@ -213,6 +215,7 @@ def make_editor_url(port: int, session: Session, title: str) -> str:
         f"?doctype={app.doctype}&mode={mode}&lang=en"
         f"&title={urllib.parse.quote(title)}"
         f"&filetype={ext}&session={urllib.parse.quote(session.id)}"
+        f"&key={instance.TOKEN}"
         f"&userid={urllib.parse.quote(user_id)}"
         f"&username={urllib.parse.quote(user_name)}"
     )

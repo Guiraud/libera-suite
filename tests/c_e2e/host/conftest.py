@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import threading
 import urllib.request
 from typing import TYPE_CHECKING
@@ -21,7 +22,7 @@ from playwright.sync_api import (
     TimeoutError as PlaywrightTimeoutError,
     sync_playwright,
 )
-from support import find_free_port
+from support import find_free_port, keyed
 
 from c_e2e.conftest import SYNC_REPORTS, flush_reports
 from libera import payload as payload_mod
@@ -31,6 +32,21 @@ from libera.host.session import Session
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
+
+# Playwright pins macOS 14 to a WebKit build it no longer speaks to: the
+# browser launches, then refuses "Playwright.closePage" and the setting
+# "PushAPIEnabled", and new_page(), which has no timeout, never returns.
+# Measured with Playwright 1.62 and WebKit 2251 on macOS 14.8, before any
+# request reached the host.
+OLD_WEBKIT = (
+    "Playwright's WebKit for macOS 14 hangs in new_page(); use macOS 15+ or Linux"
+)
+
+
+def _is_macos_before(major: int) -> bool:
+    release = platform.mac_ver()[0]
+    return bool(release) and int(release.split(".")[0]) < major
+
 
 # The editor takes a while to be ready for a keystroke, and a key pressed at a
 # page that has not finished booting tells us nothing.
@@ -45,7 +61,7 @@ class Editor:
 
     def __init__(self, page, port: int) -> None:
         self.page = page
-        self._calls = f"http://127.0.0.1:{port}/__host__/report"
+        self._calls = keyed(f"http://127.0.0.1:{port}/__host__/report")
         # Requests the page gave up on: a load that never finishes is one of
         # these, and saying so is the difference between a stall and a stopwatch.
         self.failed: list[str] = []
@@ -214,6 +230,8 @@ def editor_with(tmp_path, sample_document, monkeypatch):
         # Chromium unless E2E_BROWSER says otherwise: webkit is the engine of
         # the macOS window, and the Save As race was WebKit's alone.
         engine = os.environ.get("E2E_BROWSER", "chromium")
+        if engine == "webkit" and _is_macos_before(15):
+            pytest.skip(OLD_WEBKIT)
         try:
             browser = getattr(play, engine).launch()
         except Error as e:  # the browser was never downloaded

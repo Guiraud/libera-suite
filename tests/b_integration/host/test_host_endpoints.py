@@ -270,6 +270,25 @@ def test_a_name_rebound_to_this_address_reads_nothing(live: LiveHost):
     assert refused.value.code == 403
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/__host__/opened",
+        "/__host__/current",
+        "/__host__/recents",
+        "/sdkjs/word/sdk-all.js",
+    ],
+)
+def test_another_process_without_the_key_reads_nothing(live: LiveHost, path):
+    """curl, from any account on this machine: the right Host, no Origin, no
+    Sec-Fetch-Site. Before the key, it read the open document out of
+    /__host__/opened."""
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        urllib.request.urlopen(live.url + path, timeout=30)
+
+    assert refused.value.code == 403
+
+
 # --- what a request can carry -----------------------------------------------
 #
 # Each endpoint read its body where it first needed it, so one it could not

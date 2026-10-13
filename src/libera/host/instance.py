@@ -17,16 +17,18 @@ when it ends, however it ends. The others wait for the claimant to say where
 it is, and hand off to it. Two instances once shared a session directory, and
 each swept away the other's live sessions.
 
-The file carries a random token, and the endpoint wants it. The server is on
-127.0.0.1, where any web page the user visits can send it a POST; only a
-process running as this user can read the token.
+The file carries the instance's token, which is also the key every request to
+its server needs (see `server.admission`): the windows have it in their URLs,
+and a second launch reads it here. The server is on 127.0.0.1, which any
+process on the machine and any web page the user visits can reach; only a
+process running as this user can read the file, which `write_atomically`
+creates readable by its owner alone.
 """
 
 from __future__ import annotations
 
 import contextlib
 import ctypes
-import hmac
 import json
 import logging
 import os
@@ -136,11 +138,6 @@ def withdraw() -> None:
             get_path().unlink()
 
 
-def is_own_token(token: str) -> bool:
-    """Whether a hand-off request carries this instance's token."""
-    return hmac.compare_digest(token.encode(), TOKEN.encode())
-
-
 def hand_off(documents: list[Path]) -> bool:
     """Give the documents to a running instance. True means it took them.
 
@@ -156,9 +153,9 @@ def hand_off(documents: list[Path]) -> bool:
         return False
 
     _allow_foreground()
-    body = json.dumps({"token": token, "documents": [str(d) for d in documents]})
+    body = json.dumps({"documents": [str(d) for d in documents]})
     request = urllib.request.Request(
-        f"http://127.0.0.1:{port}/__host__/hand-off",
+        f"http://127.0.0.1:{port}/__host__/hand-off?key={token}",
         data=body.encode(),
         headers={"Content-Type": "application/json"},
         method="POST",

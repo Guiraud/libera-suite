@@ -2,7 +2,7 @@
 
 The hand-off is what double-clicking a second document does on Windows, where
 every double-click is a new process. What can go wrong is who gets to open a
-file (the token), what a stale announcement costs (nothing but a start), and
+file (the key), what a stale announcement costs (nothing but a start), and
 whose announcement goes when an instance exits (only its own).
 """
 
@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import socket
 import threading
+import urllib.error
+import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
@@ -44,9 +46,10 @@ def running(state):
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
-            received.append(
-                json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-            )
+            received.append({
+                "path": self.path,
+                **json.loads(self.rfile.read(int(self.headers["Content-Length"]))),
+            })
             body = b'{"opened": true}'
             self.send_response(200)
             self.send_header("Content-Length", str(len(body)))
@@ -82,7 +85,12 @@ def test_a_running_instance_takes_the_documents(running, tmp_path):
     doc = tmp_path / "Report.docx"
 
     assert instance.hand_off([doc]) is True
-    assert running == [{"token": instance.TOKEN, "documents": [str(doc)]}]
+    assert running == [
+        {
+            "path": f"/__host__/hand-off?key={instance.TOKEN}",
+            "documents": [str(doc)],
+        }
+    ]
 
 
 def test_withdraw_leaves_another_instances_announcement(state):
@@ -143,27 +151,11 @@ def opened(monkeypatch):
     return calls
 
 
-def test_a_wrong_token_opens_nothing(handler, opened, tmp_path):
-    """Any page in any browser can POST to 127.0.0.1; the token is the fence."""
-    doc = tmp_path / "Report.docx"
-    doc.write_bytes(b"PK")
-    h = handler({"token": "guessed", "documents": [str(doc)]})
-
-    with pytest.raises(Refused) as refused:
-        opening.take_hand_off(h)
-
-    assert refused.value.status == 403
-    assert opened.documents == []
-
-
-def test_the_right_token_opens_each_file_that_exists(handler, opened, tmp_path):
+def test_the_right_key_opens_each_file_that_exists(handler, opened, tmp_path):
     doc = tmp_path / "Report.docx"
     doc.write_bytes(b"PK")
     # The missing one first: by the time the other opens, it has been passed.
-    h = handler({
-        "token": instance.TOKEN,
-        "documents": [str(tmp_path / "gone.docx"), str(doc)],
-    })
+    h = handler({"documents": [str(tmp_path / "gone.docx"), str(doc)]})
 
     answer = opening.take_hand_off(h)
 
@@ -173,7 +165,7 @@ def test_the_right_token_opens_each_file_that_exists(handler, opened, tmp_path):
 
 def test_no_documents_puts_the_start_window_up(handler, opened):
     """The icon clicked while Libera Suite is already open."""
-    h = handler({"token": instance.TOKEN, "documents": []})
+    h = handler({"documents": []})
 
     opening.take_hand_off(h)
 
@@ -183,12 +175,10 @@ def test_no_documents_puts_the_start_window_up(handler, opened):
 @pytest.mark.parametrize(
     "body",
     [
-        {"token": instance.TOKEN, "documents": "/a/Report.docx"},
-        {"token": instance.TOKEN, "documents": [1]},
-        {"token": 1, "documents": []},
-        {"documents": []},
+        {"documents": "/a/Report.docx"},
+        {"documents": [1]},
     ],
-    ids=["documents a string", "a path a number", "token a number", "no token"],
+    ids=["documents a string", "a path a number"],
 )
 def test_a_body_of_the_wrong_shape_is_a_400(handler, opened, body):
     """A string for documents was one path per character."""
@@ -207,7 +197,7 @@ def serving(state, tmp_path):
     server.set_app(adapter.make_app(tmp_path / "payload"))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     instance.announce(server.server_address[1])
-    yield
+    yield server.server_address[1]
     server.shutdown()
     server.server_close()
 
@@ -232,3 +222,23 @@ def test_the_answer_does_not_wait_for_the_window(serving, monkeypatch, tmp_path)
         assert asked.wait(5)
     finally:
         release.set()
+
+
+def test_a_hand_off_without_the_key_opens_nothing(serving, opened, tmp_path):
+    """Any process on this machine, and any page in any browser, can POST to
+    127.0.0.1; the key, which only this user can read, is the fence."""
+    doc = tmp_path / "Report.docx"
+    doc.write_bytes(b"PK")
+    body = json.dumps({"documents": [str(doc)]}).encode()
+    for query in ("", "?key=guessed"):
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{serving}/__host__/hand-off{query}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with pytest.raises(urllib.error.HTTPError) as refused:
+            urllib.request.urlopen(request, timeout=5)
+
+        assert refused.value.code == 403
+    assert opened.documents == []

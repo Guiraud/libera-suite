@@ -6,9 +6,12 @@ can reach, so this is security policy, not plumbing.
 
 from __future__ import annotations
 
+import hmac
+import http.cookies
 import logging
 from typing import TYPE_CHECKING
 
+from libera.host import instance
 from libera.host.server.api import Refused
 from libera.host.session import NotReadyError, Session, lookup
 
@@ -29,14 +32,24 @@ SECURITY_HEADERS = (
     # The declared type is the type: a browser that sniffed text/plain into
     # HTML would undo what the adapter's plain-text refusals guarantee.
     ("X-Content-Type-Options", "nosniff"),
+    # The key rides in each window's first URL: never in a Referer.
+    ("Referrer-Policy", "no-referrer"),
 )
+
+# What carries the key once a window has shown it in its first URL: every
+# later request the page makes, its frames, scripts and fonts included, sends
+# it without the bridge having to add it.
+KEY_COOKIE = "libera_key"
+
+
+def key_cookie() -> str:
+    """The Set-Cookie value that hands this instance's key to the page."""
+    return f"{KEY_COOKIE}={instance.TOKEN}; Path=/; HttpOnly; SameSite=Strict"
 
 
 def admit(
     *,
-    host: str | None,
-    origin: str | None,
-    fetch_site: str | None,
+    headers: Mapping[str, str],
     port: str,
     query: Mapping[str, list[str]],
 ) -> Session:
@@ -65,11 +78,21 @@ def admit(
     a navigation the user or the application started. "same-site" is not ours:
     another port on 127.0.0.1 is the same site, and another origin.
 
+    **The key must be this instance's**, in the query string or in its cookie.
+    The three checks above stop a browser, and nothing else: any process on
+    this machine, another account's included, can send whatever headers it
+    likes. Measured before this check: `curl` from the command line read the
+    open document out of /__host__/opened. The key is `instance.TOKEN`, which
+    the window's first URL carries, and which instance.json holds for a second
+    launch, in a file only this user can read.
+
     **The session must exist.** Static requests name none and get the first,
     which is harmless because the payload is shared. A request about a
     document names its session, and one that has gone is refused: see
     session.lookup.
     """
+    host, origin = headers.get("Host"), headers.get("Origin")
+    fetch_site = headers.get("Sec-Fetch-Site")
     own = f"127.0.0.1:{port}"
     if (
         host != own
@@ -80,7 +103,17 @@ def admit(
             "refused: Host %s, Origin %s, Sec-Fetch-Site %s", host, origin, fetch_site
         )
         raise Refused(403)
+    presented = query.get("key", [""])[0] or _key_from(headers.get("Cookie"))
+    if not hmac.compare_digest(presented.encode(), instance.TOKEN.encode()):
+        logger.info("refused: no key, or the wrong one")
+        raise Refused(403)
     try:
         return lookup(query.get("session", [""])[0])
     except NotReadyError as e:
         raise Refused(404, str(e)) from e
+
+
+def _key_from(cookie: str | None) -> str:
+    jar = http.cookies.SimpleCookie(cookie or "")
+    found = jar.get(KEY_COOKIE)
+    return found.value if found else ""

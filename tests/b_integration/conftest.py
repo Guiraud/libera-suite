@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from support import find_free_port
+from support import find_free_port, keyed
 
 from libera import payload as payload_mod
 from libera.host import opening, server, session as sessions
@@ -37,10 +37,11 @@ class LiveHost:
     document: Path
 
     def at(self, path: str, session: str | None = None) -> str:
-        """A /__host__/ URL, carrying a session the way the bridge does."""
+        """A /__host__/ URL, carrying a session the way the bridge does, and
+        the key, which the page's cookie would."""
         sid = self.session if session is None else session
         joiner = "&" if "?" in path else "?"
-        return f"{self.url}/__host__/{path}{joiner}session={sid}"
+        return keyed(f"{self.url}/__host__/{path}{joiner}session={sid}")
 
     def get(self, path: str, session: str | None = None) -> bytes:
         with urllib.request.urlopen(self.at(path, session), timeout=30) as r:
@@ -51,7 +52,7 @@ class LiveHost:
 
     def get_static(self, path: str) -> bytes:
         """Out of the payload, the way the editor loads its own assets."""
-        with urllib.request.urlopen(self.url + path, timeout=30) as r:
+        with urllib.request.urlopen(keyed(self.url + path), timeout=30) as r:
             return r.read()
 
     def post(

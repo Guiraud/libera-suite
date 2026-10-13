@@ -13,7 +13,7 @@ import shutil
 import threading
 from typing import TypeGuard
 
-from libera.host import apps, hooks, instance, opening as host_opening
+from libera.host import apps, hooks, opening as host_opening
 from libera.host.convert import ConversionError, convert_to_editor_bin
 from libera.host.recents import read_recents, read_recents_for_editor
 from libera.host.server import diagnostics
@@ -174,9 +174,9 @@ def create_new(r: Request) -> Response:
 def take_hand_off(r: Request) -> Response:
     """A second launch giving its documents to this instance.
 
-    The token first: this server is on 127.0.0.1, where any page in any browser
-    can POST to it, and opening a file of the caller's choosing is not
-    something to do for a web page. See `instance`.
+    Opening a file of the caller's choosing is not something to do for anyone
+    but this user: admission has checked the key, which the sender read from
+    instance.json. See `instance`.
 
     Answered at once, and opened on a thread. The sender waits
     instance.HAND_OFF_TIMEOUT for the answer and reads a late one as "no
@@ -184,13 +184,9 @@ def take_hand_off(r: Request) -> Response:
     one's session directories. Opening takes a conversion, and a recovery or
     an error dialog waits on the user.
     """
-    body = r.read_json()
-    token, documents = body.get("token"), body.get("documents", [])
-    if not isinstance(token, str) or not _is_list_of_str(documents):
-        raise Refused(400, "token is a string and documents a list of paths")
-    if not instance.is_own_token(token):
-        logger.warning("hand-off refused: wrong token")
-        raise Refused(403)
+    documents = r.read_json().get("documents", [])
+    if not _is_list_of_str(documents):
+        raise Refused(400, "documents is a list of paths")
     if not hooks.shell.windowed:
         return _opened(False, here=False)
     threading.Thread(

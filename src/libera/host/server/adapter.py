@@ -92,21 +92,25 @@ def _answer(endpoint: Callable[[Session], Response]) -> bottle.HTTPResponse:
     """
     req = bottle.request
     timeline.mark("first-request")
+    query = _parse_query()
     try:
         session = admission.admit(
-            host=req.headers.get("Host"),
-            origin=req.headers.get("Origin"),
-            fetch_site=req.headers.get("Sec-Fetch-Site"),
+            headers=req.headers,
             port=str(req.environ["SERVER_PORT"]),
-            query=_parse_query(),
+            query=query,
         )
         answer = endpoint(session)
     except Refused as e:
-        answer = _refusal(e.status, e.explain)
+        return _to_bottle(_refusal(e.status, e.explain))
     except Exception:
         logger.exception("%s %s failed", req.method, req.path)
-        answer = _refusal(500)
-    return _to_bottle(answer)
+        return _to_bottle(_refusal(500))
+    response = _to_bottle(answer)
+    # A window's first page: the key came in its URL, and from now on the
+    # cookie brings it.
+    if "key" in query:
+        response.set_header("Set-Cookie", admission.key_cookie())
+    return response
 
 
 # A refusal can echo what it was sent -- an unknown session says which -- so it

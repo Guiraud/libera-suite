@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 
 import pytest
 from playwright.sync_api import Error, expect, sync_playwright
-from support import find_free_port
+from support import find_free_port, keyed
 
 from libera import payload as payload_mod
 from libera.host import recents, server, session as sessions
@@ -64,12 +64,12 @@ def start_window(tmp_path):
         httpd.shutdown()
         pytest.skip(f"needs Playwright's chromium: playwright install chromium ({e})")
     page = browser.new_page(viewport={"width": 720, "height": 640})
-    page.goto(f"http://127.0.0.1:{port}/__host__/start")
+    page.goto(keyed(f"http://127.0.0.1:{port}/__host__/start"))
     page.wait_for_selector("#new button")
 
     def asked_for(route: str) -> int:
         with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/__host__/report", timeout=30
+            keyed(f"http://127.0.0.1:{port}/__host__/report"), timeout=30
         ) as r:
             return json.load(r)["routes"].get(route, 0)
 
