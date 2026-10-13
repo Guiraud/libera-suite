@@ -27,6 +27,7 @@ class HTTPResponse(Exception):
         headers: Mapping[str, str] | None = ...,
         **more_headers: Any,
     ) -> None: ...
+    def set_header(self, name: str, value: str) -> None: ...
 
 class Bottle:
     catchall: bool
