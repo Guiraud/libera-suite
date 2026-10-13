@@ -68,7 +68,7 @@ libera --convert *.xlsx -t ods --outdir ods/
 libera --convert report.docx -t pdf -o - | lp   # to standard output
 ```
 
-A file already there under the new name is replaced. Nothing is written over the document being converted, and two documents that would end up under one name are refused before anything is converted. The spellings are pandoc's, except that there is no `-f`: the extension says what a document is.
+A file already there under the new name is replaced. Nothing is written over the file being converted, and two files that would end up under one name are refused before anything is converted. The spellings are pandoc's, except that there is no `-f`: the extension says what a file is.
 
 ## The menu bar
 

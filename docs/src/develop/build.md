@@ -136,7 +136,7 @@ lb payload export                           # where the artifacts are; prints it
 lb payload container --shell                # poke around inside
 ```
 
-`export` prints where the artifacts are on stdout, with everything else on stderr, which is how `payload install` reads it. The default build tree is already on this disk, so that is `$BUILD_ROOT/linux-<arch>/out/dist/<version>`. With `--volume` it copies them out first, into `$BUILD_ROOT/out/dist/<version>`, through a tar pipe, so extraction runs as you and nothing lands owned by root. The copy is extracted into a fresh directory and checked there, on both ends' exit statuses, since a pipeline's own is only tar's, and on content: an earlier export's files in the destination would otherwise pass for this one's. Either way it checks that the manifest and at least one tarball are there.
+`export` writes the artifacts' location to stdout and everything else to stderr, so `payload install` can read it. The default build tree is already on this disk, so that is `$BUILD_ROOT/linux-<arch>/out/dist/<version>`. With `--volume` it copies them out first, into `$BUILD_ROOT/out/dist/<version>`, through a tar pipe, so extraction runs as you and nothing lands owned by root. The copy is extracted into a fresh directory and checked there, on both ends' exit statuses, since a pipeline's own is only tar's, and on content: an earlier export's files in the destination would otherwise pass for this one's. Either way it checks that the manifest and at least one tarball are there.
 
 Three things are pinned, as `ARG`s at the top of `build/docker/Dockerfile`, because each drifts on its own schedule. Moving the toolchain means bumping one of them by hand; nothing else in the file decides what gets installed.
 
@@ -176,9 +176,9 @@ lb on windows-x86_64 payload all                  # fetch, configure, core, asse
 lb on windows-x86_64 app windows                  # the application and its installer
 ```
 
-**Smart App Control must be off.** It blocks unsigned programs and DLLs it does not know, and a build makes and runs its own: V8's tools, the converter, and Strawberry Perl's modules, where it shows first as *"An Application Control policy has blocked this file"*. In evaluation mode it starts enforcing on its own, which is how a machine that built on Monday stops on Friday. `toolchain check` reads its state and says so; turning it off is by hand, in Windows Security ▸ App & browser control, and on some versions of Windows it cannot be turned back on without a reset.
+**Smart App Control must be off.** It blocks unsigned programs and DLLs it does not know. A build makes and runs its own: V8's tools, the converter, and Strawberry Perl's modules, where it shows first as *"An Application Control policy has blocked this file"*. In evaluation mode it starts enforcing on its own, which is how a machine that built on Monday stops on Friday. `toolchain check` reads its state and says so; turning it off is by hand, in Windows Security ▸ App & browser control, and on some versions of Windows it cannot be turned back on without a reset.
 
-Every item is checked on the file the build uses, whoever installed it, so a machine another tool set up (an Ansible playbook, Chocolatey) gets only what it lacks; the dry run lists that first. On the machine itself the same commands are `uv run lb …`. The ssh session of an administrator is elevated, which `windows-setup.ps1` needs; `toolchain install` runs it there, and `toolchain.sh` anywhere else.
+Every item is checked on the file the build uses, whoever installed it, so a machine another tool set up (an Ansible playbook, Chocolatey) gets only what it lacks; the dry run lists that first. On the machine itself the same commands are `uv run lb …`. An administrator's ssh session has full administrator rights, which `windows-setup.ps1` needs; `toolchain install` runs it there, and `toolchain.sh` anywhere else.
 
 The first line takes hours, V8 alone about one, with OpenSSL from vcpkg. `windows-app.sh` refuses without its output: it wants the manifest and `core-windows-x86_64.tar.gz` under `$BUILD_ROOT/out/dist/<version>`. It writes the frozen application and `Libera-Suite-Setup-<version>.exe`, and copies the installer into `build/out/bundles/` with its SHA-256. Unlike the macOS `.app`, it embeds its own interpreter, because a Windows user has no Python.
 
@@ -193,7 +193,7 @@ lb release windows                              # the installer, its .sha256, an
 
 The Flatpaks have their own pointer, `bundles/latest`, so either can go first. `lb release extras` refuses while `latest-windows` names no installer on the origin, unless it brings one itself. Neither verb is for the Windows machine: Git for Windows once turned `install.sh` to CRLF in a checkout there, and `extras` from it broke `curl | sh` for everyone.
 
-`.github/workflows/windows-probe.yml` still checks the toolchain and the patch queue on every push. See `notes/14-windows.md` in the development repository.
+`.github/workflows/windows.yml` builds the same on a GitHub runner, by hand or on a version tag: the payload with `lb payload all`, then the installer with `lb app windows`, both uploaded as the run's artifacts. On every push that touches `build/`, it checks that the patch queue still applies on Windows. See `notes/14-windows.md` in the development repository.
 
 ## Notes
 

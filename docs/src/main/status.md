@@ -42,7 +42,7 @@ If you hit something that is *not* on this list, [tell us about it](../feedback.
 
 ## Half-built
 
-**The menu bar on Linux and Windows.** It is drawn inside the window, with File, Edit, View and Help, and every item works. None shows a keyboard shortcut, but the usual keys work: Ctrl-N makes a new document of the same kind, Ctrl-O opens one, Ctrl-W closes the window (asking first about unsaved changes), and the editor's own Ctrl-S, Ctrl-Shift-S (Save As), Ctrl-P and Ctrl-Z work as well. On Windows, Ctrl-N, Ctrl-O and Ctrl-W have not yet been checked on a real machine. File ▸ New ▸ Document, Spreadsheet or Presentation works, as do the New tiles in the start window and the editor's own File tab.
+**The menu bar on Linux and Windows.** It is drawn inside the window, with File, Edit, View and Help, and every item works. None shows a keyboard shortcut, but the usual keys work. Ctrl-N makes a new document of the same kind and Ctrl-O opens one. Ctrl-W closes the window, asking first about unsaved changes. The editor's own Ctrl-S, Ctrl-Shift-S (Save As), Ctrl-P and Ctrl-Z work as well. On Windows, Ctrl-N, Ctrl-O and Ctrl-W have not yet been checked on a real machine. File ▸ New ▸ Document, Spreadsheet or Presentation works, as do the New tiles in the start window and the editor's own File tab.
 
 **`Libera.app` on macOS.** `build/macos/macos-app.sh` builds it. It opens a document on a double-click or dropped on its Dock icon, appears in *Open With*, and shows the Libera mark in the Dock. But it is a launcher around the interpreter it was built with (nothing is embedded, signed or notarised), so it is not something you can hand to somebody else yet.
 
@@ -65,7 +65,7 @@ If you hit something that is *not* on this list, [tell us about it](../feedback.
 ### Elsewhere
 
 - **Editing diagrams.** Diagrams opens `.vsdx` and shows it. The converter cannot write any Visio format, so there is nothing to save and no blank to start from.
-- **PDF editing.** Upstream has a PDF editor; the editors Libera Suite installs do not include it yet, because nothing would open it.
+- **PDF editing.** Upstream has a PDF editor. Libera Suite does not install it yet, since the host has no way to open a PDF in it.
 - **Collaboration, cloud storage, accounts, telemetry.** None of it is built. None of it is being worked on. [The roadmap](../develop/roadmap.md) says what each would look like if it arrived. [What leaves your machine](../index.md#what-leaves-your-machine) lists the application's entire network use.
 
 ## Notes on specific gaps

@@ -19,7 +19,7 @@ The command is `libera`, on Linux and macOS. Installed as a Flatpak it is `flatp
 | `-o FILE` | for one document: the file to write, its format taken from its extension unless `-t` says otherwise. `-o -` writes to standard output |
 | `--outdir DIR` | write into `DIR` instead of beside each document |
 
-[More, with examples](documents.md#from-the-command-line).
+[Converting from the command line](documents.md#from-the-command-line) gives examples.
 
 ## The editors
 

@@ -28,7 +28,7 @@ offers to download still has a place as a fallback, though it gates nothing.
 
 **A `.flatpakref`.** Both bundles are built, hosted and installable today, and a document converts inside the sandbox on each. The one-URL install is still missing: a `.flatpakref` on a server, and Flathub after that.
 
-**Windows, after the first installer.** A Windows installer, for x64, has shipped since 0.3.0. Three things are missing. The installer is not code-signed, so SmartScreen warns about the download. Windows on ARM runs the x64 build under emulation, as there is no native one. And the payload origin holds no Windows core, so `pip install libera` on Windows has no editors to fetch; the installer brings its own.
+**Windows, after the first installer.** A Windows installer, for x64, has shipped since 0.3.0. Three things are missing. The installer is not code-signed, so SmartScreen warns about the download. Windows on ARM runs the x64 build under emulation, as there is no native one. The payload origin holds no Windows core, so `pip install libera` on Windows has no editors to fetch; the installer brings its own.
 
 **Keyboard shortcuts on Linux and Windows.** The menu bar is there and every item on it works. None of them has a key equivalent. On Linux that is because pywebview's GTK menu has none: giving the bar shortcuts means reaching past it to `Gtk.Application.set_accels_for_action`, and then deciding which keys the page has to stop handling. What the same keys do on Windows has not been measured yet.
 

@@ -25,7 +25,7 @@ If you want to try it, start with [Install](main/install.md): one command covers
 
 ## Why
 
-Most of the work of an office suite is the document engine, the part that reads a `.docx` written by somebody else's software and lays it out the way they meant. That engine already exists as free software and already runs offline: Libera Suite's editors are those of [Euro-Office](https://github.com/Euro-Office), an AGPL fork of ONLYOFFICE by Ascensio System SIA, running locally with the same document engine and the same format support. The engine lacked a desktop host small enough for one team to own.
+Most of the work of an office suite is the document engine, the part that reads a `.docx` written by somebody else's software and lays it out the way they meant. That engine already exists as free software and already runs offline. Libera Suite's editors are those of [Euro-Office](https://github.com/Euro-Office), an AGPL fork of ONLYOFFICE by Ascensio System SIA, running locally with the same document engine and the same format support. The engine lacked a desktop host small enough for one team to own.
 
 Libera Suite is that host: a few thousand lines of Python and JavaScript. Everything else is upstream.
 
@@ -43,7 +43,7 @@ The table lists every connection the application makes today, so you can check t
 | :--- | :--- |
 | **The editors** | Downloaded from `cdn.abilian.com` when you install Libera Suite, and again only when a new version needs new ones. Each download is verified against hashes shipped inside the application. |
 | **The update check** | At most once a day, the version number of the latest release, read from `cdn.abilian.com`. A newer one is mentioned once; nothing is downloaded. Offline, nothing happens. `check_updates = false` in the [configuration file](guide/documents.md#your-name-in-documents) turns it off. |
-| **The editor's own traffic** | A web server on `127.0.0.1` that is part of the application, serving the editor to a window on the same machine. It is not reachable from anywhere else. |
+| **The editor's own traffic** | A web server on `127.0.0.1` that is part of the application, serving the editor to a window on the same machine. Another computer cannot reach it. It answers a program on yours only when that program shows a key that only your account can read. |
 | **Links you click** | Help and similar open in *your* browser. Libera Suite does not fetch them. |
 
 Your documents are read and written on your disk, by a converter on your disk. They are never uploaded, indexed or inspected.

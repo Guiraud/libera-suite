@@ -13,9 +13,9 @@ Today we are opening the beta of **Libera Suite**, a free office suite for Windo
 
 ## It opens what people send you
 
-Everybody sends `.docx`. Libera Suite opens it, and the `.xlsx` and `.pptx` that come with it, and lays them out the way their authors saw them: fonts, images, tables and tracked changes included. When you save, you get a file in the same format, which your colleagues open in Microsoft Office or LibreOffice like any other.
+Everybody sends `.docx`. Libera Suite opens it, along with the `.xlsx` and `.pptx` that come with it, and lays them out the way their authors saw them: fonts, images, tables and tracked changes included. When you save, you get a file in the same format, which your colleagues open in Microsoft Office or LibreOffice like any other.
 
-The credit goes to a document engine that has spent twenty years being handed other people's files. Libera Suite runs that engine on your computer.
+The credit goes to a document engine that has spent twenty years being handed other people's documents. Libera Suite runs that engine on your computer.
 
 | | | |
 | :--- | :--- | :--- |
@@ -28,25 +28,25 @@ You also get the rest of an office suite: a start window with your recent docume
 
 ## Free, and yours to keep
 
-There is no licence fee and no monthly bill. Install it on as many computers as you like, and keep it as long as you like. No server has to stay paid for it to keep working, and nobody can switch it off from a distance.
+There is no licence fee and no monthly bill. Install it on as many computers as you like, and keep it as long as you like. It keeps working without a paid server, and cannot be switched off from a distance.
 
 Libera Suite is free software: anyone may read its source code, change it and share it. The application is under the Apache License 2.0 and the editors under the GNU AGPL v3. [Licence and attribution](../licence.md) says how to get the exact source of any release.
 
 ## Your documents stay on your computer
 
-Libera Suite reads and writes your documents on your disk, with software on your disk, and never uploads them. There is no account and no cloud behind it, and no telemetry, analytics or crash reporting: it sends us nothing about you, your documents or the way you use it.
+Libera Suite reads and writes your documents on your disk, with software on your disk, and never uploads them. It works without an account or a cloud service, and has no telemetry, analytics or crash reporting: it sends us nothing about you, your documents or the way you use it.
 
-It goes online to download its editors when you install it. [The documentation lists](../index.md#what-leaves-your-machine) every connection it makes, and the source is public, so you can check.
+It goes online to download its editors when you install it. [The documentation lists](../index.md#what-leaves-your-machine) every connection it makes; the source is public, so you can check.
 
 ## A beta, with its gaps in plain view
 
 Libera Suite runs on **Windows 10 and 11 (x64)**, **macOS (Apple Silicon)** and **Linux (x86_64 and arm64)**. Windows gets an installer, Linux a single Flatpak file with the editors inside it, and macOS one command in the terminal.
 
-The known gaps are [published in full](../main/status.md) and kept current. Each document has its own window, as there are no tabs yet. Nothing stops two windows from editing the same document, and one of them will lose its changes. Diagrams reads Visio files and cannot save them. Windows warns about the installer until it is signed.
+The known gaps are [published in full](../main/status.md) and kept current. Each document has its own window, as there are no tabs yet. Nothing stops two windows from editing the same document, in which case one of them loses its changes. Diagrams reads Visio files and cannot save them. Windows warns about the installer until it is signed.
 
 ## Tell us what breaks
 
-The most useful thing you can send us is **a document that comes out wrong, attached**. The engine is mature, so when a file looks wrong the cause is far more likely to be on our side: a font we did not ship, a resource we failed to serve. We fix those quickly, once somebody shows us one.
+The most useful thing you can send us is **a document that comes out wrong, attached**. The engine is mature, so when a document looks wrong the cause is far more likely to be on our side: a font we did not ship, a resource we failed to serve. We fix those quickly, once somebody shows us one.
 
 If you choose software for an organisation, tell us **what it would need** to switch. Today is the cheapest moment to shape the answer.
 
@@ -56,7 +56,7 @@ If you choose software for an organisation, tell us **what it would need** to sw
 
 Libera Suite is made by [Abilian](https://abilian.com), a French company that builds free software. Its editors come from [Euro-Office](https://github.com/Euro-Office), itself a fork of [ONLYOFFICE](https://www.onlyoffice.com/) by Ascensio System SIA. The document engine and the format support, the hard part of an office suite, are theirs, and we reimplemented none of it. We built the desktop application around them: the windows, the menus, opening and saving, and the packaging.
 
-The engine stays upstream's, built from source at exact revisions with [a short patch queue](../develop/patches.md) of our own. The part we maintain is small, and a small team can commit to it for the long run.
+The engine stays upstream's, built from source at exact revisions with [a short patch queue](../develop/patches.md) of our own. The part we maintain is small enough for a small team to commit to for the long run.
 
 *Abilian*
 

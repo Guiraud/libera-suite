@@ -27,7 +27,7 @@ The order is forced. `wheel` follows `collect`, because the wheel embeds the man
 
 Every phase checks what the machine printed, because over ssh an exit status describes the shell, including its logout scripts. Per-host logs land in `tmp/remote/`.
 
-The builders are listed in `build/builders.toml`, which is gitignored because it is an inventory of machines; copy `builders.toml.example` once. `lb` reads it (`libera_build.inventory`), and nothing else does, so there is one list.
+`build/builders.toml` lists the builders. It is gitignored because it is an inventory of machines, so copy `builders.toml.example` once. `lb` is its only reader (`libera_build.inventory`), so there is one list.
 
 ## A pre-release
 
@@ -40,7 +40,7 @@ A version that is not plain digits and dots, such as `0.4.0rc1`, ships as a pre-
 
 A tester on a pre-release is told when the release comes out: the update check sorts `0.4.0rc1` below `0.4.0`.
 
-**The payload a pre-release pushes is the release's.** Its wheel names those files' hashes, and `push` overwrites what is there, so a rebuilt payload pushed under the same version would fail every later install of the pre-release (a tarball records the time it was made, so a rebuild never hashes the same). The release that follows ships the same payload files, with `collect` and `check` and no `build` or `push`; a payload that has to change takes a new payload version.
+**The payload a pre-release pushes is the release's.** Its wheel names those files' hashes, and `push` overwrites what is there, so a rebuilt payload pushed under the same version would fail every later install of the pre-release (a tarball stores the time it was made, so a rebuild never hashes the same). The release that follows ships the same payload files, with `collect` and `check` and no `build` or `push`; a payload that has to change takes a new payload version.
 
 ## The runbook, by hand
 
@@ -72,7 +72,7 @@ step you are on and does not ask you to remember.
 | `collect` | Fetch every core to the driving machine, then stamp `src/libera/manifest.json` over the whole set. | the driving machine |
 | `push` | Upload the payload to the origin. Needs `CDN_TOKEN`. | anywhere |
 | `check` | Fetch it all back with no token and verify every hash. | anywhere |
-| `bundles` | The two `.flatpak` bundles, neither of which can be cross-built, and the Windows installer; each brought to the driving machine. | a machine of each platform |
+| `bundles` | The two `.flatpak` bundles (neither can be cross-built) and the Windows installer, each brought to the driving machine. | a machine of each platform |
 | `wheel` | `make verify`, then the wheel. After `collect`, always. | anywhere |
 | | A Windows build later than the rest, on its own: `lb release ship bundles --only windows-x86_64`, then `lb release windows`, which moves only its own pointer. | the driving machine |
 | `publish` | The wheel to PyPI; the bundles, `install.sh` and `install.ps1` to the origin; then `bundles/latest`, which moves both install scripts to the new version. | anywhere with the credentials |
@@ -165,7 +165,7 @@ lb on linux-x86_64 app flatpak-smoke          # the bundle, converting under the
 lb on linux-arm64 --update linux lint         # this commit sent first, then the checks
 ```
 
-`lb on` runs an `lb` command in a builder's checkout, as `ship` runs its builds there: the output streams back, and the status is read from what the builder printed. It runs the commit that checkout is at, says when that is not yours, and `--update` sends yours first. Nothing interactive works through it, since there is no terminal at the other end.
+`lb on` runs an `lb` command in a builder's checkout, as `ship` runs its builds there: the output streams back; the status is read from what the builder printed. It runs the commit that checkout is at, says when that is not yours, and `--update` sends yours first. Nothing interactive works through it, since there is no terminal at the other end.
 
 ## On an arm64 Linux builder
 
@@ -253,7 +253,7 @@ Publish in this order, because the parts refer to each other:
 3. **The wheel** to PyPI (`make publish`), and then `lb release check --wheel pypi`.
 
     That last command is the one that closes the loop: it fetches the wheel PyPI is actually serving, reads the manifest inside it, and verifies the origin against that copy. The wheel for `libera` 0.1.0 shipped naming a payload rebuilt two days later. Every check passed, because each one was looking at something correct.
-4. **`Libera.app`, both `.flatpak` bundles and the Windows installer** wherever the release is downloaded from. The Windows installer goes up with `lb release extras` when `ship`'s `bundles` brought it, or later on its own with `lb release windows`: each moves its own pointer, `bundles/latest-windows` for `install.ps1` and `bundles/latest` for `install.sh`, and each moves it only once the files it names are up. A release whose Windows build is a week late ships its Flatpaks today, and Windows users keep the previous version until then.
+4. **`Libera.app`, both `.flatpak` bundles and the Windows installer** wherever the release is downloaded from. The Windows installer goes up with `lb release extras` when `ship`'s `bundles` brought it, or later on its own with `lb release windows`: each moves its own pointer, `bundles/latest-windows` for `install.ps1` and `bundles/latest` for `install.sh`, and each moves it only once the files it names are up. A release whose Windows build is a week late ships its Flatpaks today; Windows users keep the previous version until the installer goes up.
 5. **This documentation**, which deploys on its own and is not part of `make ship`:
 
     ```sh

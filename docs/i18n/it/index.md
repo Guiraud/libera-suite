@@ -39,7 +39,7 @@ La tabella elenca ogni connessione che l'applicazione stabilisce oggi, così puo
 | :--- | :--- |
 | **Gli editor** | Scaricati da `cdn.abilian.com` durante l'installazione di Libera Suite, e di nuovo solo quando una nuova versione ne richiede di nuovi. Ogni download viene verificato con le impronte fornite nell'applicazione. |
 | **La ricerca degli aggiornamenti** | Al massimo una volta al giorno, il numero dell'ultima versione, letto da `cdn.abilian.com`. Una versione più recente viene segnalata una volta; non si scarica nulla. Senza connessione, non succede nulla. `check_updates = false` nel [file di configurazione](guide/documents.md#your-name-in-documents) la disattiva. |
-| **Il traffico proprio dell'editor** | Un server web su `127.0.0.1`, parte dell'applicazione, che serve l'editor a una finestra sulla stessa macchina. Non è raggiungibile da nessun altro luogo. |
+| **Il traffico proprio dell'editor** | Un server web su `127.0.0.1`, parte dell'applicazione, che serve l'editor a una finestra sulla stessa macchina. Un altro computer non può raggiungerlo. Risponde a un programma sul tuo solo se questo presenta una chiave che solo il tuo account può leggere. |
 | **I link su cui fai clic** | La guida e simili si aprono nel *tuo* browser. Libera Suite non li scarica. |
 
 I tuoi documenti vengono letti e scritti sul tuo disco, da un convertitore che si trova sul tuo disco. Non vengono mai caricati, indicizzati né esaminati.

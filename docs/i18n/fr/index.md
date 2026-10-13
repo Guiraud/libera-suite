@@ -39,7 +39,7 @@ Le tableau recense chaque connexion établie aujourd'hui par l'application, pour
 | :--- | :--- |
 | **Les éditeurs** | Téléchargés depuis `cdn.abilian.com` à l'installation de Libera Suite, puis seulement quand une nouvelle version en demande de nouveaux. Chaque téléchargement est vérifié par rapport aux empreintes livrées dans l'application. |
 | **La recherche de mises à jour** | Une fois par jour au plus, le numéro de la dernière version, lu sur `cdn.abilian.com`. Une version plus récente est signalée une fois ; rien n'est téléchargé. Hors ligne, rien ne se passe. `check_updates = false` dans le [fichier de configuration](guide/documents.md#your-name-in-documents) la désactive. |
-| **Le trafic propre de l'éditeur** | Un serveur web sur `127.0.0.1`, qui fait partie de l'application et sert l'éditeur à une fenêtre de la même machine. Il n'est joignable de nulle part ailleurs. |
+| **Le trafic propre de l'éditeur** | Un serveur web sur `127.0.0.1`, qui fait partie de l'application et sert l'éditeur à une fenêtre de la même machine. Un autre ordinateur ne peut pas le joindre. Il ne répond à un programme de votre machine que si celui-ci présente une clé que seul votre compte peut lire. |
 | **Les liens sur lesquels vous cliquez** | L'aide et les liens de ce type s'ouvrent dans *votre* navigateur. Libera Suite ne les télécharge pas. |
 
 Vos documents sont lus et écrits sur votre disque, par un convertisseur installé sur votre disque. Ils ne sont jamais envoyés, indexés ni examinés.

@@ -39,7 +39,7 @@ Die Tabelle führt jede Verbindung auf, die die Anwendung heute herstellt, damit
 | :--- | :--- |
 | **Die Editoren** | Bei der Installation von Libera Suite von `cdn.abilian.com` heruntergeladen, und erneut nur, wenn eine neue Version neue Editoren braucht. Jeder Download wird anhand der Prüfsummen geprüft, die in der Anwendung mitgeliefert werden. |
 | **Die Suche nach Updates** | Höchstens einmal am Tag die Versionsnummer der neuesten Ausgabe, gelesen von `cdn.abilian.com`. Eine neuere wird einmal gemeldet; heruntergeladen wird nichts. Offline geschieht nichts. `check_updates = false` in der [Konfigurationsdatei](guide/documents.md#your-name-in-documents) schaltet sie ab. |
-| **Der eigene Verkehr des Editors** | Ein Webserver auf `127.0.0.1`, Teil der Anwendung, der den Editor an ein Fenster auf demselben Rechner ausliefert. Von anderswo ist er nicht erreichbar. |
+| **Der eigene Verkehr des Editors** | Ein Webserver auf `127.0.0.1`, Teil der Anwendung, der den Editor an ein Fenster auf demselben Rechner ausliefert. Ein anderer Rechner erreicht ihn nicht. Einem Programm auf Ihrem Rechner antwortet er nur, wenn es einen Schlüssel vorweist, den nur Ihr Konto lesen kann. |
 | **Links, die Sie anklicken** | Die Hilfe und Ähnliches öffnen sich in *Ihrem* Browser. Libera Suite ruft sie nicht selbst ab. |
 
 Ihre Dokumente werden auf Ihrer Festplatte gelesen und geschrieben, von einem Konverter auf Ihrer Festplatte. Sie werden nie hochgeladen, indiziert oder ausgewertet.
