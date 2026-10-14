@@ -9,6 +9,7 @@ Two versions move here and they move independently. The **application** is this 
 ### Security
 
 - **Another account on the same computer could read the open document.** The editor's server, on `127.0.0.1`, checked the headers a web browser sends, which stop a web page and nothing else: `curl` read the open document and the recent list. Nothing in those checks depends on which account runs it. Every request now needs a key made at each launch: the windows have it in their address, and on disk only your account can read it. Measured on 0.4.0; fixed for every route, the editor's own files included.
+- **Libera Suite's own folder is now private to your account.** It holds a copy of each open document, the Recent list and the server's key, and was created readable by every account, so the home folder's permissions alone kept others out. Those are private by default on the distributions the install page names, but a home folder made before Ubuntu 21.04 is not. Each launch now makes the folder `700`, one an earlier version made included.
 
 ## [0.4.0] - 2026-10-12
 

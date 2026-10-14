@@ -174,6 +174,23 @@ def get_state_dir() -> Path:
     return get_xdg_data_home() / "libera"
 
 
+def make_state_dir_private() -> None:
+    """Make the state directory this account's alone, creating it if need be.
+
+    It holds a copy of every open document (each session's Editor.bin, its
+    edits and its images), the Recent list, and instance.json, whose token is
+    the key to the server. Created with the umask, it was 755, or 775 under
+    Ubuntu's: readable by every account wherever the home directory lets
+    others through, as one made before Ubuntu 21.04 still does. Tightened on
+    every launch, so a directory an earlier version made is fixed too; what is
+    below it cannot be reached past it. On Windows the mode means nothing, and
+    the directory is under the user's own profile.
+    """
+    state = get_state_dir()
+    state.mkdir(mode=0o700, parents=True, exist_ok=True)
+    state.chmod(0o700)
+
+
 def get_data_dir() -> Path:
     """Where an installed payload lives."""
     return get_state_dir() / "payload"

@@ -12,6 +12,8 @@ import hashlib
 import io
 import json
 import re
+import stat
+import sys
 import tarfile
 import urllib.error
 from pathlib import Path, PurePath
@@ -413,6 +415,22 @@ def test_nothing_spells_the_sessions_directory_for_itself():
     assert offenders == [], (
         f"compose it with payload.get_sessions_dir() instead: {offenders}"
     )
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="a POSIX mode")
+@pytest.mark.parametrize("before", [None, 0o755, 0o775])
+def test_the_state_directory_is_this_accounts_alone(tmp_path, monkeypatch, before):
+    """It holds a copy of every open document. A directory an earlier version
+    made with the umask, 755 or Ubuntu's 775, is tightened too."""
+    state = tmp_path / "share" / "libera"
+    if before is not None:
+        state.mkdir(parents=True)
+        state.chmod(before)
+    monkeypatch.setattr(locate, "get_state_dir", lambda: state)
+
+    locate.make_state_dir_private()
+
+    assert stat.S_IMODE(state.stat().st_mode) == 0o700
 
 
 # --- the manifest the wheel ships ---------------------------------------------

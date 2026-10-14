@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 from libera import logs, timeline
 from libera.cli import commands
 from libera.host import about
+from libera.payload import locate
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -28,6 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = _make_parser()
     args = parser.parse_args(argv)
     logs.setup(args.verbose, quiet=args.quiet)
+    locate.make_state_dir_private()
     return _choose_command(parser, args)(args)
 
 
