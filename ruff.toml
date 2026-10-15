@@ -204,6 +204,8 @@ lint.extend-ignore = [
 # question on screen needs it.
 "src/libera/host/window/gtk.py" = [
     "PLC0415", # gi, where a dialog is built
+    "BLE001",  # a dialog that fails on the GTK thread is raised again on the
+               # thread that asked, as macos.py's run_on_gui_thread does
 ]
 # The menu package picks its platform's bar in __init__, once, so nothing that
 # uses the package tests the platform again.
@@ -323,6 +325,12 @@ lint.extend-ignore = [
 "tests/b_integration/test_manifest_stamp.py" = [
     "S404", # subprocess import
     "S603", # sys.executable, argv form, no shell
+]
+# test_save_staging.py tags a document with /usr/bin/xattr, the way Finder
+# would, since Python has no extended-attribute calls on macOS.
+"tests/a_unit/host/test_save_staging.py" = [
+    "S404", # subprocess import
+    "S603", # /usr/bin/xattr, argv form, no shell
 ]
 "tests/a_unit/test_gui_prereq.py" = [
     "S404", # subprocess import
