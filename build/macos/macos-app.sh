@@ -64,8 +64,8 @@ if [ "$STANDALONE" = 1 ]; then
         --compile-bytecode "$WHEELS"/libera-*.whl
     rm -rf "$WHEELS"
 
-    PAYLOAD_VERSION="$(sed -n 's/^version *= *//p' "$REPO/src/libera/payload/payload.version" | tr -d '"')"
     . "$BUILD/engine/common.sh"
+    PAYLOAD_VERSION="$(payload_version "$REPO")"
     if [ -z "${PAYLOAD_FROM:-}" ] && [ -f "$OUT/dist/$PAYLOAD_VERSION/manifest.json" ]; then
         PAYLOAD_FROM="$OUT/dist/$PAYLOAD_VERSION"
     fi

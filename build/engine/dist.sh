@@ -46,7 +46,7 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-VERSION="$(sed -n 's/^version *= *//p' "$BUILD/../src/libera/payload/payload.version" | tr -d '"')"
+VERSION="$(payload_version "$BUILD/..")"
 [ -n "$VERSION" ] || { echo "FATAL: no version in src/libera/payload/payload.version" >&2; exit 1; }
 
 case "$(uname -s)-$(uname -m)" in

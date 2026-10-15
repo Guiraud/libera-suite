@@ -36,6 +36,14 @@ BUILD_ROOT="${BUILD_ROOT:-$DEFAULT_BUILD_ROOT}"
 SRC="$BUILD_ROOT/src"
 OUT="$BUILD_ROOT/out"
 
+# The payload version, out of the checkout at $1. The one shell reader of the
+# file the host reads with tomllib, so it takes what is between the quotes and
+# nothing after: each script had its own sed, and one read a trailing comment
+# into the version and another a CRLF checkout's carriage return.
+payload_version() {
+    sed -n 's/^version *= *"\([^"]*\)".*/\1/p' "$1/src/libera/payload/payload.version"
+}
+
 # /proc/meminfo reports the *host's* memory inside a container -- the cgroup
 # limit is invisible to it -- so a 64 GB builder running `docker run -m 8g`
 # reads 64 and starts thirty compilers in an 8 GB box. Ask the cgroup first

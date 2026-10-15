@@ -21,18 +21,17 @@ if TYPE_CHECKING:
 
 
 def payload_version(root: Path) -> str:
-    """The payload version, as dist.sh and flatpak.py read it.
+    """The payload version, as the host reads it: with tomllib.
 
-    payload.version is a commented TOML-ish file, not a bare number, and
-    reading it whole once printed the file's comment block as the version.
+    payload.version is a commented TOML file, not a bare number, and reading
+    it whole once printed the file's comment block as the version. A reader
+    of its own, splitting lines on `=`, read a trailing comment into it.
     """
-    text = (root / PAYLOAD_VERSION).read_text(encoding="utf-8")
-    for line in text.splitlines():
-        key, sep, value = line.partition("=")
-        if sep and key.strip() == "version":
-            return value.strip().strip('"')
-    msg = f"no version in {root / PAYLOAD_VERSION}"
-    raise RefusedError(msg)
+    doc = tomllib.loads((root / PAYLOAD_VERSION).read_text(encoding="utf-8"))
+    if "version" not in doc:
+        msg = f"no version in {root / PAYLOAD_VERSION}"
+        raise RefusedError(msg)
+    return str(doc["version"])
 
 
 def app_version(root: Path) -> str:
