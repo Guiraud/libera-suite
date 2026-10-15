@@ -165,7 +165,8 @@ jobs:
       - name: What was made
         id: made
         run: |
-          payload="$(sed -n 's/^version = "\(.*\)"$/\1/p' src/libera/payload/payload.version)"
+          . build/engine/common.sh
+          payload="$(payload_version .)"
           app="$(sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml)"
           dist="$BUILD_ROOT/out/dist/$payload"
           setup="build/out/bundles/Libera-Suite-Setup-$app.exe"
