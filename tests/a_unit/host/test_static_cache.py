@@ -52,7 +52,7 @@ def serve(tmp_path):
 
 def get(port, path, headers=None):
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-    conn.request("GET", path, headers={**key_cookie(), **(headers or {})})
+    conn.request("GET", path, headers={**key_cookie(port), **(headers or {})})
     response = conn.getresponse()
     body = response.read()
     conn.close()

@@ -4,12 +4,12 @@ endpoint that answers it.
 Each endpoint says so where it is defined, with `@endpoint(method, name)`;
 this module gathers them from the modules that make up the API, and from
 nothing else. `tests/a_unit/host/test_routes.py` pins the whole list, so an
-endpoint that lost its mark, or gained one, is a failing test rather than an
-address that quietly stopped answering.
+endpoint that lost its mark, or gained one, is a failing test where it would
+otherwise be an address that stopped answering without a word.
 
-The method is part of the route, not of the module: a GET never changes
-anything, and admission leans on that -- another site's page cannot send a
-POST without an Origin, which admission refuses.
+The method belongs to the route: a GET never changes anything, and admission
+leans on that -- another site's page cannot send a POST without an Origin,
+which admission refuses.
 """
 
 from __future__ import annotations

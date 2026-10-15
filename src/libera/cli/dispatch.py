@@ -1,12 +1,12 @@
 """The argument parser, and which command each spelling reaches.
 
 Separate from the commands themselves because the surface is the part that has
-to stay still: `libera FILE...` opens documents, `libera` alone opens the
-start window, and everything else is a flag. There is no `libera words` --
+to stay still: `libera FILE...` opens documents and `libera` alone opens the
+start window; everything else is a flag. There is no `libera words` --
 the file picks the editor.
 
-Not `main.py`: `cli` re-exports `main`, and a module of that name would be
-shadowed by the function.
+Not `main.py`: `cli` re-exports `main`, whose function would shadow a module
+of that name.
 """
 
 from __future__ import annotations
@@ -125,9 +125,9 @@ def _add_payload_options(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_launcher_options(parser: argparse.ArgumentParser) -> None:
-    """Linux has no application bundle to carry this, so it is a command. The
-    Flatpak installs the same entry itself and says so rather than doing it
-    twice."""
+    """Linux has no application bundle to hold this, so it is a command. The
+    Flatpak installs the same entry itself, so there the command only says
+    so."""
     group = parser.add_argument_group("the Linux launcher")
     group.add_argument(
         "--launcher-install",
@@ -217,8 +217,8 @@ def _find_command_flags(
     """Every command flag given, with the command it runs.
 
     One table saying which spellings are commands, read by both the
-    exclusivity check and the dispatch: they were two lists of the same names,
-    and nothing made them agree. Built at the call, so a command replaced in
+    exclusivity check and the dispatch: they were two lists of the same names
+    with nothing to make them agree. Built at the call, so a command replaced in
     `commands` is the one that runs.
     """
     table = (

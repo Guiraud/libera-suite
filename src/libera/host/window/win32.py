@@ -4,10 +4,11 @@ One of the three toolkit modules `windows` chooses between, each a
 `portable.Toolkit`; `portable` supplies all of it here but the two calls
 that put a message on screen.
 
-A Win32 message box has Yes, No, Cancel and OK and no other buttons -- the
+A Win32 message box has Yes, No, Cancel and OK and no other buttons. The
 dialog that takes custom labels needs Common Controls v6, which python.exe
-does not declare -- so under the question it says what each button means, in
-the words the other platforms put on the buttons themselves: "Yes: Save".
+does not declare. Under the question, the box therefore says what each button
+means, in the words the other platforms put on the buttons themselves:
+"Yes: Save".
 Every question asked here reads as one; "Save changes to Report.docx before
 closing?" Yes, No, Cancel is the classic Windows form of it.
 """

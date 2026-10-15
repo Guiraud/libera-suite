@@ -1,4 +1,4 @@
-"""x2t: the converter, and everything that decides what it is asked for.
+"""x2t: the converter, with everything that decides what it is asked for.
 
 The editor works on Editor.bin plus a log of changes; every document that goes
 in or comes out passes through here, for the session it belongs to. Saving is
@@ -41,7 +41,7 @@ def read_font_dir(index: pathlib.Path) -> pathlib.Path:
 
     x2t needs the directory as well as the index: given the wrong one,
     GetFontInfoByParams returns NULL and CPdfWriter::GetFontPath dereferences
-    it, which is a segfault rather than an error.
+    it: a segfault, with no error message.
 
     The drive letter is optional because allfontsgen writes Windows paths as
     `C:/...`, forward slashes and all.
@@ -62,7 +62,7 @@ def choose_x2t_output(run: subprocess.CompletedProcess) -> str:
 
 
 class ConversionError(RuntimeError):
-    """x2t did not make the document it was asked for.
+    """x2t did not write the document it was asked for.
 
     Raised, not returned: the callers that got a False turned it straight back
     into an exception, under a name that meant something else, and the exit
@@ -76,19 +76,31 @@ class ConversionError(RuntimeError):
 X2T_AT_ONCE = max(2, (os.cpu_count() or 4) // 2)
 _X2T_SLOTS = threading.BoundedSemaphore(X2T_AT_ONCE)
 
+# How long one conversion may take. A document that hangs x2t held its slot
+# and its request thread for good: the save never answered, and after
+# X2T_AT_ONCE of them no conversion ran at all.
+# ponytail: one generous limit for every format; per-format limits if a
+# legitimate conversion is ever measured near it.
+X2T_TIMEOUT = 600
+
 
 def run_x2t(session: Session, *args: str) -> subprocess.CompletedProcess:
     """Run x2t out of the payload, in the environment `locate.make_tool_env` gives."""
     logger.debug("x2t %s", " ".join(args))
     with _X2T_SLOTS:
-        return subprocess.run(
-            [str(session.layout.x2t), *args],
-            capture_output=True,
-            text=True,
-            check=False,
-            env=locate.make_tool_env(session.layout.bin),
-            creationflags=locate.NO_WINDOW,
-        )
+        try:
+            return subprocess.run(
+                [str(session.layout.x2t), *args],
+                capture_output=True,
+                text=True,
+                check=False,
+                env=locate.make_tool_env(session.layout.bin),
+                creationflags=locate.NO_WINDOW,
+                timeout=X2T_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired as e:
+            msg = f"x2t did not finish in {X2T_TIMEOUT} s"
+            raise ConversionError(msg) from e
 
 
 # x2t's own ids, from sdkjs's c_oAscEncodings and c_oAscCsvDelimiter.
@@ -249,10 +261,10 @@ def export(
     x2t reads the change log the editor is still appending to, so the log is
     read under the session's lock -- but only for as long as copying it takes.
     Held for the whole conversion, it made every edit the editor posted during
-    a save wait for it, and the editor waits for each answer: frozen for 0.8 s
-    on a 3 MB document, 3.6 s while other windows held the converter (measured
-    2026-10-04). Edits made during the conversion are in the live log, for the
-    next save.
+    a save wait for it. Since the editor waits for each answer, it froze for
+    0.8 s on a 3 MB document, 3.6 s while other windows held the converter
+    (measured 2026-10-04). Edits made during the conversion are in the live
+    log, for the next save.
     """
     with session.lock:
         snapshot = _take_snapshot(session)
@@ -316,13 +328,18 @@ def _export(
         m_nFormatTo=fmt,
         m_bFromChanges=str(from_changes).lower(),
         m_bDontSaveAdditional="true",
-        # The index of filesystem paths. Not the browser's, which carries none:
+        # The index of filesystem paths. Not the browser's, which holds none:
         # handed that one, x2t fails deep inside sdkjs with "Cannot read
         # property 'length' of null".
         m_sAllFontsPath=session.layout.all_fonts,
         m_sFontDir=read_font_dir(session.layout.all_fonts),
         **options,
     )
+    # Whatever is there already would pass the check below for x2t's output.
+    # File > Reload exports to the same name every time, so an export that
+    # wrote nothing read the previous reload's file back in, in place of the
+    # edits since.
+    staged.unlink(missing_ok=True)
     run = run_x2t(session, str(save))
     # A file, and not an empty one: x2t's exit status has said 0 over nothing.
     if run.returncode != 0 or not staged.is_file() or staged.stat().st_size == 0:
@@ -335,10 +352,10 @@ def _export(
         msg = f"x2t could not write {staged.name} (exit status {run.returncode})"
         raise ConversionError(msg)
     # x2t converts text to UTF-8 through a buffer sized one unit per character,
-    # and a character outside the BMP, an emoji say, needs two. The conversion
+    # while a character outside the BMP, an emoji say, needs two. The conversion
     # fails, x2t falls back to one byte per character, Latin-1 in effect, and
-    # exits 0. Only the bytes can tell, and a file that came out like that must
-    # not replace the document.
+    # exits 0. Only the bytes can tell. A file that came out like that must not
+    # replace the document.
     if (
         staged.suffix.lower() in TEXT_SUFFIXES
         and options["m_nCsvTxtEncoding"] == UTF_8

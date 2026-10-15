@@ -4,8 +4,8 @@
     generate   the parts that can only be built on this machine
     installer  fetch, verify, unpack, generate, put in place
 
-One module per verb, in that order, and nothing imports upward. What was one
-442-line module is three that each answer one question.
+One module per verb, in that order, and nothing imports upward. The three
+each answer one question; they were once one 442-line module.
 
 The names below are the package's surface and are re-exported so that
 `payload.resolve(...)` still reads the way it did. Code *inside* the package

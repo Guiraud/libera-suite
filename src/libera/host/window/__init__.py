@@ -1,11 +1,11 @@
 """Windows and the dialogs that hang from them.
 
-    portable  what every toolkit answers; pywebview's answers, and Answer
+    portable  the Toolkit every platform answers, pywebview's answers, Answer
     macos     AppKit's answers
     gtk       GTK's question, and pywebview's for the rest
     win32     a Win32 message box, and pywebview's for the rest
-    windows   which windows exist, which is in front; chooses `native`
-    dialogs   what each question says, and what each answer does
+    windows   which windows exist and which is in front; it chooses `native`
+    dialogs   what each question says and each answer does
 
 Each imports only what is above it in that list. `native` is one of the three
 toolkit modules, chosen once in `windows`, so nothing else here tests the
@@ -13,8 +13,8 @@ platform: `dialogs` decides what to ask and `native` draws it.
 
 One edge used to go upward: `_open_first_window` created the first window and
 wired its `closing` event to `confirm_close`. It lives in `host/app.py` now,
-which was its only caller and which already imports both halves -- so the
-wiring is done by the thing that owns the application, and neither half
+which was its only caller and which already imports both modules. The module
+that owns the application does the wiring, so neither `windows` nor `dialogs`
 reaches up.
 """
 

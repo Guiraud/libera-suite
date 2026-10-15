@@ -1,8 +1,8 @@
 """Getting documents into windows: File > Open, Open Recent and the list it
 shows, File > New, and a second launch handing its documents over.
 
-What decides *which* document a window shows. What a window does with the
-document it has is `document`'s.
+This module decides *which* document a window shows; `document` handles what
+a window does with the one it has.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ def serve_recents(r: Request) -> Response:
 @endpoint("POST", "choose-file")
 def choose_file(r: Request) -> Response:
     """Serve OpenFilenameDialog: a file for the editor to insert, not a
-    document to open. With nobody to ask, nothing is chosen."""
+    document to open. With no user to ask, nothing is chosen."""
     kind = r.read_field("filter", str, "")
     path = hooks.shell.choose_open_path(kind)
     logger.info("open dialog (%s) -> %s", kind, path or "cancelled")
@@ -103,9 +103,9 @@ def take_drop(r: Request) -> Response:
     """Files dropped on a window, which the page knows by name only.
 
     The shell has their paths from the drag itself, so the page cannot name a
-    file of its choosing: a name nobody dropped resolves to nothing. Documents
-    open in windows of their own, as File > Open puts them, on a thread, so
-    that the page is not held for a conversion. The rest come back as paths,
+    file of its choosing: a name that was never dropped resolves to nothing.
+    Documents open in windows of their own, as File > Open puts them, on a
+    thread, so that the page is not held for a conversion. The rest come back as paths,
     which GetDropFiles hands to sdkjs, and sdkjs inserts the images among them.
     """
     names = r.read_json().get("names")
@@ -139,7 +139,8 @@ def create_new(r: Request) -> Response:
     execCommand("create:new", type) sends it, and the way the start window
     asks for a spreadsheet rather than a document. Absent means "the same kind
     as the window that asked", which is what its session already says. Any
-    other name is refused: it used to make the window's own kind, quietly.
+    other name is refused: it used to make the window's own kind, without a
+    word.
 
     The editor's own File > Create New asks for its own kind, and the bridge
     lets the user choose instead (bridge-desktop.js, chooseNewKind), so any
@@ -174,9 +175,8 @@ def create_new(r: Request) -> Response:
 def take_hand_off(r: Request) -> Response:
     """A second launch giving its documents to this instance.
 
-    Opening a file of the caller's choosing is not something to do for anyone
-    but this user: admission has checked the key, which the sender read from
-    instance.json. See `instance`.
+    Only this user may have a file of their choosing opened: admission has
+    checked the key, which the sender read from instance.json. See `instance`.
 
     Answered at once, and opened on a thread. The sender waits
     instance.HAND_OFF_TIMEOUT for the answer and reads a late one as "no

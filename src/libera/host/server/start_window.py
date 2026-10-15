@@ -13,11 +13,12 @@ from libera.host.server.api import Request, Response, answer_json, endpoint
 
 @endpoint("GET", "start")
 def serve_start(_r: Request) -> Response:
-    """The start window's page. Ours, not the payload's.
+    """The start window's page, ours: the payload has none.
 
     Upstream keeps its start screen in the C++ shell, so there is nothing to
     reuse: this is a plain page served by the host, talking to the same
-    /__host__/ endpoints the editor does. No bridge, no sdkjs, no theme.
+    /__host__/ endpoints the editor does. It loads none of the bridge, sdkjs
+    or the theme.
     """
     page = pathlib.Path(__file__).with_name("start-window.html").read_bytes()
     return Response(body=page, content_type="text/html; charset=utf-8")
@@ -44,11 +45,11 @@ def serve_payload(r: Request) -> Response:
     """Where the payload came from, for the start window to show.
 
     The same facts `libera --payload-status` prints. Read from the installed
-    payload's own payload.json, so a development tree honestly reports that it
+    payload's own payload.json, so a development tree reports that it
     knows nothing.
     """
-    # Imported here, not at module scope: the host runs without the installer
-    # in `libera --serve`, and this is the only thing that wants it.
+    # Imported here, since this is the only thing that wants the installer and
+    # `libera --serve` runs the host without it.
     from libera import payload as payload_mod
 
     # Unreadable is not the same as absent: a payload.json that will not parse

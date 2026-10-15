@@ -4,19 +4,19 @@ Three surfaces need the same sentences and used to hold their own copy: the
 editor's own About panel (through the theme's `attribution` token, which is
 build-time and lives in `build/payload/theme/libera/meta/config.json`), the macOS About
 panel (through `NSHumanReadableCopyright`), and Help > About on Linux. A fourth,
-`--payload-status`, prints the revisions rather than the prose.
+`--payload-status`, prints the revisions instead of the prose.
 
-Keeping the text here rather than at each call site is not tidiness. The
-attribution is the one string in this application that has to be *correct*
-rather than merely present: it names somebody else's work, says the build is
-modified, and names the licence that requires both. Three copies drift, and the
-copy that drifts is the one nobody reads until it matters.
+The text lives here, in one copy, because the attribution is the one string in
+this application that has to be *correct* as well as present: it names somebody
+else's work, says the build is modified, and names the licence that requires
+both. Three copies drift; the one that drifts is the copy no one reads until it
+matters.
 
 **"includes components from", not "is based on".** The host is ours and original;
 what comes from upstream is the editor payload. "Based on" invites the reading
 that the whole application is a derivative of theirs, which overstates their
-claim and understates ours. The payload genuinely is a modified AGPL work, and
-that is what these lines say.
+claim and understates ours. The payload is a modified AGPL work, which is what
+these lines say.
 
 The layer below every other: this module imports nothing from the host, so
 anything may read it.
@@ -53,13 +53,13 @@ def app_version() -> str:
 
 
 def format_version() -> str:
-    """The application, and the payload it wants: what `--version` prints and
+    """The application and the payload it wants: what `--version` prints and
     every About says.
 
-    Both, because the two move independently -- a host fix should not force a
-    120 MB re-download, and a payload rebuilt from new upstream pins should not
-    need a host release. A bug report that names only one of them does not say
-    which halves were in play. `--diagnose` prints these and much more; this is
+    Both, because the two move independently: a host fix should not force a
+    120 MB re-download, nor a payload rebuilt from new upstream pins need a host
+    release. A bug report that names only one of them does not say which pair
+    was in play. `--diagnose` prints these and much more; this is
     the line somebody pastes into an issue.
     """
     return f"libera {app_version()} (payload {locate.PAYLOAD_VERSION})"
@@ -67,7 +67,7 @@ def format_version() -> str:
 
 def format_notice() -> str:
     """The About dialog's body: which versions, then the attribution, then
-    where to look. The versions are what a bug report needs, and About said
+    where to look. A bug report needs the versions, where About used to say
     only who wrote what."""
     return (
         f"{format_version()}\n\n"

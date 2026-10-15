@@ -1,4 +1,4 @@
-"""The bits of the host that talk to the desktop rather than the editor."""
+"""The bits of the host that talk to the desktop: opener, file manager, account."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import getpass
 import logging
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 
@@ -33,10 +34,10 @@ def open_url(url: str) -> bool:
     like. On Linux it ends in `BackgroundBrowser.open`, which spawns the
     command and returns `p.poll() is None` -- true whenever the process has not
     exited in the instant since it started, which is always. So it reported
-    success for `xdg-open` exiting 3 with no handler, and Help appeared to do
-    nothing at all rather than saying so.
+    success for `xdg-open` exiting 3 with no handler, while Help appeared to do
+    nothing at all and said nothing about it.
 
-    Waiting is the point, and it has to be a bounded wait. Measured on a Fedora
+    Waiting is the point, though the wait has to be bounded. Measured on a Fedora
     desktop:
 
         nothing can open it   exit 3, in 0.03s
@@ -115,7 +116,7 @@ def reveal(path: pathlib.Path) -> bool:
     button is a relabelled "Go to Documents" that navigated to the cloud portal.
 
     Falls back to opening the containing folder when the file itself is not on
-    disk yet -- a document that has never been saved has a name but no file.
+    disk yet: a document that has never been saved has a name and no file.
     """
     if path.is_file():
         target, select = path, True
@@ -129,8 +130,8 @@ def reveal(path: pathlib.Path) -> bool:
             return _start(str(target))
         # One argument, comma included: Explorer parses its own command line,
         # and "/select," followed by the path as a separate word selects
-        # nothing. It exits 1 whether or not it worked, so there is no status
-        # worth reading.
+        # nothing. It exits 1 whether or not it worked, so its status means
+        # nothing.
         subprocess.run(["explorer", f"/select,{target}"], check=False)
         return True
     if sys.platform == "darwin":
@@ -146,21 +147,78 @@ def open_externally(path: pathlib.Path) -> bool:
     Printing ends here. Upstream's host draws its own print preview; ours hands
     the PDF to Preview (or the Linux equivalent), which has a print dialog and
     did not have to be written. On Windows, to whatever opens PDFs -- Edge, on
-    a machine nobody has changed.
+    a machine no one has changed.
     """
     if sys.platform == "win32":
         return _start(str(path))
     return _run_opener([*choose_opener(), str(path)])
 
 
+def replace_file(new: pathlib.Path, target: pathlib.Path) -> None:
+    """Put `new` in `target`'s place in one step, keeping what `target` was.
+
+    A rename alone gives the document the new file's metadata: its Finder tags
+    and other extended attributes gone, its permissions the new file's. Each
+    system has a call for a safe save that keeps them, and this is the one
+    place that knows which: NSFileManager's replaceItemAtURL on macOS, which
+    is what NSDocument saves with, and ReplaceFileW on Windows. Linux has
+    none, so the attributes are copied across before the rename. `new` must be
+    on the same volume as `target`; it is gone afterwards.
+    """
+    if not target.exists():
+        new.replace(target)
+        return
+    if sys.platform == "darwin":
+        import Foundation
+
+        replaced, _, error = (
+            Foundation.NSFileManager.defaultManager().replaceItemAtURL_withItemAtURL_backupItemName_options_resultingItemURL_error_(
+                Foundation.NSURL.fileURLWithPath_(str(target)),
+                Foundation.NSURL.fileURLWithPath_(str(new)),
+                None,
+                0,
+                None,
+                None,
+            )
+        )
+        if not replaced:
+            msg = f"could not replace {target}: {error}"
+            raise OSError(msg)
+    elif sys.platform == "win32":
+        import ctypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        ignore_merge_errors = 0x2  # REPLACEFILE_IGNORE_MERGE_ERRORS
+        if not kernel32.ReplaceFileW(
+            str(target), str(new), None, ignore_merge_errors, None, None
+        ):
+            raise ctypes.WinError(ctypes.get_last_error())
+    else:
+        shutil.copymode(target, new)
+        if sys.platform == "linux":
+            _copy_xattrs(target, new)
+        new.replace(target)
+
+
+def _copy_xattrs(source: pathlib.Path, dest: pathlib.Path) -> None:
+    """The extended attributes `dest` can take, ACLs included, as shutil does
+    for copystat: a file system without them has nothing to copy, and one the
+    user may not set (security.*) is left behind."""
+    if sys.platform == "linux":
+        with contextlib.suppress(OSError):
+            for name in os.listxattr(source):
+                with contextlib.suppress(OSError):
+                    os.setxattr(dest, name, os.getxattr(source, name))
+
+
 @functools.cache
 def lookup_local_user() -> tuple[str, str]:
     """Who the editor should say you are: (id, name).
 
-    Without this the editor uses upstream's placeholder, "Chuk.Gek", and that
-    is not only an odd face in the corner -- it is the author recorded against
-    every tracked change, and it goes into the saved file. Measured: a docx
-    saved after one tracked edit carries w:author="Chuk.Gek".
+    Without this the editor uses upstream's placeholder, "Chuk.Gek": an odd
+    face in the corner, and also the author recorded against every tracked
+    change, which goes into the saved file. Measured: a docx saved after one
+    tracked edit contains w:author="Chuk.Gek".
 
     The full name is what other people see, so prefer it; the login name is the
     stable identity behind it. `user_name` in config.toml comes before both,
@@ -185,8 +243,8 @@ def lookup_local_user() -> tuple[str, str]:
     if not full and sys.platform == "win32":
         full = _lookup_windows_full_name(login)
     # Not on Windows, and not only because the lookup would fail: `pwd` does not
-    # exist there, so this used to run by way of a swallowed ModuleNotFoundError,
-    # and a checker for win32 reports it as the unresolved attribute it is.
+    # exist there, so this used to run by way of a swallowed ModuleNotFoundError;
+    # a checker for win32 reports it as the unresolved attribute it is.
     if not full and sys.platform != "win32":
         with contextlib.suppress(KeyError):
             import pwd

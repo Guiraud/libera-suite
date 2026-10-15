@@ -5,10 +5,10 @@
     gtk       pywebview's bar, for Linux and Windows
 
 `macos` and `gtk` read `actions`; nothing goes the other way. They share every
-item's behaviour and no code beyond it: AppKit wants selectors on an NSObject
-and a delegate that rebuilds Open Recent on each opening, pywebview wants a
+item's behaviour and no code beyond it. AppKit wants selectors on an NSObject
+and a delegate that rebuilds Open Recent on each opening; pywebview wants a
 list of its own `Menu` objects handed to `start()` before the application
-runs, and neither shape survives being made to look like the other.
+runs. Neither shape holds up once made to look like the other.
 
 `native` is the one this platform uses, chosen here and nowhere else. Both
 answer `make_menubar()`, what to hand `webview.start`, and `install()`, what to do

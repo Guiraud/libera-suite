@@ -1,12 +1,11 @@
 """The macOS menu bar: AppKit's own, extended once the application runs.
 
-The upper half: it reads `actions` for what each item does, and nothing in
+The upper layer: it reads `actions` for what each item does, and nothing in
 `actions` reads back.
 
-Most of what is here is about AppKit's own menu rather than ours -- pywebview
-builds a default bar before we get a look at it, so this extends what is there
-(Edit, View, Window, Help) rather than replacing it, and de-duplicates what
-appears twice.
+Most of what is here is about AppKit's own menu. pywebview builds a default
+bar before we get a look at it, so this extends what is there (Edit, View,
+Window, Help) and de-duplicates what appears twice.
 
 Read on macOS alone -- `menu` picks this module or `gtk` as `native`, and both
 answer `make_menubar()` and `install()` -- so AppKit is imported once, here.
@@ -26,7 +25,7 @@ import AppKit
 
 from libera.host import apps, window
 from libera.host.menu import actions
-from libera.host.shortcuts import COMMAND, NEW, SHIFT
+from libera.host.shortcuts import CLOSE, COMMAND, NEW, OPEN, SHIFT
 
 logger = logging.getLogger(__name__)
 
@@ -178,8 +177,8 @@ def install() -> None:
 
     file_menu = AppKit.NSMenu.alloc().initWithTitle_("File")
     # New > Document, Spreadsheet, Presentation: any kind from any window. ⌘N
-    # sits on the front window's kind, and its delegate moves it there each
-    # time the menu is consulted; this puts it somewhere before that happens.
+    # sits on the front window's kind, where its delegate moves it each time
+    # the menu is consulted; this puts it somewhere before that happens.
     new_menu = AppKit.NSMenu.alloc().initWithTitle_("New")
     new_menu.setDelegate_(NEW_DELEGATE)
     for app in actions.list_creatable():
@@ -189,7 +188,7 @@ def install() -> None:
     give_new_its_key(new_menu, actions.choose_new_kind())
     new_item = file_menu.addItemWithTitle_action_keyEquivalent_("New", None, "")
     new_item.setSubmenu_(new_menu)
-    file_menu.addItem_(_item("Open…", "openDocument:", "o"))
+    file_menu.addItem_(_item("Open…", "openDocument:", OPEN.key, OPEN.mask))
 
     recent = AppKit.NSMenu.alloc().initWithTitle_("Open Recent")
     recent.setDelegate_(RECENT_DELEGATE)
@@ -199,13 +198,15 @@ def install() -> None:
     recent_item.setSubmenu_(recent)
 
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
-    # No key equivalent. Reloading is rare, and a shortcut here would be one
-    # more key the page also handles -- see PAGE_YIELDS.
+    # No key equivalent. Reloading is rare; a shortcut here would be one more
+    # key the page also handles -- see PAGE_YIELDS.
     file_menu.addItem_(_item("Reload", "reloadDocument:"))
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
     # performClose: is the standard one: it goes through the window's delegate,
     # which is where Libera Suite asks about unsaved changes.
-    file_menu.addItem_(_item("Close", "performClose:", "w", target=None))
+    file_menu.addItem_(
+        _item("Close", "performClose:", CLOSE.key, CLOSE.mask, target=None)
+    )
     file_menu.addItem_(_item("Save", "saveDocument:", "s"))
     file_menu.addItem_(_item("Save As…", "saveDocumentAs:", "s", COMMAND | SHIFT))
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
@@ -231,8 +232,8 @@ def install() -> None:
 def _dedupe(menu) -> None:
     """Drop repeated items, keeping the first of each.
 
-    macOS adds some of its own -- full screen, and the two above if they got in
-    before the defaults did -- and pywebview adds one of the same. A menu with
+    macOS adds some of its own (full screen, plus the two above if they got in
+    before the defaults did), and pywebview adds one of the same. A menu with
     "Emoji & Symbols" in it three times is the sort of thing people notice.
     """
     seen = set()
@@ -263,7 +264,7 @@ def _find_submenu(main, title: str):
 
 
 def _extend_edit(main) -> None:
-    """Undo and Redo, which pywebview's Edit menu does not carry.
+    """Undo and Redo, which pywebview's Edit menu does not have.
 
     Not the standard undo: and redo: selectors -- those drive NSUndoManager,
     which knows nothing about the editor's own history.
@@ -299,7 +300,7 @@ def _fill_view(main) -> None:
         (None, None, None, None),
         ("Formatting Marks", "toggleFormattingMarks:", "8", COMMAND),
         # No trailing separator: the only thing below is the full-screen item,
-        # which macOS hides, and a menu that ends in a divider looks broken.
+        # which macOS hides; a menu that ends in a divider looks broken.
     ]
     for index, (title, selector, key, mask) in enumerate(items):
         if title is None:

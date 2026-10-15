@@ -37,7 +37,7 @@ def read_bundled_manifest() -> Manifest | None:
     build/engine/dist.sh has always written `libera/manifest.json`, one level up. The
     two never met. A released wheel would therefore have answered every
     `libera --payload-install` with "this build ships no manifest, so downloads
-    cannot be verified", and the only way in would have been --from DIR.
+    cannot be verified", leaving --from DIR as the only way in.
 
     Nothing caught it because nothing could: every test that touches this
     replaces it with a lambda, and --from DIR reads the directory's own copy
@@ -60,8 +60,8 @@ def can_fetch() -> bool:
 
     Asked *before* offering, because the offer is a question. Without this the
     application asked "Download and install it now? [Y/n]", took yes, and then
-    refused -- which reads as a failure rather than as something that was never
-    on offer.
+    refused -- which reads as a failure when the install was never on
+    offer.
     """
     return read_bundled_manifest() is not None
 
@@ -109,7 +109,7 @@ def _artifacts_for(manifest: Manifest, platform: str) -> list[Artifact]:
 def safe_extract(tar: tarfile.TarFile, dest: Path) -> None:
     """Extract, refusing members that would escape dest.
 
-    The standard library's "data" filter, not a check of member names: a
+    The standard library's "data" filter does the checking: a
     name can stay inside dest while a link does not -- a symlink to /etc,
     then a file written through it -- and only the filter looks at both. It
     matters where the hash does not protect us: `--from DIR` and
@@ -179,7 +179,7 @@ def _check_room(where: Path, artifacts: list[Artifact]) -> None:
 
     Twice the compressed total: the tarballs are deleted as they are extracted,
     so the peak is the unpacked payload (about 1.5x compressed) plus the one
-    tarball being unpacked. Approximate, and deliberately on the generous side
+    tarball being unpacked. Approximate, and on the generous side
     of a number that is cheap to check and expensive to get wrong.
     """
     need = 2 * sum(a.size for a in artifacts)
@@ -298,13 +298,13 @@ def install(
             )
             raise PayloadError(msg)
 
-    # Staged beside the destination, not in /tmp.
+    # Staged beside the destination, where tempfile would default to /tmp.
     #
     # The move at the end has to be a rename, and a rename cannot cross a
-    # filesystem. On a machine where /tmp is its own mount -- tmpfs, or a small
-    # partition, which is most Linux boxes -- shutil.move silently degrades to
-    # copytree, and three things follow: the payload needs its own size twice,
-    # the install stops being atomic, and a copy that runs out of room leaves a
+    # filesystem. On a machine where /tmp is its own mount (tmpfs, or a small
+    # partition, as on most Linux boxes), shutil.move silently degrades to
+    # copytree. Three things follow: the payload needs its own size twice; the
+    # install stops being atomic; a copy that runs out of room leaves a
     # half-populated payload where a working one used to be. All three were
     # measured on an arm64 box with a small /tmp:
     #
@@ -312,8 +312,8 @@ def install(
     #     '/tmp/libera-payload-4i926s5m/payload' -> '~/.local/share/.../0.2'
     #   ... [Errno 28] No space left on device
     #
-    # Here the rename is within one directory, so it is atomic and free, and
-    # the downloads land on the filesystem that has to hold them anyway.
+    # Here the rename is within one directory, so it is atomic and free; the
+    # downloads also land on the filesystem that has to hold them anyway.
     dest.parent.mkdir(parents=True, exist_ok=True)
     _check_room(dest.parent, artifacts)
 
@@ -327,7 +327,7 @@ def install(
                     "font_set": manifest.font_set,
                     "built": manifest.built,
                     # Which source this binary corresponds to. Printed by
-                    # `payload status`; an AGPL obligation, not decoration.
+                    # `payload status`; an AGPL obligation.
                     "source": manifest.source,
                 },
                 indent=2,

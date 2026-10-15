@@ -4,8 +4,8 @@ They share a server and therefore an origin, which is what keeps localStorage
 -- theme, units, spellcheck language -- the same in every window. A server per
 window would give each one its own port and its own empty settings.
 
-Each request names its session in its query string, and the server looks it
-up and hands it on; nothing finds a session any other way. It used to be bound
+The server looks up the session each request names in its query string and
+hands it on; nothing finds a session any other way. It used to be bound
 to the thread serving the request, as `H`, and every thread bug this host had
 came from reading `H` on a thread that had bound none, or the wrong one.
 """
@@ -45,8 +45,7 @@ class Session:
     document: pathlib.Path | None = None
     shot: pathlib.Path | None = None
     # Which editor this window is. Derived from the document when not given,
-    # so `libera sheet.xlsx` opens Tables rather than showing a
-    # spreadsheet to a word processor.
+    # so `libera sheet.xlsx` opens Tables.
     app: apps.App | None = None
     # pywebview's uid for the window showing this session, once there is one.
     window: str | None = None
@@ -54,7 +53,7 @@ class Session:
     # out what would decline. Pushed by the editor, never asked for.
     abilities: dict[str, bool] = field(default_factory=dict)
     # Whether a reload has been offered for an error already: an editor that
-    # throws once throws again, and a dialog per repeat is worse than the fault.
+    # throws once throws again; a dialog per repeat is worse than the fault.
     reload_offered: bool = False
     # Who else has this document open, as their lock file says, when it was
     # found locked on opening: "Ada Lovelace, since 03.10.2026 20:20".
@@ -72,7 +71,7 @@ class Session:
     @property
     def id(self) -> str:
         """The id the registry knows it by, which every request from its
-        window carries in the query string: its directory's name.
+        window names in the query string: its directory's name.
 
         A field once, set by `configure`, so a session that skipped it had an
         id of "" -- which `lookup` reads as "the first session", another
@@ -96,9 +95,8 @@ class Session:
     def unsaved_marker(self) -> pathlib.Path:
         """Marks a session whose document has edits that are not in the file.
 
-        Beside the session rather than inside it, because the session's doc/
-        directory is rebuilt on every open and this has to be read before that
-        happens.
+        Beside the session's doc/ directory, because that is rebuilt on every
+        open and this has to be read before that happens.
         """
         return self.work / "unsaved.json"
 
@@ -108,7 +106,7 @@ class Session:
 
         Beside the recents file, which is what keeps them out of the Recent
         list: remember_recent refuses anything under that directory, because
-        it is our plumbing rather than the user's documents.
+        it is our plumbing.
 
         One hop from `work`, like every other path here. Deriving it from two
         hops -- "the state directory" -- reads better and breaks the moment
@@ -120,14 +118,14 @@ class Session:
     def recents(self) -> pathlib.Path:
         """Remembered documents.
 
-        Beside the session directory, not inside it: a session is rebuilt from
-        the document on every open, and this has to outlive that.
+        Beside the session directory: a session is rebuilt from the document
+        on every open, while this has to outlive that.
         """
         return self.work.parent / "recents.json"
 
     @property
     def blank(self) -> pathlib.Path:
-        """What File > New starts from, for the editor this session is."""
+        """The blank File > New starts from, for the editor this session is."""
         return self.choose_blank(None)
 
     def choose_blank(self, app: apps.App | None) -> pathlib.Path:
@@ -269,9 +267,9 @@ def create_session(document: pathlib.Path | None = None) -> Session:
 def find_session_showing(document: pathlib.Path) -> Session | None:
     """The live session that has this document open, if one does.
 
-    Compared as files, not as spellings: a symlink, or another case on a
-    case-insensitive disk, names the same document, and a second window on it
-    would save over the first.
+    Compared as files. A symlink, or another case on a case-insensitive disk,
+    spells the same document differently; a second window on it would save
+    over the first.
     """
     for found in list(SESSIONS.values()):
         current = found.read_current_document()
@@ -308,7 +306,7 @@ class NotReadyError(RuntimeError):
 
 
 def sweep_sessions(root: pathlib.Path, keep: set[str]) -> None:
-    """Delete session directories nobody is using and nothing needs.
+    """Delete session directories no one is using and nothing needs.
 
     A window per document means a directory per document, and a directory that
     holds no unsaved edits after its window has gone is just litter.
@@ -318,9 +316,9 @@ def sweep_sessions(root: pathlib.Path, keep: set[str]) -> None:
     for d in root.glob("*"):
         if not d.is_dir() or d.name in keep or (d / "unsaved.json").is_file():
             continue
-        # Only sessions. The untitled documents live in this directory too,
-        # and they are not litter -- deleting them would take somebody's
-        # unsaved new document with them. A session has been configured, so it
+        # Only sessions. The untitled documents live in this directory too and
+        # are not litter: deleting them would take somebody's unsaved new
+        # document with them. A session has been configured, so it
         # has doc/ or out/; nothing else in here does.
         if not (d / "doc").is_dir() and not (d / "out").is_dir():
             continue

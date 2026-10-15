@@ -87,18 +87,15 @@ def _answer(endpoint: Callable[[Session], Response]) -> bottle.HTTPResponse:
 
     The one place a request's failure is caught: a route that raised used to
     close the connection with no answer, which the editor sees as a network
-    fault. A refusal is answered with its status, admission's or the
+    fault. A refused request is answered with its status, admission's or the
     endpoint's; anything else is a 500 -- logged, with the traceback.
     """
     req = bottle.request
     timeline.mark("first-request")
     query = _parse_query()
+    port = str(req.environ["SERVER_PORT"])
     try:
-        session = admission.admit(
-            headers=req.headers,
-            port=str(req.environ["SERVER_PORT"]),
-            query=query,
-        )
+        session = admission.admit(headers=req.headers, port=port, query=query)
         answer = endpoint(session)
     except Refused as e:
         return _to_bottle(_refusal(e.status, e.explain))
@@ -109,13 +106,13 @@ def _answer(endpoint: Callable[[Session], Response]) -> bottle.HTTPResponse:
     # A window's first page: the key came in its URL, and from now on the
     # cookie brings it.
     if "key" in query:
-        response.set_header("Set-Cookie", admission.key_cookie())
+        response.set_header("Set-Cookie", admission.key_cookie(port))
     return response
 
 
-# A refusal can echo what it was sent -- an unknown session says which -- so it
-# is never served as a page: as HTML, a script sent as a session id would run in
-# our origin, where our own endpoints take its requests.
+# A refused request's answer can echo what it was sent -- an unknown session
+# says which -- so it is never served as a page: as HTML, a script sent as a
+# session id would run in our origin, where our own endpoints take its requests.
 PLAIN_TEXT = "text/plain; charset=utf-8"
 
 
@@ -136,7 +133,7 @@ def _to_bottle(answer: Response) -> bottle.HTTPResponse:
 
 
 def _with_headers(app: bottle.Bottle) -> Callable[..., Iterable[bytes]]:
-    """What every answer carries and every request leaves in the log, whichever
+    """The headers on every answer and the log line of every request, whichever
     route or error produced it."""
 
     def wrapped(environ: dict[str, Any], start_response: Callable[..., Any]) -> Any:

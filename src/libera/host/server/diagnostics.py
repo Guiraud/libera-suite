@@ -1,10 +1,10 @@
-"""What the host has been asked for, and what it could not answer.
+"""What the host has been asked for, with what it could not answer.
 
 The bottom of the package: counters and sets that the endpoints write and
 `build_report` reads back, for the regression harness, which also posts the
-editor's own photograph of its canvas here. The regression harness reads
-that report instead of a log, which is why this is state rather than logging
--- an assertion needs a value.
+editor's own photograph of its canvas here. This is state because the
+regression harness reads that report: an assertion needs a value, which a log
+does not hold.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # AscDesktopEditor calls the page made, by name.
 SEEN: dict[str, int] = {}
 # Bounded: only `libera --serve` resets it, on a new document, so a process with
-# windows added to it for its whole life. The newest are the ones worth keeping.
+# windows added to it for its whole life. It keeps the newest.
 ERRORS: collections.deque[dict] = collections.deque(maxlen=1000)
 MEDIA_SERVED: set[str] = set()
 NOT_FOUND: set[str] = set()
@@ -54,9 +54,10 @@ def build_report(session: Session) -> bytes:
         {
             "calls": calls,
             "errors": list(ERRORS),
-            # Document media fails *silently* when the host gets it wrong: no
-            # request, no console error, just a missing picture. Report what was
-            # served so the check can compare it against what the document holds.
+            # Document media fails *silently* when the host gets it wrong: the
+            # editor sends no request and logs no console error, leaving a
+            # missing picture. Report what was served so the check can compare it
+            # against what the document holds.
             "media_expected": sorted(p.name for p in session.media.glob("*"))
             if session.media.is_dir()
             else [],
@@ -71,7 +72,7 @@ def build_report(session: Session) -> bytes:
 
 @endpoint("GET", "report")
 def serve_report(r: Request) -> Response:
-    """The harness's report: what was asked for, and what went missing."""
+    """The harness's report: what was asked for and what went missing."""
     return Response(body=build_report(r.session))
 
 

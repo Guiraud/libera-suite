@@ -10,7 +10,7 @@ By what is asked for, in this order, nothing importing upward:
     document       the open document: handing it over, its edits, saving it
     opening        getting documents into windows: open, recent, new
     payload_files  the payload as static files, the bridge spliced in
-    admission      who may ask, and the headers every answer carries
+    admission      who may ask; the headers on every answer
     routes         the host API: the marked endpoints, gathered into a table
     adapter        the only module that knows the web framework
     listener       the socket, the threads, the port

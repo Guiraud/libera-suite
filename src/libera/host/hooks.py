@@ -1,11 +1,10 @@
 """What the host asks of whoever owns the windows.
 
-A file dialog needs a window to hang from, and a second document needs
-somewhere to put it -- neither of which the HTTP host knows anything about. It
-asks `shell`.
+A file dialog needs a window to hang from; a second document needs a window
+to go in. The HTTP host knows nothing about either, so it asks `shell`.
 
 `shell` starts as `HeadlessShell`, which is what `libera --serve` and the regression
-harness run with: one window, no way to make another, nobody to ask. `app.run`
+harness run with: one window, no way to make another, no one to ask. `app.run`
 replaces it with one that has windows. Read it through the module
 (`hooks.shell`), never imported by name: `from .hooks import shell` would keep
 the headless one after run() has replaced it.
@@ -13,7 +12,7 @@ the headless one after run() has replaced it.
 A headless shell mostly declines -- no file chosen, nothing recovered, nothing
 offered. Where having no window changes what the host itself does -- a
 document opened in place, a save that goes into the session -- the caller
-says so on `shell.windowed`, rather than leave it to a default nobody sees.
+says so on `shell.windowed`, rather than leave it to a default no one sees.
 """
 
 from __future__ import annotations
@@ -85,7 +84,7 @@ class Shell(Protocol):
 
 
 class HeadlessShell:
-    """No windows, and nobody to ask.
+    """No windows and no one to ask.
 
     Every answer is the one that changes nothing. Recovery in particular stays
     off: a check that sometimes resumes the previous run is not a check.

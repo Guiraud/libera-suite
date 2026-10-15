@@ -11,6 +11,7 @@ x2t is stood in for here, so this runs without a payload.
 
 from __future__ import annotations
 
+import threading
 from types import SimpleNamespace
 
 import pytest
@@ -109,3 +110,70 @@ def test_a_reload_whose_fold_fails_leaves_the_window_and_says_so(edited, monkeyp
 
     assert loaded == []
     assert said == ["Libera Suite could not reload the document"]
+
+
+def test_a_fold_whose_export_writes_nothing_keeps_the_edits(edited, monkeypatch):
+    """File > Reload exports to out/recovered.<ext> every time. An export
+    that wrote nothing found the last reload's file there, passed, and read it
+    back in place of every edit since."""
+    edited.out_dir.mkdir(parents=True, exist_ok=True)
+    (edited.out_dir / "recovered.docx").write_bytes(b"the previous reload")
+    monkeypatch.setattr(convert, "read_font_dir", lambda _index: edited.work)
+
+    def run(_session, *args):
+        # The export (a job file) writes nothing; the way back in (three
+        # arguments) converts whatever it is given.
+        if len(args) == 3:
+            convert.pathlib.Path(args[1]).write_bytes(
+                convert.pathlib.Path(args[0]).read_bytes()
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(convert, "run_x2t", run)
+
+    with pytest.raises(convert.ConversionError):
+        window.windows.fold_changes_in(edited)
+
+    assert edited.editor_bin.read_bytes() == b"as opened"
+    assert edited.change_log
+
+
+def test_an_x2t_that_hangs_is_a_failed_conversion(edited, monkeypatch):
+    """It held its slot and its request thread for good, and the save never
+    answered."""
+
+    def hangs(cmd, **kwargs):
+        raise convert.subprocess.TimeoutExpired(cmd, kwargs["timeout"])
+
+    monkeypatch.setattr(convert.subprocess, "run", hangs)
+
+    with pytest.raises(convert.ConversionError, match="did not finish"):
+        convert.convert_to_editor_bin(edited, edited.document)
+
+    assert edited.editor_bin.read_bytes() == b"as opened"
+
+
+def test_no_edit_is_taken_between_a_folds_export_and_its_return(edited, monkeypatch):
+    """The conversion back replaces the log, so an edit taken in between was
+    deleted with it."""
+    taken: list[bool] = []
+
+    def export(_session, staged, *_):
+        def try_to_edit():
+            got = edited.lock.acquire(blocking=False)
+            if got:
+                edited.lock.release()
+            taken.append(got)
+
+        other = threading.Thread(target=try_to_edit)
+        other.start()
+        other.join()
+        staged.write_bytes(b"merged")
+
+    monkeypatch.setattr(convert, "export", export)
+    make_x2t_write(monkeypatch, b"folded")
+
+    window.windows.fold_changes_in(edited)
+
+    assert taken == [False]
+    assert edited.editor_bin.read_bytes() == b"folded"

@@ -1,12 +1,11 @@
 """Finding an installed payload, and saying what one is.
 
 The bottom of the package: everything here answers "where is it, and is it
-the right one", and nothing here writes anything.
+the right one"; nothing here writes anything.
 
 `install` and `generate` reach these through the module -- `locate.get_data_dir()`
 rather than a bare `get_data_dir` -- for the same reason `host/hooks.py` is read
-that way: a test that replaces `get_data_dir` replaces it for every caller, not
-only for the module that happened to import it first.
+that way: a test that replaces `get_data_dir` replaces it for every caller.
 """
 
 from __future__ import annotations
@@ -25,7 +24,7 @@ import tomllib
 T = TypeVar("T")
 
 # The one definition, beside this module so the wheel and the frozen Windows
-# tree carry it; the build reads the same file.
+# tree include it; the build reads the same file.
 PAYLOAD_VERSION: str = tomllib.loads(
     resources
     .files("libera.payload")
@@ -53,7 +52,8 @@ def make_tool_env(bin_dir: Path) -> dict[str, str]:
     Windows never searches a parent.
 
     APPLICATION_NAME is what core writes into the <Application> field of saved
-    documents; it defaults to ONLYOFFICE, and it is not sdkjs's COMPANY_NAME.
+    documents; it defaults to ONLYOFFICE and is unrelated to sdkjs's
+    COMPANY_NAME.
     """
     env = dict(os.environ)
     env.setdefault("APPLICATION_NAME", "Libera Suite")
@@ -163,10 +163,10 @@ class Payload(Layout):
 def get_xdg_data_home() -> Path:
     """`$XDG_DATA_HOME`, or the default the base-directory spec names.
 
-    Here rather than beside its second caller because it is one answer to one
-    question, and the two callers ask it about different things: this module
-    puts the payload under it, and `launcher` puts the desktop entry and the
-    icon in the `applications/` and `icons/` trees the desktop reads.
+    It lives here, although `launcher` calls it too, because it is one answer
+    to one question. The two callers ask it about different things: this
+    module puts the payload under it; `launcher` puts the desktop entry and
+    the icon in the `applications/` and `icons/` trees the desktop reads.
     """
     xdg = os.environ.get("XDG_DATA_HOME")
     return Path(xdg) if xdg else Path.home() / ".local" / "share"
@@ -191,8 +191,8 @@ def make_state_dir_private() -> None:
     Ubuntu's: readable by every account wherever the home directory lets
     others through, as one made before Ubuntu 21.04 still does. Tightened on
     every launch, so a directory an earlier version made is fixed too; what is
-    below it cannot be reached past it. On Windows the mode means nothing, and
-    the directory is under the user's own profile.
+    below it cannot be reached past it. On Windows the mode means nothing: the
+    directory is under the user's own profile.
     """
     state = get_state_dir()
     state.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -246,8 +246,8 @@ def read_config_bool(key: str) -> bool | None:
 
 def _read_config(key: str, kind: type[T], expected: str) -> T | None:
     """A PayloadError like any other answer from here, so that every command --
-    --diagnose, the bug-report one, included -- says which file is wrong
-    rather than printing a traceback.
+    --diagnose, the bug-report one, included -- says which file is wrong,
+    with no traceback.
     """
     f = get_config_file()
     if not f.is_file():
@@ -287,13 +287,12 @@ def get_current_platform() -> str:
 def find_bundled_dir() -> Path | None:
     """A payload shipped inside the application, under the same prefix.
 
-    Every channel that can carry 120 MB should carry it: a Flatpak, and later a
-    `.dmg` and the cask. Only PyPI cannot, and that is the one channel where
+    Every channel that can ship 120 MB should ship it: a Flatpak, and later a
+    `.dmg` and the cask. Only PyPI cannot, which makes it the one channel where
     fetching on first run earns its complexity. A bundle that downloads its own
     editors on first launch has to ask a question in a window, reach the
     network from a sandbox, and fail in front of somebody who has just
-    double-clicked -- all of which the Flatpak did, and one of which it did
-    silently.
+    double-clicked. The Flatpak did all three, one of them silently.
 
     **Searched, not counted.** The Flatpak installs the wheel with
     `--prefix=/app` and runs it under the *runtime's* interpreter, so
@@ -331,8 +330,8 @@ def resolve() -> Payload:
     env = os.environ.get("LIBERA_PAYLOAD")
     if env:
         # Taken exactly as given -- this is the development path, pointing at a
-        # local build. No version check, so a half-built tree fails loudly here
-        # rather than mysteriously later.
+        # local build. No version check; a half-built tree still fails here,
+        # before it can fail mysteriously later.
         root = Path(env).expanduser()
         if not is_complete(root):
             msg = (

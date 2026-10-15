@@ -118,12 +118,12 @@ def wanted() -> bool:
 def check_in_background() -> None:
     """The check, on a thread of its own, once the application runs.
 
-    Failing is not worth a word to anyone: offline is the normal case on a
-    train, and an answer that is not a version is ours to fix, not the user's.
+    A failure is logged at info and shown to no one. Offline is the normal
+    case on a train; an answer that is not a version is ours to fix.
     """
 
     # Off when the switch cannot be read, too: whoever wrote it meant
-    # something, and a request is the one thing that cannot be taken back.
+    # something. A request is the one thing that cannot be taken back.
     try:
         if not wanted():
             logger.info("update check: off, check_updates = false in config.toml")

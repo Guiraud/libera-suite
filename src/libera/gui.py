@@ -16,7 +16,7 @@ macOS needs nothing: pyobjc comes with pywebview as a wheel.
 packages can be absent -- and the second is that they are present and
 unreachable, because the application is in a virtualenv that cannot see them.
 PyGObject is not a wheel: it is `/usr/lib/python3/dist-packages/gi`, installed
-by the distribution, and an isolated environment does not have it on sys.path
+by the distribution; an isolated environment does not have it on sys.path
 however thoroughly apt has run. Measured in a Debian container with every
 package from PACKAGES installed:
 
@@ -73,7 +73,7 @@ def parse_family(os_release: str) -> str | None:
     """Which package manager's names to quote, from /etc/os-release.
 
     ID first, then ID_LIKE, which is what a derivative sets: Mint says
-    `ID=linuxmint` and `ID_LIKE=ubuntu`, and the answer is Debian's either way.
+    `ID=linuxmint` and `ID_LIKE=ubuntu`: the answer is Debian's either way.
     """
     fields: dict[str, str] = {}
     for line in os_release.splitlines():
@@ -90,8 +90,8 @@ def parse_family(os_release: str) -> str | None:
 
 # What to ask for where we have no line to give. NixOS, Gentoo, Alpine, Void
 # and anything built from source land here, and on those four commands of which
-# none exists, printing them all is four wrong answers rather than one honest
-# one. The component names are the ones distributions actually use.
+# none exists, printing them all would be four wrong answers. The component
+# names are the ones distributions actually use.
 COMPONENTS = """  Libera Suite needs three things your distribution packages:
 
     PyGObject             python3-gi, python-gobject, pygobject3
@@ -121,7 +121,7 @@ def _find_system_python_for_gtk() -> tuple[str, str] | None:
     question is how this told a Fedora user with python3-gobject and no
     typelibs that the packages were installed and their virtualenv was at
     fault: `import gi` succeeded there, `gi.require_version("Gtk", "3.0")` did
-    not, and the two halves of this module disagreed about what "installed"
+    not, and the two parts of this module disagreed about what "installed"
     meant. They read the same tables now.
 
     **The version is the other half of the answer.** PyGObject is a compiled
@@ -191,9 +191,9 @@ def make_probe_source() -> str:
 
     Prints that interpreter's "major.minor" and exits 0 when the backend could
     start there; exits non-zero otherwise. Built from the same two tables as
-    the function above, because the whole point of asking is to compare the
-    two answers, and a probe that asks an easier question produces a confident
-    wrong diagnosis rather than no diagnosis.
+    the function above, because asking serves only to compare the two answers.
+    A probe that asks an easier question produces a confident wrong diagnosis,
+    which is worse than none.
     """
     return (
         "import gi, sys\n"
@@ -236,23 +236,23 @@ _PROBLEM_PAGE = """<!doctype html>
 
 
 def show_problem(heading: str, paragraphs: list[str], command: str = "") -> None:
-    """Say why Libera Suite is not starting, on screen rather than on stdout.
+    """Say why Libera Suite is not starting, on screen.
 
     A launch from a Dock icon, a desktop file or a Flatpak has no terminal.
     Everything this application says when it refuses to start went to stdout
     and stderr, so from the launcher it looked like nothing happened at all --
-    the icon appeared for a moment and the process exited 1. That was the whole
-    of the symptom reported on Fedora, and it is what a first run looks like
-    for anyone who has not installed the payload.
+    the icon appeared for a moment and the process exited 1. That was all of
+    the symptom reported on Fedora. A first run looks the same for anyone who
+    has not installed the payload.
 
-    So this is the channel of last resort, and it only makes sense where a
+    So this is the channel of last resort, which only makes sense where a
     window is possible: every caller is already past `explain_why_no_window`, because
     a machine that cannot open one cannot be told in a window either.
 
-    It says what is wrong and the line to type. **A button that did the install
-    is the better answer and is a separate piece of work** -- it needs
-    progress, cancellation and somewhere to put a failure. This is the part
-    that stops a silent exit, which is worth having first.
+    It says what is wrong and the line to type. A button that did the install
+    is the better answer and a separate piece of work -- it needs progress,
+    cancellation and somewhere to put a failure. This part stops a silent exit,
+    so it comes first.
     """
     # Imported here: pywebview pulls in the platform toolkit, and every other
     # path through the CLI has no reason to pay for it.
@@ -272,9 +272,9 @@ def detect_venv_kind(prefix: str | None = None) -> str:
 
     Which decides the advice, and getting it wrong wastes somebody's afternoon.
     A developer running `uv run libera` from a checkout was told to
-    `pipx uninstall libera` and reinstall it -- there was nothing to uninstall,
-    and the package was not on PyPI yet either, so the advice failed twice for
-    two different reasons before it could have helped.
+    `pipx uninstall libera` and reinstall it -- there was nothing to uninstall
+    and no package on PyPI yet either, so the advice failed twice for two
+    different reasons before it could have helped.
 
     Read from what each installer leaves behind rather than guessed from the
     path: pipx writes `pipx_metadata.json` into every venv it makes and uv
@@ -311,18 +311,18 @@ def _explain_how_to_open_the_virtualenv(interpreter: str | None = None) -> str:
         )
     # A plain virtualenv, which for this project means somebody's checkout.
     if interpreter:
-        # Not `uv venv --python ... --system-site-packages` followed by a sync,
-        # which is what this said first and what sent somebody round the loop:
-        # uv rebuilds the environment whenever the interpreter it wants differs
-        # from the one the venv is on, so the sync threw that venv away, put
+        # This first said `uv venv --python ... --system-site-packages`
+        # followed by a sync, which sent somebody round the loop. uv rebuilds
+        # the environment whenever the interpreter it wants differs from the
+        # one the venv is on, so the sync threw that venv away, put
         # the project's pinned version back, and lost both flags on the way.
         #
         # UV_PYTHON is read ahead of .python-version, so setting it stops the
         # environment being rebuilt underneath you -- and the pyvenv.cfg line
-        # then survives, because uv only rewrites that file when it makes the
+        # then stays, because uv only rewrites that file when it makes the
         # virtualenv again.
         return f"  export UV_PYTHON={interpreter}\n  uv sync\n{_format_venv_fix()}"
-    # Name the file rather than describe it: this is the one case where the
+    # Name the file: this is the one case where the
     # fix is a single line and the user is already in a terminal.
     return (
         f"{_format_venv_fix()}\n\n"

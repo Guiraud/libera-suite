@@ -116,12 +116,12 @@ def import_media(r: Request) -> Response:
     """Copy a picked file into the document's media folder, native-style.
 
     LocalFileGetImageUrl returns the *name* it was stored under, which the
-    editor then resolves through the document URL — so the file has to
+    editor then resolves through the document URL, so the file has to
     actually be in media/ or the image resolves to nothing.
 
     Only a file the shell handed this page: GET media/<name> serves what is
     copied in, so a path of the page's choosing would let any script in our
-    origin read any file the user can. The bridge reads a refusal as it reads
+    origin read any file the user can. The bridge reads a 403 as it reads
     a file that is not there: no name.
     """
     src = pathlib.Path(r.read_field("path", str))

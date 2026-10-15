@@ -1,12 +1,12 @@
 """Starting the application: the server, the first windows, the menu bar.
 
-The top of the host, and the only module that may touch every layer below it.
+The top of the host: the only module that may touch every layer below it.
 
 It exists because of a cycle. `run()` used to live in `window.py`, which meant
 window reached *up* to `menu` to install the menu bar -- while `menu` reached
 down to window for the front window. Six function-level imports held the two
-apart, and a function-level import is what a circular dependency looks like
-once somebody has worked around it.
+apart; a function-level import is a circular dependency that somebody has
+worked around.
 
 Putting the runner above both leaves every import pointing one way. See
 `host/__init__.py` for the order.
@@ -88,11 +88,11 @@ def _open_first_window(port: int, first: Session, title: str | None):
 def _show_session(
     port: int, session: Session, document: Path, title: str | None = None
 ):
-    """A window on a session's document, and what ends with it.
+    """A window on a session's document, with what ends when it closes.
 
     Every document window comes through here. The first once made its own,
     wired to ask before closing but not to let go after: its lock file
-    outlived Libera Suite, and its session stayed registered, so the edits
+    outlived Libera Suite and its session stayed registered, so the edits
     "Don't Save" left behind were never offered back.
     """
     window = create_window(
@@ -102,8 +102,8 @@ def _show_session(
     session.window = window.uid
     window.events.closing += lambda: confirm_close(session.id)
     # A closed window's session is over, and so is its lock. Its directory
-    # stays: it may hold edits that never reached the file, and those are
-    # offered back.
+    # stays: it may hold edits that never reached the file, which are offered
+    # back.
     window.events.closed += lambda: close_session(session)
     return window
 
@@ -129,9 +129,9 @@ def run(
     instead, and goes away as soon as it has been used for something.
     """
     first = documents[0] if documents else None
-    # A session either way. The start window shows no document, but everything
-    # it asks the host for -- the recent list, a new blank, the payload -- is
-    # answered for a session, and there has to be one to answer for.
+    # A session either way. Everything the start window asks the host for
+    # (the recent list, a new blank, the payload) is answered for a session,
+    # even with no document shown, so there has to be one to answer for.
     timeline.mark("host")
     first_session = Session(payload=payload_root, work=new_work(work), document=first)
     configure(first_session)
@@ -153,7 +153,7 @@ def run(
         # and that session is where unsaved edits live.
         opening.open_document(first_session, first)
         timeline.mark("converted")
-    # Anything left by earlier runs that holds nothing worth keeping.
+    # Anything left by earlier runs that holds no unsaved edits.
     sweep_sessions(work, keep={first_session.id})
 
     # What the toolkit reads once, as the application is first made: on macOS
@@ -200,7 +200,7 @@ def run(
     finally:
         instance.withdraw()
         threading.excepthook = previous_hook
-        # However the windows went: a quit need not close each one first, and
+        # However the windows went: a quit need not close each one first, yet
         # no lock of ours may outlive the process.
         for left in list(SESSIONS.values()):
             locking.let_go(left)
@@ -209,7 +209,7 @@ def run(
 def _say_thread_failed(args: threading.ExceptHookArgs) -> None:
     """A failure on one of our threads -- opening, a menu action, a drop --
     said where the user is looking. Launched from Finder, Explorer or a
-    launcher, stderr goes nowhere, and the traceback was all there was."""
+    launcher, stderr goes nowhere; the traceback was all there was."""
     if args.exc_type is SystemExit:
         return
     where = args.thread.name if args.thread else "a thread"
@@ -245,7 +245,7 @@ class WindowedShell:
 
         A document that will not open is said so on screen, and leaves nothing
         behind. It used to raise into whoever asked: a request lost its
-        connection with no answer, a menu action printed a traceback nobody saw,
+        connection with no answer, a menu action printed a traceback no one saw,
         a session stayed registered with no window, and a second launch whose
         hand-off failed that way started a second instance.
         """
@@ -345,7 +345,7 @@ def _open_rest(window, documents: list[Path], open_window) -> None:
     what pywebview waits on for the same job: `start()`'s own `_create_children`
     blocks on `windows[0].events.shown` before creating the rest.
 
-    The cost of losing the race is not a slow window but a missing one.
+    Losing the race costs the window itself.
     `start()` runs `_initialize` over `windows`, then snapshots `windows[1:]`
     for that thread, then enters the GUI loop; a window appended between the
     snapshot and the loop is never created, and one appended between the two

@@ -1,9 +1,8 @@
-"""Key equivalents the native menu bar owns, and the page must not act on.
+"""Key equivalents the native menu bar owns, which the page must not act on.
 
-The lowest layer that has anything to do with the menu, and it is here rather
-than in `menu.py` because two modules need it and they sit on either side of
-that one: `server.editor.serve_bridge_part` injects the list into the page, and the menu
-builds its items from it.
+The lowest layer that has anything to do with the menu. Two modules need it,
+on either side of `menu.py`: `server.editor.serve_bridge_part` injects the list
+into the page, while the menu builds its items from it.
 
 With the definition in `menu.py`, `server` reached upward for it with a
 function-level import -- one of six that held a cycle apart. See
@@ -59,19 +58,19 @@ QUIT = Shortcut("q")
 # exists to make impossible.
 #
 # Only what has been seen to go wrong belongs here. Cmd-N doubled. Cmd-W and
-# Cmd-Q stopped reaching the menu once a slideshow had ended, back in a normal
-# window, while the mouse and Cmd-Q in the show itself still worked: in
+# Cmd-Q stopped reaching the menu once a slideshow had ended and the window was
+# back to normal; the mouse still worked, as did Cmd-Q in the show itself. In
 # WebKit, something in the page claims them then (not seen in Chromium, which
 # is all the e2e suite can drive). Yielding them keeps every page handler off
-# them, and the editor has no use for either. Checked by hand on 2026-10-06.
+# them; the editor has no use for either. Checked by hand on 2026-10-06.
 # The Edit-menu keys -- Cmd-Z, Cmd-C and the rest -- are claimed by the web
 # view and never reach the menu.
 PAGE_YIELDS: tuple[Shortcut, ...] = (NEW, CLOSE, QUIT)
 
 # Off macOS, the keys the page runs itself, by the name of what it runs.
 #
-# No menu bar fires them there: the GTK and WinForms bars carry no accelerators
-# (menu/gtk.py says why). And the editor handles none of them -- measured in the
+# No menu bar fires them there: the GTK and WinForms bars have no accelerators
+# (menu/gtk.py says why). The editor handles none of them either -- measured in the
 # Linux container, Ctrl-N reached the editor and no request followed. So the
 # page does what the editor's own File tab does for each.
 #

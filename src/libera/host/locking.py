@@ -54,7 +54,7 @@ class LockOwner:
         )
 
 
-# Whoever holds a lock nobody can read: not free, because opening the document
+# Whoever holds a lock that cannot be read: not free, because opening the document
 # for editing could overwrite their work.
 UNKNOWN = LockOwner("someone", "", "", "", "")
 
@@ -94,7 +94,7 @@ def parse_owner(data: bytes) -> LockOwner:
 
 
 def read_owner(document: Path) -> LockOwner | None:
-    """Who holds the document, or None when nobody does."""
+    """Who holds the document, or None when no one does."""
     try:
         return parse_owner(lock_path(document).read_bytes())
     except FileNotFoundError:
@@ -114,7 +114,7 @@ def _make_owner() -> LockOwner:
 
 def take(document: Path) -> LockOwner | None:
     """Lock the document for us. None when it is ours now; otherwise whoever
-    holds it, and their lock is left as it was.
+    holds it, whose lock is left as it was.
 
     A folder we cannot write to locks nothing, and stops nothing: refusing to
     open a document because we cannot announce it would be worse than not
@@ -153,7 +153,7 @@ def hold(session: Session, document: Path) -> None:
     """Lock the document this window now shows, and note who else holds it.
 
     Only for a document in a window: `libera --serve` and the tests open
-    documents nobody else could be editing. Not for an untitled document,
+    documents no one else could be editing. Not for an untitled document,
     which lives in our own scratch folder.
     """
     if not hooks.shell.windowed or is_inside(session.scratch, document):

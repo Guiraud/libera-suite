@@ -1,15 +1,17 @@
-"""Saving: what a save request means, and carrying it out.
+"""Saving: what a save request means, and doing the save.
 
 The editor never writes a document. A save converts Editor.bin and the change
 log it has streamed into a real file, through x2t, wherever the request says
-it goes -- which is the part that has been wrong before, so it is decided in
-one place, plan_save, before anything touches the disk.
+it goes. That destination has been wrong before, so it is decided in one
+place, plan_save, before anything touches the disk.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import pathlib
+import secrets
 import shutil
 import tempfile
 from dataclasses import dataclass, replace
@@ -29,7 +31,7 @@ class SaveOutcome(IntEnum):
     """What DesktopOfflineAppDocumentEndSave is told, as `error`."""
 
     SAVED = 0
-    # Not saved, and nothing to say: the user cancelled, or it is a viewer.
+    # Not saved, with nothing to say: the user cancelled, or it is a viewer.
     DECLINED = 1
     FAILED = 2
 
@@ -39,8 +41,8 @@ class SaveRequest:
     """What the editor asked of a save: a format, 0 for the one the document
     has, and whether it is a Save As or a print.
 
-    Read once from LocalFileSave's body, by `from_body`: the body itself used
-    to reach the core as a dict, and a save on close had to fake one.
+    Read once from LocalFileSave's body, by `from_body`. The body itself used
+    to reach the core as a dict, which a save on close had to fake.
     """
 
     file_type: int = 0
@@ -107,11 +109,11 @@ def plan_save(
     Print arrives as a PDF save with isPrint set, which is why it is not simply
     "the user chose PDF". It asks where the PDF goes, every time, starting in
     the document's folder: it went into the session's own directory, where
-    nobody could find it, and which is swept when the session ends.
+    no one could find it, and which is swept when the session ends.
 
     `untitled` is a document File > New made: a copy of a blank in our own
     state directory. It is a real file, so plain Save would overwrite it, and
-    did -- "saving" a new document where nobody could find it, and out of the
+    did -- "saving" a new document where no one could find it, and out of the
     Recent list, which refuses that directory. Its first save asks where.
 
     `locked` is a document someone else has open, by their lock file. Its file
@@ -120,7 +122,7 @@ def plan_save(
     """
     requested = request.file_type
     own = open_file.suffix.lstrip(".").lower() if open_file else ""
-    # 0 is what the editor sends for a plain Save, and it means the format the
+    # 0 is what the editor sends for a plain Save, meaning the format the
     # document already has. Read as the editor's first format, it saved an
     # .odt, .ods or .csv as a .docx or .xlsx into the session, said it had
     # saved, and left the file itself as it was.
@@ -133,8 +135,8 @@ def plan_save(
     # still matches it. Asking for .odt from an open .docx is a Save As whether
     # or not the editor said so.
     keeps_open_file = open_file is not None and own == ext
-    # A plain Save of a format x2t cannot write (.doc, .xls) has nowhere to go
-    # but a new file, so it asks where, as Save As does.
+    # A plain Save of a format x2t cannot write (.doc, .xls) can only go to a
+    # new file, so it asks where, as Save As does.
     cannot_keep = requested == 0 and open_file is not None and not keeps_open_file
     return Destination(
         ext=ext,
@@ -187,6 +189,31 @@ def _ask_where(
     return target
 
 
+def replace_document(staged: pathlib.Path, target: pathlib.Path) -> None:
+    """Put `staged` at `target` in one step: the old document or the new one.
+
+    Copied over in place, the document was emptied and then filled, so a crash
+    or a full disk part way through left a truncated file where the good one
+    had been. The copy goes beside it first, under a name of its own, and
+    replaces it once whole, keeping the old document's permissions, tags and
+    other attributes (desktop.replace_file).
+
+    Through a symlink to the file it names, so the link stays a link. Created
+    with the mode a new file gets: mkstemp's 0600 would have made every new
+    document private.
+    """
+    target = target.resolve()
+    aside = target.with_name(f".{target.name}.{secrets.token_hex(4)}.tmp")
+    try:
+        with staged.open("rb") as src, aside.open("xb") as dst:
+            shutil.copyfileobj(src, dst)
+            dst.flush()
+            os.fsync(dst.fileno())
+        desktop.replace_file(aside, target)
+    finally:
+        aside.unlink(missing_ok=True)
+
+
 def _put_in_place(
     session: Session,
     staged: pathlib.Path,
@@ -197,12 +224,12 @@ def _put_in_place(
 ) -> None:
     """Copy the exported file where it was asked for, and follow it if it was
     a Save As."""
-    shutil.copyfile(staged, target)
+    replace_document(staged, target)
     # A print leaves the session on its document: only Save As moves it.
     if target != open_file and not printing:
-        # Save As moves the session onto the new file -- once there is one:
-        # moved before the export, a failed Save As left the session pointing
-        # at a file never written, and the next plain Save went there. The
+        # Save As moves the session onto the new file, once there is one.
+        # Moved before the export, a failed Save As left the session pointing
+        # at a file never written, where the next plain Save then went. The
         # lock moves with it.
         locking.let_go(session)
         session.write_current_document(target)
@@ -240,7 +267,7 @@ def save_document(
             "save refused: .%s needs asking where, and cannot ask here", plan.ext
         )
         return {"error": SaveOutcome.FAILED}
-    # With nobody to ask -- `--serve`, the harness -- it goes into the session.
+    # With no one to ask -- `--serve`, the harness -- it goes into the session.
     if plan.asks_where and hooks.shell.windowed:
         chosen = _ask_where(
             app, open_file, plan.ext, untitled=untitled, printing=plan.printing

@@ -1,6 +1,6 @@
 """The payload, served as static files: every editor asset, with the bridge
 spliced into every HTML page; the fonts, as the editor's web loader expects
-them; and the service worker, ours rather than the payload's.
+them; and our own service worker.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ SERVICE_WORKER = pathlib.Path(__file__).with_name("service-worker.js")
 
 
 def serve_service_worker(_r: Request) -> Response:
-    """Ours, not the payload's: see service-worker.js for why."""
+    """Ours, replacing the payload's: see service-worker.js for why."""
     return Response(body=SERVICE_WORKER.read_bytes(), content_type=editor.JAVASCRIPT)
 
 
@@ -57,8 +57,8 @@ def serve_file(payload: pathlib.Path, path: str, if_none_match: str) -> Response
         headers={
             "ETag": etag,
             # Revalidate every time. Without it Chromium reused its copy on
-            # heuristic freshness, and WebView2 keeps that cache for the origin
-            # across payloads: a document opened against a new payload ran
+            # heuristic freshness. WebView2 keeps that cache for the origin
+            # across payloads, so a document opened against a new payload ran
             # sdkjs with the previous one's AllFonts.js, asked for fonts the new
             # set does not have, and died in text shaping.
             "Cache-Control": "no-cache",

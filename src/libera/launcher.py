@@ -16,16 +16,16 @@ locations freedesktop names:
 Per-user and never system-wide: a `pipx` install is one account's, and writing
 to /usr/share would need root for something that is not root's.
 
-**`Exec=` is rewritten to an absolute path, and that is the whole reason this
-is code rather than two `install` lines.** The committed entry says `libera`,
+**`Exec=` is rewritten to an absolute path; two `install` lines could not do
+that, so this is code.** The committed entry says `libera`,
 which is right inside the Flatpak, where `/app/bin` is on PATH before anything
 runs. A desktop file launched from a session gets a minimal PATH that usually
 does not include `~/.local/bin`, so shipping the template as-is would have
 produced an icon that silently does nothing -- the same class of failure as a
 launch with no terminal to print to.
 
-Linux only. `explain_unsupported()` says so, rather than each caller testing
-the platform.
+Linux only. Callers ask `explain_unsupported()`, which says so; none tests
+the platform itself.
 """
 
 from __future__ import annotations
@@ -121,8 +121,8 @@ def _refresh(applications: Path) -> None:
     in the directory it is pointed at, a per-user hicolor tree usually has
     none, and every desktop tested picks a new SVG up without a cache.
 
-    Best-effort by design. A missing tool or a refusal costs the association
-    until the next login, which is not worth failing an install over.
+    Best-effort by design. A missing tool or a failed run costs the
+    association until the next login, too little to fail an install over.
     """
     tool = shutil.which("update-desktop-database")
     if tool is None:
@@ -142,8 +142,8 @@ def install() -> list[Path]:
         path.parent.mkdir(parents=True, exist_ok=True)
 
     entry.write_text(_render_entry(), encoding="utf-8")
-    # Not a symlink into site-packages: an upgrade replaces that directory, and
-    # a launcher pointing into the old one is a dangling icon.
+    # Not a symlink into site-packages: an upgrade replaces that directory,
+    # leaving a launcher that points into the old one as a dangling icon.
     icon.write_bytes((resources.files("libera") / "icon.svg").read_bytes())
 
     _refresh(entry.parent)

@@ -1,8 +1,8 @@
 """One function per thing `libera` can be asked to do.
 
-Each returns the process exit status, and each prints its own failure: a
-command line's job is to say what went wrong in a sentence, not to hand a
-traceback to somebody who typed a filename wrong.
+Each returns the process exit status, and each prints its own failure:
+somebody who typed a filename wrong gets a sentence saying what went wrong,
+never a traceback.
 
 `dispatch` chooses between them; nothing here knows how the arguments were
 parsed.
@@ -37,7 +37,7 @@ def _is_interactive() -> bool:
     """Whether a terminal is there: to answer a question, and to have read what
     was printed.
 
-    `sys.stdin` is None, not a stream, in the windowed Windows build -- its
+    `sys.stdin` is None in the windowed Windows build -- its
     entry point gives stdout and stderr a file, which print() needs, and
     leaves stdin alone -- so `sys.stdin.isatty()` raised AttributeError there,
     which is the silent exit the window below exists to prevent.
@@ -51,7 +51,7 @@ def _fail(message: object) -> int:
     return 1
 
 
-# The heading of a refusal that has no more particular one.
+# The heading when no more particular one applies.
 CANNOT_START = "Libera Suite could not start"
 
 
@@ -76,7 +76,7 @@ def install_payload(args: argparse.Namespace) -> int:
         return _fail(e)
     print(f"Installed in {p.root}")
     # The one moment a Linux user is looking at this program in a terminal and
-    # has just finished setting it up. Said here rather than done here: the
+    # has just finished setting it up. Only said here: the
     # command is called payload-install, and writing to the desktop's own
     # directories is not what that name promises.
     if launcher.explain_unsupported() is None and not launcher.is_installed():
@@ -188,9 +188,9 @@ def _offer_to_install() -> payload_mod.Payload | None:
 
 
 def _say_there_is_nothing_to_fetch() -> None:
-    """No payload, and no way for this build to get one.
+    """No payload, with no way for this build to get one.
 
-    Only a released wheel carries the hashes a download is checked against, so
+    Only a released wheel holds the hashes a download is checked against, so
     reaching here means a checkout or a build that was never stamped. Three
     ways out, cheapest first, and the last one takes an afternoon.
     """
@@ -265,8 +265,8 @@ def serve(args: argparse.Namespace) -> int:
     if not document.is_file():
         return _fail(f"no such file: {document}")
 
-    # Beside the windowed application's sessions, not in a directory of its
-    # own: sharing the parent is what makes them share a Recent list.
+    # Beside the windowed application's sessions: sharing the parent makes
+    # them share a Recent list.
     work = (
         Path(args.work).expanduser()
         if args.work
@@ -309,8 +309,8 @@ class CannotConvertError(ValueError):
     """A `--convert` that cannot be done as asked, found before converting."""
 
 
-# One conversion: the document, where it goes (None: standard output), and
-# the extension of the format it is written in.
+# One conversion: (the document, where it goes or None for standard output,
+# the extension of the format it is written in).
 Conversion = tuple[Path, Path | None, str]
 
 
@@ -370,7 +370,7 @@ def convert_documents(args: argparse.Namespace) -> int:
     format asked for -- so the file is the one Save As would have written.
     Each document has a session of its own in a scratch directory, registered
     nowhere: no Recent list, no lock file, nothing left behind. A document
-    that fails is reported and the others carry on; the exit status is 1 if
+    that fails is reported and the others go on; the exit status is 1 if
     any failed.
     """
     try:
@@ -412,12 +412,12 @@ def _convert_one(payload: Path, work: Path, src: Path, ext: str) -> Path:
 
 
 def diagnose(_args: argparse.Namespace) -> int:
-    """Everything worth pasting into a bug report, in one place.
+    """What a bug report needs, in one place.
 
     `-v` covers what is happening now; this covers "it did something odd an
-    hour ago", which is most of what a beta tester has to tell us. Deliberately
-    one screen, and deliberately not automatic: nothing here leaves the machine
-    unless somebody copies it.
+    hour ago", which is most of what a beta tester has to tell us. It fits on
+    one screen and runs only when asked: nothing here leaves the machine unless
+    somebody copies it.
     """
     print(f"libera    {version('libera')}")
     print(f"python     {sys.version.split()[0]}")
@@ -427,8 +427,8 @@ def diagnose(_args: argparse.Namespace) -> int:
     print(f"window     {'ok' if window is None else 'NOT AVAILABLE'}")
 
     if launcher.explain_unsupported() is None:
-        # Inline rather than a local: `state` further down is the state
-        # directory, and this had taken the name first.
+        # Inline: a local would have taken the name `state` first, and further
+        # down that is the state directory.
         print(
             f"launcher   {'installed' if launcher.is_installed() else 'not installed'}"
             f"  ({launcher.get_entry_path()})"
@@ -454,13 +454,13 @@ def diagnose(_args: argparse.Namespace) -> int:
 def open_documents(args: argparse.Namespace) -> int:
     """Open documents, or the start window when none are named.
 
-    Which editor a file gets is decided by the file, not by a command: see
+    The file decides which editor it gets: see
     host/apps.py. There is no `libera words` any more for the same reason
     there is no `open -a TextEdit` in most people's muscle memory -- you open
     the document.
     """
     # The arguments first: a name that is not a file is the cheapest thing to
-    # be wrong about, and the only one of the three that is fixed by retyping.
+    # be wrong about, the only one of the three that retyping fixes.
     # Answering `libera reprot.docx` with a paragraph about GTK -- which is
     # what checking the window first did on any Linux box whose virtualenv
     # cannot see PyGObject -- buries the typo under the environment.

@@ -30,9 +30,10 @@ T = TypeVar("T")
 class Refused(Exception):
     """This request will not be served: the status, and why.
 
-    Every refusal leaves by this door -- an endpoint's, admission's, or a body
-    that was not what the endpoint reads -- so that an endpoint's return value is
-    always its answer, and `adapter` turns a refusal into one in one place.
+    Every way a request is refused goes through this exception: by an endpoint,
+    by admission, or for a body that was not what the endpoint reads. That keeps
+    an endpoint's return value always its answer, with `adapter` turning the
+    exception into one in one place.
     """
 
     def __init__(self, status: int, explain: str = "") -> None:
@@ -48,7 +49,7 @@ class Request:
     session: Session
     body: bytes = b""
     query: Mapping[str, list[str]] = field(default_factory=dict)
-    # The name it was reached by, and what follows a prefix route's name:
+    # `name` is what it was reached by, `path` what follows a prefix route's name:
     # "bridge-page.js", or "photo.png" for media/photo.png.
     name: str = ""
     path: str = ""
@@ -62,7 +63,7 @@ class Request:
 
         Read with `json.loads` at each endpoint, a body that was not an object
         -- not JSON, a list, nothing at all -- raised wherever the endpoint
-        first used it, and the request closed with no answer.
+        first used it, closing the request with no answer.
         """
         try:
             found = json.loads(self.body or b"{}")
@@ -86,8 +87,8 @@ class Request:
 
 @dataclass(frozen=True)
 class Response:
-    """What an endpoint answers. `explain` says why, for an error; `file` is
-    sent instead of `body`, streamed rather than read whole."""
+    """What an endpoint answers. `explain` says why, for an error; `file` takes
+    the place of `body` and is streamed without being read whole."""
 
     status: int = 200
     body: bytes = b""

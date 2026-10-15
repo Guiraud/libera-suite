@@ -21,6 +21,6 @@ def keyed(url: str, key: str = instance.TOKEN) -> str:
     return f"{url}{'&' if '?' in url else '?'}key={key}"
 
 
-def key_cookie(key: str = instance.TOKEN) -> dict[str, str]:
+def key_cookie(port: int | str, key: str = instance.TOKEN) -> dict[str, str]:
     """The header the page sends the key in, once its first answer set it."""
-    return {"Cookie": f"{admission.KEY_COOKIE}={key}"}
+    return {"Cookie": f"{admission.cookie_name(str(port))}={key}"}

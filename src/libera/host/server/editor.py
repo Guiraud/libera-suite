@@ -1,6 +1,6 @@
 """The editor's page as a client of the host: the bridge it is given, what it
-reports about itself, and the few things it asks of the desktop -- full
-screen for a slideshow, a link in the browser. And the address it lives at.
+reports about itself, the few things it asks of the desktop (full screen for a
+slideshow, a link in the browser), and the address it lives at.
 """
 
 from __future__ import annotations
@@ -49,9 +49,9 @@ def serve_bridge(r: Request) -> Response:
     #
     #   LIBERA_SHOT        the harness wants the page to photograph itself
     #   LIBERA_OWNED_KEYS  key equivalents a macOS menu bar already fires, so
-    #                       the page must not act on them too -- shortcuts.PAGE_YIELDS
-    #                       is the one definition, and this is how the page
-    #                       reads it. Empty without a menu: `libera --serve` and
+    #                       the page must not act on them too. The page reads
+    #                       them here from shortcuts.PAGE_YIELDS, the one
+    #                       definition. Empty without a menu: `libera --serve` and
     #                       the harness have none and nothing to yield to.
     #   LIBERA_PAGE_KEYS   the keys the page runs itself, off macOS, where no
     #                       menu bar has them -- shortcuts.PAGE_RUNS.
@@ -70,7 +70,7 @@ def serve_bridge(r: Request) -> Response:
 def list_owned_keys() -> list[dict]:
     """The key equivalents the native menu bar fires, for the page to yield.
 
-    macOS only, and not for want of a menu elsewhere: the GTK bar carries no
+    macOS only, and not for want of a menu elsewhere: the GTK bar has no
     accelerators at all (`menu/gtk.py` says why), so on Linux the page owns
     every key and has nothing to yield.
 
@@ -90,8 +90,8 @@ _ABILITIES = frozenset({"undo", "redo"})
 def record_abilities(r: Request) -> Response:
     """The editor reporting what it can do: undo, redo.
 
-    Pushed rather than asked for, because a menu is validated on the GUI
-    thread and asking the editor from there would deadlock.
+    The editor pushes this, because a menu is validated on the GUI thread and
+    asking the editor from there would deadlock.
     """
     abilities = r.read_json()
     if not abilities.keys() <= _ABILITIES or not all(
@@ -113,7 +113,7 @@ def _is_list_of(found: object, *keys: str) -> bool:
 @endpoint("POST", "page-log")
 def receive_page_log(r: Request) -> Response:
     """What the bridge saw since it last said: the AscDesktopEditor calls the
-    editor made, and what went wrong in the page."""
+    editor made and what went wrong in the page."""
     log = r.read_json()
     calls, events = log.get("calls", []), log.get("events", [])
     if not _is_list_of(calls, "name") or not _is_list_of(
@@ -130,8 +130,8 @@ def receive_page_log(r: Request) -> Response:
         logger.warning("[%s] %s: %s", e["frame"], e["kind"], e["text"])
         diagnostics.ERRORS.append(e)
 
-    # The editor's own error dialog and ours are two dialogs for one fault,
-    # and the second one is the confusing one. asc_onError means the editor
+    # The editor's own error dialog and ours are two dialogs for one fault;
+    # the second is the confusing one. asc_onError means the editor
     # has already said something, so we say nothing and leave the recovery to
     # File > Reload, which is always there.
     editor_spoke = any(e["kind"] == "asc_onError" for e in events)
@@ -144,13 +144,13 @@ def receive_page_log(r: Request) -> Response:
 def handle_editor_error(session: Session, message: str, *, quiet: bool = False) -> None:
     """The editor threw where nothing caught it, so its state is a guess.
 
-    Only uncaught errors, not every console.error and not asc_onError: the
-    editor reports plenty it has already handled, and a dialog for those would
-    train people to dismiss the one that matters.
+    Only uncaught errors, not every console.error and not asc_onError: a
+    dialog for each of the many the editor has already handled would train
+    people to dismiss the one that matters.
 
     `quiet` when the editor is putting up its own dialog about the same fault.
-    Two dialogs for one error is what a user called confusing, and they were
-    right -- so this stays silent and File > Reload remains the way out.
+    A user called two dialogs for one error confusing, rightly, so this stays
+    silent and File > Reload remains the way out.
     """
     if session.reload_offered:
         return
@@ -196,7 +196,7 @@ def make_editor_url(port: int, session: Session, title: str) -> str:
     """The editor's address, with the session that answers for it.
 
     doctype is what api.js's appMap turns into an editor directory -- word,
-    cell, slide, diagram -- so it, and not the file name, is what decides
+    cell, slide, diagram -- so doctype, whatever the file name, decides
     whether Words or Tables comes up. filetype has to agree with it or the
     editor loads and then refuses the document.
 
@@ -204,7 +204,7 @@ def make_editor_url(port: int, session: Session, title: str) -> str:
     knows, so the session never reaches the inner frame's URL. It does not need
     to: the frames are same-origin, and the bridge reads it off the top window.
     The key goes no further than this first request, whose answer sets the
-    cookie that carries it from then on: see `admission`.
+    cookie that brings it from then on: see `admission`.
     """
     user_id, user_name = lookup_local_user()
     app = session.editor

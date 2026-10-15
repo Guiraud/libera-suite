@@ -55,7 +55,7 @@ def test_a_saved_document_stops_being_dirty(bound_session, monkeypatch):
     assert bound_session.unsaved_marker.is_file()
 
     monkeypatch.setattr(convert, "export", lambda *_: True)
-    monkeypatch.setattr(saving.shutil, "copyfile", lambda *_: None)
+    monkeypatch.setattr(saving, "replace_document", lambda *_: None)
     result = saving.save_document(bound_session, SaveRequest())
 
     assert result["error"] == 0

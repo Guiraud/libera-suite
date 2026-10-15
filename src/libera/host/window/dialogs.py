@@ -1,8 +1,8 @@
 """Everything that puts a question on screen and waits for the answer.
 
 The close prompt, the recovery offer, the reload offer, Save As, Open, and a
-plain message. What each one asks and what each answer does are decided here,
-the same on every platform; drawing them is `native`'s, which `windows` chose.
+plain message. This module decides what each one asks and what each answer
+does, the same on every platform; `native`, which `windows` chose, draws them.
 Above `windows`: a dialog needs a window to hang from.
 """
 
@@ -44,14 +44,14 @@ def ask(question: Question) -> Answer:
 def say(heading: str, detail: str) -> None:
     """Tell the user something, with one button.
 
-    A menu item that silently does nothing is the hardest kind of bug to
-    report, and `show_help` was one: it asked `webbrowser` to open the
+    A menu item that does nothing without a word is the hardest kind of bug
+    to report. `show_help` was one: it asked `webbrowser` to open the
     documentation, ignored the False it got back on a machine with no browser,
     and left the user looking at a menu that had apparently done nothing.
 
-    Falls back to a log line rather than raising when the toolkit cannot be
-    loaded: GTK's `gi` is imported only when a dialog is built, and is a system
-    package a virtualenv may not see. Nothing here is worth failing over.
+    Falls back to a log line when the toolkit cannot be loaded: GTK's `gi` is
+    imported only when a dialog is built, and is a system package a virtualenv
+    may not see. A message that cannot be shown is no reason to raise.
     """
     try:
         native.run_on_gui_thread(
@@ -83,8 +83,8 @@ def ask_to_recover(document: Path) -> bool:
 def confirm_close(session_id: str) -> bool:
     """Ask before a window takes unsaved edits with it. False keeps it open.
 
-    The editor is not asked to save: pywebview's evaluate_js hands work to the
-    GUI thread and waits, and this runs *on* the GUI thread, so calling it here
+    The editor is not asked to save: pywebview's evaluate_js hands its call to
+    the GUI thread and waits. This runs *on* the GUI thread, so calling it here
     would deadlock. It is not needed either -- Editor.bin and the change log
     the editor streams as you type are both already on disk, which is what the
     host converts from on an ordinary save.
@@ -123,9 +123,8 @@ def _confirm_close(session: Session, document: Path) -> bool:
 def _save_or_say_why(session: Session, document: Path) -> bool:
     """Save, and answer whether the window may now close.
 
-    A window that closed on a failed save would take the edits with it --
-    which is the whole reason this asks at all -- so a failure keeps it open
-    and says why.
+    A window that closed on a failed save would take with it the edits this
+    prompt is there to keep, so a failure keeps it open and says why.
     """
     # On the GUI thread, so a save that would ask where fails instead.
     saved = saving.save_document(session, saving.PLAIN_SAVE, may_ask=False)
@@ -140,11 +139,11 @@ def _save_or_say_why(session: Session, document: Path) -> bool:
 
 
 def offer_reload(session: Session, message: str, port: int) -> None:
-    """The editor threw. Offer the window back rather than leave it wedged.
+    """The editor threw and may have wedged the window: offer to reload it.
 
-    Reloading costs the editor's undo history and where the cursor was, and
-    keeps the edits -- so it is an offer, not something done behind the user's
-    back. The reload itself belongs to the GUI thread.
+    Reloading costs the editor's undo history and where the cursor was, while
+    keeping the edits, so the user decides. The reload itself belongs to the
+    GUI thread.
     """
     if find_window(session) is None:
         return
@@ -166,9 +165,15 @@ def offer_reload(session: Session, message: str, port: int) -> None:
 
 
 def reload(session: Session, port: int) -> None:
-    """Rebuild the editor in that window, or say why it is left as it was."""
+    """Rebuild the editor in that window, or say why it is left as it was.
+
+    On the calling thread, which is never the GUI thread: the menu runs it in
+    the background and the reload offer comes from a request. The fold runs
+    x2t twice, and on the GUI thread it froze every window for that long;
+    pywebview hands `load_url` to the GUI thread itself.
+    """
     try:
-        native.run_on_gui_thread(lambda: reload_session(session, port))
+        reload_session(session, port)
     except (ConversionError, NotReadyError):
         say(
             "Libera Suite could not reload the document",

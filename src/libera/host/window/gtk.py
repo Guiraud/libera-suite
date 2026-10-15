@@ -4,10 +4,9 @@ One of the three toolkit modules `windows` chooses between, each a
 `portable.Toolkit`; `portable` supplies all of it here but the two calls
 that put a message on screen.
 
-PyGObject is imported where a dialog is built rather than at the top. It is a
-system package, so it can be missing wherever this module is merely imported
--- the test tier, `libera --serve` on a headless box -- and only a question on
-screen needs it.
+PyGObject is imported only where a dialog is built. It is a system package, so
+it can be missing wherever this module is merely imported (the test tier,
+`libera --serve` on a headless box), and only a question on screen needs it.
 """
 
 from __future__ import annotations
@@ -50,9 +49,9 @@ __all__ = [
 def ask(question: Question, parent: Window | None) -> Answer:
     """A modal question, laid out as GNOME does: the default rightmost.
 
-    **Not `create_confirmation_dialog`.** pywebview's is two buttons, where
-    the close prompt needs three, and it hands the work to the GTK thread and
-    waits -- which deadlocks when the caller is already on that thread, as the
+    **Not `create_confirmation_dialog`.** pywebview's has two buttons where
+    the close prompt needs three. It also hands its call to the GTK thread and
+    waits, which deadlocks when the caller is already on that thread, as the
     `closing` handler is.
     """
     gtk = _import_gtk()
@@ -103,19 +102,20 @@ def _run_dialog(
     waits for the answer, which is the same shape as run_on_gui_thread on the
     macOS side.
 
-    The questions this asks were macOS-only, and each one said so in a comment
-    that ended "nowhere to ask". Two of them cost a user their work: closing a
-    window with unsaved edits closed it, and the recovery offer that was
-    supposed to catch that never appeared either, so the edits sat in the
-    session directory with nothing to surface them.
+    The questions this asks were macOS-only; each one said so in a comment
+    that ended "nowhere to ask". Two of them cost a user their work. Closing a
+    window with unsaved edits closed it. The recovery offer that was supposed
+    to catch that never appeared either, so the edits sat in the session
+    directory with nothing to surface them.
     """
     gtk = _import_gtk()
     from gi.repository import GLib
 
     answer: list[int] = []
+    failure: list[Exception] = []
     done = threading.Event()
 
-    def show() -> bool:
+    def run_dialog() -> int:
         dialog = gtk.MessageDialog(
             transient_for=getattr(parent, "native", None),
             modal=True,
@@ -127,10 +127,20 @@ def _run_dialog(
             dialog.add_button(label, response_id)
         dialog.set_default_response(buttons[-1][1])
         try:
-            answer.append(int(dialog.run()))
+            return int(dialog.run())
         finally:
             dialog.destroy()
-        done.set()
+
+    def show() -> bool:
+        # Whatever this raises is raised again on the thread that asked. Left
+        # on the GTK thread, GLib logged it, `done` was never set, and the
+        # request waited for good.
+        try:
+            answer.append(run_dialog())
+        except Exception as e:
+            failure.append(e)
+        finally:
+            done.set()
         return False  # idle_add repeats until its callback says otherwise
 
     if threading.current_thread() is threading.main_thread():
@@ -141,4 +151,6 @@ def _run_dialog(
         # No timeout: a question is answered when somebody answers it, and the
         # macOS alert on the other side of this blocks in exactly the same way.
         done.wait()
+    if failure:
+        raise failure[0]
     return answer[0] if answer else int(gtk.ResponseType.DELETE_EVENT)

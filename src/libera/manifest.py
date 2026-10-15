@@ -37,8 +37,8 @@ from pathlib import Path
 # compliance without being it. Add the second host when there is a public one.
 #
 # `libera_commit` has the same gap from the other side: it is a sourcehut SHA,
-# and the GitHub mirror is a filtered push whose SHAs differ, so a stranger
-# cannot resolve it. See "Where this lives" in CLAUDE.md.
+# which a stranger cannot resolve, because the GitHub mirror is a filtered push
+# whose SHAs differ. See "Where this lives" in CLAUDE.md.
 REPOSITORIES = ("https://github.com/abilian/libera-suite",)
 UPSTREAM = "https://github.com/Euro-Office"
 
@@ -120,7 +120,7 @@ class Manifest:
     def select(self, platform: str) -> list[Artifact]:
         """What a machine of `platform` installs: its own core, and the shared
         artifacts. A manifest with no core for it is refused here, before any
-        download, rather than discovered after one."""
+        download."""
         chosen = [
             a for a in self.artifacts if a.kind != "core" or a.platform == platform
         ]
@@ -140,10 +140,10 @@ def hash_file(path: Path) -> str:
 
 def describe(path: Path) -> Artifact:
     """An artifact, from its file. The platform comes from the name, not from
-    the machine doing the describing: a release's directory holds every
-    platform's core, built on each and collected here, and labelling them all
-    with whichever machine wrote the manifest last would hand macOS users a
-    Linux build."""
+    the machine doing the describing. A release's directory holds every
+    platform's core, each built on its own platform and collected onto one
+    machine; labelling them all with whichever machine wrote the manifest last
+    would hand macOS users a Linux build."""
     if path.name.startswith("core-"):
         kind, platform = "core", path.name[len("core-") : -len(".tar.gz")]
     else:

@@ -1,6 +1,6 @@
 """The Linux menu bar.
 
-The other upper half. It reads `actions` for what the items do, the same
+The other upper layer. It reads `actions` for what the items do, the same
 functions AppKit's selectors call, and nothing in `actions` reads back.
 
 pywebview's GTK backend turns a list of `webview.Menu` into a `Gio.Menu` and
@@ -12,24 +12,24 @@ relying on it: `lb linux gui` screenshots File, Edit, View and Help across
 the top of the window. So the whole bar is one list, handed to
 `webview.start(menu=...)` before the application starts.
 
-**No key equivalents, by design.** `webview.MenuAction` carries no shortcut,
-and the editor already owns Ctrl-S, Ctrl-P, Ctrl-Z and the rest inside the
+**No key equivalents, by design.** `webview.MenuAction` has no shortcut,
+while the editor already owns Ctrl-S, Ctrl-P, Ctrl-Z and the rest inside the
 page. A menu accelerator would be a
 second handler for a key that already works, which is the doubling PAGE_YIELDS
-exists to prevent on the Mac. The items worth having here are the ones the
-page has no equivalent for: New, Open, Open Recent, Reload, Close.
+exists to prevent on the Mac. The items here are the ones the page has no
+equivalent for: New, Open, Open Recent, Reload, Close.
 
 **Built once, before the application runs**, because that is the only moment
 pywebview reads it. Open Recent therefore lists what was remembered at
 startup: opening a document during the session does not add a line to it until
-the next launch, and a first-ever run has no Open Recent submenu at all. The
+the next launch; a first-ever run has no Open Recent submenu at all. The
 alternative is reaching into `webview.platforms.gtk._app` and calling
-`set_menubar` again, and its action names collide on a second
+`set_menubar` again, where the action names collide on a second
 build -- `create_menu` appends an underscore until the name is free -- so a
 rebuilt bar leaks a dead action per item.
 
 **Nothing greys out.** `actions.is_enabled` decides that on the Mac, through
-validateMenuItem:, and Gio's equivalent is `Gio.SimpleAction.set_enabled` on an
+validateMenuItem:. Gio's equivalent is `Gio.SimpleAction.set_enabled` on an
 action pywebview owns and names by a rule of its own. Save on an unmodified
 document and Undo with an empty history therefore stay available here and do
 nothing when used, which is what the same keystrokes already do inside the
@@ -57,12 +57,12 @@ def make_menubar() -> list:
     Linux and Windows both: pywebview's WinForms backend draws the same list
     as each window's menu strip.
     """
-    # No submenu rather than an empty one: Gio has no disabled item pywebview
+    # No submenu when nothing is remembered: Gio has no disabled item pywebview
     # can reach, so "No Recent Documents" would be a live item that does
     # nothing, which reads as broken.
     remembered = actions.read_recent_documents()
 
-    # partial rather than a lambda: a comprehension keeps one binding for all
+    # partial, because a comprehension keeps one binding for all
     # of its iterations, so `lambda: open_recent(path)` would give every item
     # the last document. ruff B023 says the same thing.
     recent: list = (

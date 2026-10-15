@@ -1,4 +1,4 @@
-"""What every toolkit answers, and what pywebview answers the same everywhere.
+"""What every toolkit answers, with pywebview's answers where they hold everywhere.
 
 The bottom of the window package. Three toolkit modules draw windows and
 dialogs -- `macos`, `gtk`, `win32` -- and `windows` picks one of them, once, as
@@ -32,10 +32,10 @@ class Answer(enum.Enum):
     """What somebody said to a question.
 
     Named for what it means rather than where the button was, because the
-    toolkits do not agree on where buttons go: macOS puts Cancel between Save
+    toolkits do not agree on where buttons go. macOS puts Cancel between Save
     and Don't Save, GNOME puts the default rightmost, and a Win32 message box
     has Yes, No and Cancel and nothing else. A dialog dismissed without an
-    answer -- Escape, or the window manager -- is CANCEL.
+    answer (Escape, or the window manager) is CANCEL.
     """
 
     YES = "yes"
@@ -45,10 +45,10 @@ class Answer(enum.Enum):
 
 @dataclass(frozen=True)
 class Question:
-    """What to ask, and what to call each answer, the same on every platform.
+    """What to ask and what to call each answer, the same on every platform.
 
-    `cancel` is the third choice where there is one -- the close prompt's --
-    and absent from a yes-or-no question.
+    `cancel` is the third choice where there is one (the close prompt's), and
+    absent from a yes-or-no question.
     """
 
     title: str
@@ -59,8 +59,8 @@ class Question:
 
 
 class Toolkit(Protocol):
-    """What a toolkit module answers. A module, not a class: there is one of
-    each, and the type checkers hold a module to a Protocol as readily."""
+    """What a toolkit module answers. Each toolkit is a module, one of each;
+    the type checkers hold a module to a Protocol as readily as a class."""
 
     def run_on_gui_thread(self, work: Callable[[], T]) -> T:
         """Run work where the toolkit wants it, and return its answer."""
@@ -103,8 +103,8 @@ def run_on_gui_thread(work: Callable[[], T]) -> T:
     """Run it here.
 
     pywebview's GTK and WinForms backends marshal their own calls onto the GUI
-    thread, and what this application asks those toolkits directly -- a GTK
-    dialog, MessageBoxW -- sees to its own thread.
+    thread. What this application asks those toolkits directly (a GTK dialog,
+    MessageBoxW) sees to its own thread.
     """
     return work()
 
@@ -119,7 +119,7 @@ def set_fullscreen(window: Window, on: bool) -> None:
     all there is, and sdkjs's explicit on and off cannot be honoured.
 
     Not for a window pywebview has not finished making: its methods wait for
-    the window to be shown, and this is called from a request.
+    the window to be shown, while this is called from a request.
     """
     if window.native is not None:
         window.toggle_fullscreen()
@@ -178,6 +178,6 @@ def prepare() -> None:
 
 
 def complete_startup(then: Callable[[], None]) -> None:
-    """Run it: pywebview calls this as the GUI loop starts, and there is
-    nothing else to wait for."""
+    """Run it: pywebview calls this as the GUI loop starts, with nothing else
+    left to wait for."""
     then()

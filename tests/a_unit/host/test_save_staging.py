@@ -7,6 +7,9 @@ during a Cmd-S wrote the same path.
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -108,3 +111,99 @@ def test_a_save_whose_format_is_not_an_id_is_a_bad_request(note):
 
     assert refused.value.status == 400
     assert document.read_bytes() == b"the document as it was"
+
+
+def test_a_save_that_fails_part_way_leaves_the_document_whole(note, monkeypatch):
+    """Copied over in place, a full disk part way through left half a file
+    where the good one had been."""
+    host, document = note
+    monkeypatch.setattr(convert, "export", exporting(b"the saved document"))
+
+    def disk_full(_src, dst):
+        dst.write(b"the sa")
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(saving.shutil, "copyfileobj", disk_full)
+
+    with pytest.raises(OSError, match="No space left"):
+        saving.save_document(host, SaveRequest())
+
+    assert document.read_bytes() == b"the document as it was"
+    assert sorted(p.name for p in document.parent.iterdir()) == ["note.docx", "state"]
+
+
+def test_a_save_through_a_symlink_keeps_the_link(note, monkeypatch, tmp_path):
+    host, document = note
+    link = tmp_path / "shortcut.docx"
+    link.symlink_to(document)
+    host.write_current_document(link)
+    monkeypatch.setattr(convert, "export", exporting(b"the saved document"))
+
+    saving.save_document(host, SaveRequest())
+
+    assert link.is_symlink()
+    assert document.read_bytes() == b"the saved document"
+
+
+def test_a_save_keeps_the_documents_mode(note, monkeypatch):
+    host, document = note
+    document.chmod(0o640)
+    monkeypatch.setattr(convert, "export", exporting(b"the saved document"))
+
+    saving.save_document(host, SaveRequest())
+
+    assert document.stat().st_mode & 0o777 == 0o640
+
+
+def test_a_new_document_gets_the_mode_a_new_file_gets(tmp_path):
+    """Not mkstemp's 0600, which would have made every new document private."""
+    staged = tmp_path / "staged.docx"
+    staged.write_bytes(b"new")
+    umask = os.umask(0)
+    os.umask(umask)
+
+    saving.replace_document(staged, tmp_path / "new.docx")
+
+    assert (tmp_path / "new.docx").stat().st_mode & 0o777 == 0o666 & ~umask
+
+
+XATTR = "/usr/bin/xattr"
+FINDER_TAGS = "com.apple.metadata:_kMDItemUserTags"
+# Any bytes will do: what is checked is that the attribute is still there.
+RED_TAG = b"bplist00 a red tag"
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Finder tags")
+def test_a_save_keeps_the_documents_finder_tags(note, monkeypatch):
+    """A rename alone gave the document the new file's attributes: none."""
+    host, document = note
+    subprocess.run(
+        [XATTR, "-wx", FINDER_TAGS, RED_TAG.hex(), str(document)], check=True
+    )
+    subprocess.run(
+        [XATTR, "-w", "eu.liberasuite.test", "kept", str(document)], check=True
+    )
+    monkeypatch.setattr(convert, "export", exporting(b"the saved document"))
+
+    saving.save_document(host, SaveRequest())
+
+    names = subprocess.run(
+        [XATTR, str(document)], capture_output=True, text=True, check=True
+    ).stdout.split()
+    assert document.read_bytes() == b"the saved document"
+    assert FINDER_TAGS in names
+    assert "eu.liberasuite.test" in names
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux extended attributes")
+def test_a_save_keeps_the_documents_extended_attributes(note, monkeypatch):
+    host, document = note
+    try:
+        os.setxattr(document, "user.liberasuite", b"kept")
+    except OSError:
+        pytest.skip("this file system takes no user attributes")
+    monkeypatch.setattr(convert, "export", exporting(b"the saved document"))
+
+    saving.save_document(host, SaveRequest())
+
+    assert os.getxattr(document, "user.liberasuite") == b"kept"

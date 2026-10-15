@@ -102,7 +102,7 @@ def test_anything_else_is_refused(window, asked):
 
 def test_the_key_may_come_in_its_cookie(window):
     """Every request after a window's first: its frames, scripts and fonts."""
-    cookie = f"theme=dark; {admission.KEY_COOKIE}={instance.TOKEN}"
+    cookie = f"theme=dark; {admission.cookie_name(PORT)}={instance.TOKEN}"
 
     assert admit(key=None, cookie=cookie) is window
 
@@ -113,10 +113,18 @@ def test_the_key_may_come_in_its_cookie(window):
         {"key": None},
         {"key": ""},
         {"key": "guessed"},
-        {"key": None, "cookie": f"{admission.KEY_COOKIE}=guessed"},
+        {"key": None, "cookie": f"{admission.cookie_name(PORT)}=guessed"},
         {"key": None, "cookie": f"other={instance.TOKEN}"},
+        {"key": None, "cookie": f"{admission.cookie_name('43111')}={instance.TOKEN}"},
     ],
-    ids=["no key", "empty key", "wrong key", "wrong cookie", "another cookie"],
+    ids=[
+        "no key",
+        "empty key",
+        "wrong key",
+        "wrong cookie",
+        "another cookie",
+        "another port's cookie",
+    ],
 )
 def test_a_request_without_the_key_is_refused(window, asked):
     """Headers stop a browser, and no other client: curl, from any account on
@@ -188,7 +196,7 @@ def test_the_first_page_hands_its_key_to_a_cookie(port):
     cookie = first.getheader("Set-Cookie", "")
     later = ask(port, "POST", "/__host__/reveal?session=s", {"Cookie": cookie})
 
-    assert f"{admission.KEY_COOKIE}={instance.TOKEN}" in cookie
+    assert f"{admission.cookie_name(str(port))}={instance.TOKEN}" in cookie
     assert "HttpOnly" in cookie
     assert "SameSite=Strict" in cookie
     assert later.status == 204

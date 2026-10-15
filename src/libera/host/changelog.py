@@ -34,8 +34,8 @@ class ChangeLog:
         return self.path.is_file() and self.path.stat().st_size > 0
 
     def record(self, raw: str, index: int | None, count: int) -> None:
-        """Take what the editor sent. Three things are load-bearing, and
-        getting any of them wrong loses edits silently:
+        """Take what the editor sent. Getting any of these three wrong loses
+        edits silently:
 
         * append, never rewrite: the editor sends a final flush with count 0,
           and rewriting there throws away everything typed;

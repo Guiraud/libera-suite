@@ -1,11 +1,11 @@
-"""Windows: which ones exist, which is in front, and what is in them.
+"""Windows: which ones exist, which is in front and what is in them.
 
-The lower half of the package. Nothing here puts a dialog on screen -- that is
-`dialogs`, which is above this and calls into it.
+The lower half of the package. Nothing here puts a dialog on screen:
+`dialogs` does, from above, calling into this module.
 
 `native` is chosen here, once: the toolkit module that draws this platform's
-windows and dialogs -- `macos`, `gtk` or `win32`, each a `portable.Toolkit`.
-Both halves of the package go through it, and nothing else tests the
+windows and dialogs (`macos`, `gtk` or `win32`, each a `portable.Toolkit`).
+`windows` and `dialogs` both go through it, and nothing else tests the
 platform.
 """
 
@@ -39,7 +39,8 @@ if TYPE_CHECKING:
     from libera.host.window.portable import Toolkit
 
 # Typed, so each platform's pass of `make lint` holds its module to the
-# Protocol: a call one toolkit lacks fails there, not on that platform.
+# Protocol: a call one toolkit lacks fails in lint, before it can fail at run
+# time on that platform.
 native: Toolkit = _toolkit
 
 logger = logging.getLogger(__name__)
@@ -49,10 +50,10 @@ WINDOW_SIZE = (1400, 900)
 
 
 def create_window(title: str, url: str, size: tuple[int, int] = WINDOW_SIZE) -> Window:
-    """A window, or a clear failure instead of a None nobody checks.
+    """A window, or a NotReadyError where pywebview would return None.
 
-    pywebview types create_window as `Window | None`, and the callers all went
-    straight on to `window.uid` -- correct in practice and a crash in the one
+    pywebview types create_window as `Window | None`; the callers all went
+    straight on to `window.uid`, correct in practice and a crash in the one
     case the type is there to describe. Saying so once beats five unchecked
     dereferences.
     """
@@ -75,8 +76,8 @@ def remember_start_window(window: Window) -> None:
 
 
 def forget_start_window(window: Window) -> None:
-    """Closed by hand rather than by opening a document, it leaves the list
-    too, or the next request to show it would find a dead window."""
+    """Closed by hand, it leaves the list too, or the next request to show it
+    would find a dead window."""
     if window in _start_windows:
         _start_windows.remove(window)
 
@@ -92,9 +93,9 @@ def bring_start_window_forward() -> bool:
 def close_start_window() -> None:
     """The start window has done its job once a document is on screen.
 
-    LibreOffice's Start Center behaves this way, and the alternative -- leaving
-    it open behind every document -- means a window nobody asked for is the one
-    keeping the application alive.
+    LibreOffice's Start Center behaves this way. Leaving it open behind every
+    document would make a window the user never asked for the one keeping the
+    application alive.
     """
     for window in _start_windows:
         window.destroy()
@@ -118,17 +119,16 @@ def find_front_session() -> Session | None:
 def find_front_window() -> Window | None:
     """The window a menu item or dialog should act on.
 
-    What the toolkit says is in front, then pywebview's active window, then
-    the only window there is, because "no window" is never the right answer
+    The window the toolkit says is in front, then pywebview's active window,
+    then the only window there is, because "no window" is never the right answer
     while one is open.
     """
     if not webview.windows:
         return None
-    return (
-        native.find_key_window(webview.windows)
-        or webview.active_window()
-        or webview.windows[0]
-    )
+    # The key window is AppKit's to say, and AppKit is main-thread-only; the
+    # menu, a new document and full screen ask from other threads.
+    key = native.run_on_gui_thread(lambda: native.find_key_window(webview.windows))
+    return key or webview.active_window() or webview.windows[0]
 
 
 def copy_untitled(blank: Path, base: Path) -> Path:
@@ -150,13 +150,12 @@ def copy_untitled(blank: Path, base: Path) -> Path:
 def make_new_document(app: apps.App | None = None) -> Path:
     """The document File > New should make, for the window that asked.
 
-    `app` names the editor when the caller knows it -- the start window asks
+    `app` names the editor when the caller knows it: the start window asks
     for a spreadsheet from a session that is showing nothing. Without it the
     answer comes from the front window, which is what a menu item means.
 
-    Separate from putting it in a window, and this is the whole reason: the
-    decision is the part that has been wrong twice, and a window cannot be
-    created in a test.
+    Separate from putting it in a window, because the decision is the part
+    that has been wrong twice and a window cannot be created in a test.
 
     It asks the front window's session, or the first when nothing is in
     front. File > New arrives on a request thread when the editor sends it,
@@ -180,11 +179,11 @@ def fold_changes_in(session: Session) -> None:
     The editor works on Editor.bin plus a log of changes it streams as it
     types; a reload hands it Editor.bin alone, which is the document as it was
     opened. Converting out and back in makes the edits part of the base, and
-    leaves an empty log -- the same round trip a save does, without a
+    leaves an empty log: the same round trip a save does, without a
     destination.
 
-    Raises ConversionError when it does not work, and then the edits are
-    still in the log, which is what a save merges.
+    Raises ConversionError when it does not work; the edits are then still in
+    the log, which is what a save merges.
     """
     if not session.change_log:
         return
@@ -192,8 +191,11 @@ def fold_changes_in(session: Session) -> None:
     ext, fmt = session.editor.formats[0]
     session.out_dir.mkdir(parents=True, exist_ok=True)
     staged = session.out_dir / f"recovered.{ext}"
-    convert.export(session, staged, fmt, None)
-    convert.convert_to_editor_bin(session, staged)
+    # Both under the lock: the export reads the log, and the conversion back
+    # replaces it, so an edit taken between the two was deleted with it.
+    with session.lock:
+        convert.export(session, staged, fmt, None)
+        convert.convert_to_editor_bin(session, staged)
     logger.info("reload: folded the edits into %s", staged.name)
 
 
@@ -202,12 +204,12 @@ def reload_session(session: Session, port: int) -> None:
 
     Folds the change log into Editor.bin first: the editor works on
     Editor.bin plus the log it streams as you type, and a reload hands it
-    Editor.bin alone -- the document as it was *opened*. Without the fold,
+    Editor.bin alone, the document as it was *opened*. Without the fold,
     reloading would silently undo everything since.
 
-    And not at all when the fold fails. The reloaded editor counts its changes
-    from nought again, so its first one would cut the log -- the edits the
-    fold could not keep -- back to nothing. The window as it is can still
+    It does not reload at all when the fold fails. The reloaded editor counts
+    its changes from nought again, so its first one would cut the log (the
+    edits the fold could not keep) back to nothing. The window as it is can still
     save them.
     """
     window = find_window(session)
@@ -274,9 +276,9 @@ def listen_for_drops() -> None:
 
     A page is only told a dropped file's name. pywebview's native layer reads
     the paths off the drag on all three platforms, but only while a drop
-    listener is registered, and it counts them in `webview.dom._dnd_state`.
+    listener is registered; it counts the listeners in `webview.dom._dnd_state`.
     Registering one through pywebview's DOM API would also put its handler on
-    the top document, which consumes those paths -- racing the bridge, which
+    the top document, which consumes those paths and races the bridge, which
     asks for them itself (`take_dropped`). So the count, directly: private, and
     `tests/a_unit/host/test_drops.py` checks its shape against the installed
     pywebview.
@@ -287,7 +289,7 @@ def listen_for_drops() -> None:
 def take_dropped(names: list[str]) -> list[Path]:
     """The full paths of the files just dropped, by the names the page saw.
 
-    The newest record of a name wins, and every record of it goes: a drop the
+    The newest record of a name wins and every record of it goes: a drop the
     page never asked about (one that missed every frame) must not answer for
     the next file of the same name.
     """

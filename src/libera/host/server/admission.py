@@ -1,7 +1,7 @@
-"""Who may ask, and what every answer says about itself.
+"""Who may ask; what every answer says about itself.
 
 The server is on 127.0.0.1, which every page in every browser on this machine
-can reach, so this is security policy, not plumbing.
+can reach, so this module is security policy.
 """
 
 from __future__ import annotations
@@ -30,21 +30,31 @@ FRAME_ANCESTORS = "frame-ancestors 'self'"
 SECURITY_HEADERS = (
     ("Content-Security-Policy", FRAME_ANCESTORS),
     # The declared type is the type: a browser that sniffed text/plain into
-    # HTML would undo what the adapter's plain-text refusals guarantee.
+    # HTML would undo the adapter's guarantee that a refused request is
+    # answered in plain text.
     ("X-Content-Type-Options", "nosniff"),
     # The key rides in each window's first URL: never in a Referer.
     ("Referrer-Policy", "no-referrer"),
 )
 
-# What carries the key once a window has shown it in its first URL: every
-# later request the page makes, its frames, scripts and fonts included, sends
-# it without the bridge having to add it.
-KEY_COOKIE = "libera_key"
+
+def cookie_name(port: str) -> str:
+    """The cookie that brings the key back once a window has shown it in its
+    first URL: every later request the page makes, its frames, scripts and
+    fonts included, sends it without the bridge having to add it.
+
+    Named for the port, because a browser keeps cookies by host and not by
+    port, and both copies of Libera Suite share one webview profile. With one
+    name, a second copy (a hand-off that timed out) set its key over the
+    first's, and every request of the first's that had only the cookie was
+    refused.
+    """
+    return f"libera_key_{port}"
 
 
-def key_cookie() -> str:
+def key_cookie(port: str) -> str:
     """The Set-Cookie value that hands this instance's key to the page."""
-    return f"{KEY_COOKIE}={instance.TOKEN}; Path=/; HttpOnly; SameSite=Strict"
+    return f"{cookie_name(port)}={instance.TOKEN}; Path=/; HttpOnly; SameSite=Strict"
 
 
 def admit(
@@ -65,12 +75,12 @@ def admit(
     the recent list, any file media-import was told to copy in.
 
     **Origin, when there is one, must be ours.** A browser sends it with every
-    POST another page makes, and a text/plain POST needs no preflight.
+    POST another page makes; a text/plain one needs no preflight.
     Measured before this check: a request from another origin, with no session
     named, truncated the open document's change log to nothing. Our own pages
     send our origin; the hand-off and the tests send none.
 
-    **Sec-Fetch-Site, when there is one, must say so too.** A GET carries no
+    **Sec-Fetch-Site, when there is one, must say so too.** A GET has no
     Origin, so another site could load `<script src>` from one of our
     addresses and read what it declares: the bridge's prelude says who has the
     open document locked. The browser marks every request it sends with where
@@ -82,14 +92,14 @@ def admit(
     The three checks above stop a browser, and nothing else: any process on
     this machine, another account's included, can send whatever headers it
     likes. Measured before this check: `curl` from the command line read the
-    open document out of /__host__/opened. The key is `instance.TOKEN`, which
-    the window's first URL carries, and which instance.json holds for a second
-    launch, in a file only this user can read.
+    open document out of /__host__/opened. The key is `instance.TOKEN`, in the
+    window's first URL and, for a second launch, in instance.json, a file only
+    this user can read.
 
     **The session must exist.** Static requests name none and get the first,
     which is harmless because the payload is shared. A request about a
-    document names its session, and one that has gone is refused: see
-    session.lookup.
+    document names its session and is refused if that session has gone (see
+    session.lookup).
     """
     host, origin = headers.get("Host"), headers.get("Origin")
     fetch_site = headers.get("Sec-Fetch-Site")
@@ -103,7 +113,7 @@ def admit(
             "refused: Host %s, Origin %s, Sec-Fetch-Site %s", host, origin, fetch_site
         )
         raise Refused(403)
-    presented = query.get("key", [""])[0] or _key_from(headers.get("Cookie"))
+    presented = query.get("key", [""])[0] or _key_from(headers.get("Cookie"), port)
     if not hmac.compare_digest(presented.encode(), instance.TOKEN.encode()):
         logger.info("refused: no key, or the wrong one")
         raise Refused(403)
@@ -113,7 +123,7 @@ def admit(
         raise Refused(404, str(e)) from e
 
 
-def _key_from(cookie: str | None) -> str:
+def _key_from(cookie: str | None, port: str) -> str:
     jar = http.cookies.SimpleCookie(cookie or "")
-    found = jar.get(KEY_COOKIE)
+    found = jar.get(cookie_name(port))
     return found.value if found else ""

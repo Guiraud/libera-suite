@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 def check_ready(session: Session) -> None:
-    """Fail early and legibly rather than 404-ing every asset.
+    """Fail early and legibly, before every asset 404s.
 
-    The payload only. Editor.bin is session state, not payload, and a start
-    window has no document and therefore no Editor.bin -- opening one is what
-    creates it, and opening reports its own failure.
+    The payload only. Editor.bin is session state; a start window has no
+    document and therefore no Editor.bin -- opening one creates it and reports
+    its own failure.
     """
     for path in (session.payload, session.layout.web_all_fonts):
         if not path.exists():
@@ -37,8 +37,8 @@ def check_ready(session: Session) -> None:
 
 
 class QuietHandler(WSGIRequestHandler):
-    """wsgiref's handler, without its line per request on stderr: what is
-    worth logging, `_log_answer` logs."""
+    """wsgiref's handler, without its line per request on stderr:
+    `_log_answer` does the logging."""
 
     @override
     def log_message(self, format: str, *args: Any) -> None:
@@ -50,9 +50,9 @@ class Server(socketserver.ThreadingMixIn, WSGIServer):
 
     daemon_threads = True
 
-    # On Windows SO_REUSEADDR is not about TIME_WAIT -- a listener rebinds
-    # through that without it -- but lets a second socket bind a port another
-    # is already listening on. Two instances would then share PREFERRED_PORT
+    # On Windows a listener rebinds through TIME_WAIT without SO_REUSEADDR,
+    # which there lets a second socket bind a port another is already
+    # listening on. Two instances would then share PREFERRED_PORT
     # and split its requests between them.
     allow_reuse_address = sys.platform != "win32"
 
@@ -95,7 +95,7 @@ def _set_exclusive(s: socket.socket) -> None:
     That is the mirror of the reason `make lint-linux` exists. `sys.platform` is
     a fact at check time: a checker prunes the branches for other platforms,
     which hides what is in them -- and reports what is *outside* a branch as
-    missing. Both halves want the platform test where the attribute is read.
+    missing. Both cases want the platform test where the attribute is read.
     """
     if sys.platform == "win32":
         s.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
@@ -117,7 +117,7 @@ def find_free_port() -> int:
     """The editor's port: the usual one, or any free one if it is taken.
 
     A second window falls back and forgets its settings. One window remembering
-    beats neither, and the alternative is failing to start.
+    beats neither; the alternative is failing to start.
     """
     with socket.socket() as s:
         # SO_REUSEADDR because the previous window's connections sit in

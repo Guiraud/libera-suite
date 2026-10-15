@@ -1,7 +1,7 @@
 """The Recent list, which outlives any one session.
 
 The editor asks for it through LocalFileRecents and takes the answer through
-window.onupdaterecents. Records carry a format id, and Words silently drops
+window.onupdaterecents. Records hold a format id, and Words silently drops
 anything outside FILE_DOCUMENT..FILE_PRESENTATION -- so the id has to be right
 or the list stays empty with no error.
 """
@@ -36,8 +36,8 @@ def _find_format_id(document: pathlib.Path) -> int:
 
 
 # One writer at a time. Twelve documents opened together each read the list,
-# added themselves and wrote it back, and the last write won: one to four of
-# the twelve were left (measured, 20 runs of 20).
+# added themselves and wrote it back. The last write won, leaving one to four
+# of the twelve (measured, 20 runs of 20).
 _WRITING = threading.Lock()
 
 
@@ -62,7 +62,7 @@ def remember_recent(session: Session, document: pathlib.Path) -> None:
 
 
 def _is_entry(entry: object) -> bool:
-    """A record this module wrote, rather than whatever else the file holds.
+    """Whether `entry` is a record of the shape this module writes.
 
     The file outlives the version that wrote it, so a different shape is an
     ordinary state to be in. json.loads accepts every one of them, and
@@ -85,9 +85,9 @@ def read_recents(session: Session) -> list[dict]:
     try:
         entries = json.loads(session.recents.read_text(encoding="utf-8"))
     except (ValueError, OSError) as e:
-        # An empty Recent list is the right behaviour -- a corrupt file must
-        # not stop a menu opening -- but doing it silently means nobody ever
-        # finds out the list has stopped working.
+        # An empty Recent list is the right behaviour, since a corrupt file
+        # must not stop a menu opening. Doing it silently, though, means no one
+        # ever finds out the list has stopped working.
         logger.warning("cannot read the recent list at %s: %s", session.recents, e)
         return []
     if not isinstance(entries, list):
@@ -106,8 +106,8 @@ def read_recents(session: Session) -> list[dict]:
 def read_recents_for_editor(session: Session) -> tuple[bytes, str]:
     """Serve the Recent list in the shape Desktop.js parses.
 
-    id is the path: it comes straight back to us on open, and a path we can
-    check against the list is safer than an index into a list that moves.
+    id is the path: it comes straight back to us on open. A path we can check
+    against the list is safer than an index into a list that moves.
     """
     body = [
         {"id": e["path"], "path": e["path"], "type": e["type"]}

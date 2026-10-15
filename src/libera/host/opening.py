@@ -54,10 +54,10 @@ def has_unsaved_edits(found: Session, document: pathlib.Path) -> bool:
             document
         )
     except (ValueError, OSError) as e:
-        # Answering False here means "nothing to recover", and the edits go
+        # Answering False here means "nothing to recover": the edits go
         # without the user being asked. That is the right answer for a marker
-        # we cannot read -- there is nothing to offer them *about* -- but it
-        # is never a right answer to give quietly.
+        # we cannot read, since there is nothing to offer them *about*; it
+        # must still never be given without a warning in the log.
         logger.warning("unreadable recovery marker at %s: %s", marker, e)
         return False
 

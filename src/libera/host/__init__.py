@@ -13,7 +13,7 @@ The layers, innermost first, and nothing imports anything above it:
     instance   one running copy: a second launch hands its documents over
     locking    lock files: a document open here, or open somewhere else
     convert    x2t: documents in, documents out
-    saving     what a save request means, and carrying it out
+    saving     what a save request means, and doing the save
     recents    the Recent list
     opening    opening a document into a session, and recovering a crash
     server     HTTP: routing, endpoints, the injected bridge
@@ -22,10 +22,9 @@ The layers, innermost first, and nothing imports anything above it:
     app        run(): the server, the first windows, the menu
 
 `tests/a_unit/host/test_layering.py` checks that order against the real import
-graph, so this is a contract rather than a description. Two edges used to
-break it, both hidden behind function-level imports -- `server` and `window`
-reaching up to `menu`. `shortcuts` and `app` are where the things they were
-reaching for went.
+graph, so this list is a contract. Two edges used to break it, both hidden
+behind function-level imports: `server` and `window` reaching up to `menu`. The
+things they were reaching for went to `shortcuts` and `app`.
 """
 
 from __future__ import annotations

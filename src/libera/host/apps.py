@@ -39,7 +39,7 @@ def _split_exts(names: str) -> frozenset[str]:
 
 @dataclass(frozen=True)
 class App:
-    """One editor, and the handful of facts that make it that editor."""
+    """One editor, with the handful of facts that make it that editor."""
 
     name: str
     title: str
@@ -53,7 +53,7 @@ class App:
     # The id the editor's Recent list files a document under when x2t has no
     # id for its extension. From web-apps' own FileFormat table, not from x2t:
     # matchFileFormat drops an entry outside the editor's range without a
-    # word, and Diagrams, which x2t writes nothing for, still needs a DRAW id.
+    # word; Diagrams, which x2t writes nothing for, still needs a DRAW id.
     recent_id: int
     save_formats: tuple[tuple[str, str], ...]
     blank: str | None = None
@@ -181,7 +181,7 @@ DIAGRAMS = App(
     # FILE_DRAW_VSDX. The Diagrams list takes any of the six DRAW ids and
     # shows each as a .vsdx, so one serves every extension above.
     recent_id=16385,
-    # No blank, no formats, no save: see the module docstring.
+    # Neither a blank nor formats, so nothing to save: see the module docstring.
     formats={},
     save_formats=(),
 )
@@ -193,8 +193,8 @@ BY_NAME = {app.name: app for app in ALL}
 def choose_for(document: pathlib.Path) -> App:
     """Which editor opens this file.
 
-    Words is the fallback rather than an error: it is the one that reads plain
-    text, and an unknown extension is far more often a document than a
+    Words is the fallback, because it is the one that reads plain text and
+    because an unknown extension is far more often a document than a
     spreadsheet.
     """
     ext = document.suffix.lstrip(".").lower()

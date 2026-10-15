@@ -56,7 +56,7 @@ def generate(root: Path) -> int:
     web.mkdir(parents=True, exist_ok=True)
     images.mkdir(parents=True, exist_ok=True)
 
-    # Its output kept, and a failure turned into a PayloadError that says what
+    # Its output is kept, so a failure becomes a PayloadError that says what
     # it said: check=True raised CalledProcessError, which nothing above
     # catches, and threw the reason away with the captured stderr.
     try:
@@ -96,7 +96,7 @@ def generate(root: Path) -> int:
         msg = f"allfontsgen made {found} web fonts from {sources} in {fonts_src}"
         raise PayloadError(msg)
     # And the thumbnails, which it draws last: on Windows it once stopped at
-    # the second, and the font menu showed blank names.
+    # the second, leaving blank names in the font menu.
     drawn = len(list(images.glob("fonts_thumbnail*.png")))
     if drawn < THUMBNAILS:
         msg = f"allfontsgen drew {drawn} of {THUMBNAILS} font thumbnails"

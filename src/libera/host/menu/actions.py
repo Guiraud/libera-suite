@@ -1,6 +1,6 @@
-"""What a menu item does when it fires, and what decides whether it can.
+"""What a menu item does when it fires, and its availability.
 
-The lower half: a plain function per item, and the small helpers those call.
+The lower layer: a plain function per item, with the small helpers those call.
 `macos` and `gtk` put the items on a bar; nothing here knows a bar exists, and
 nothing here touches a toolkit.
 
@@ -96,8 +96,8 @@ def is_enabled(action: str, front: session.Session | None) -> bool:
         return True
     if action == "saveDocument:":
         return bool(front and front.unsaved_marker.is_file())
-    # Absent means the editor has not said yet: leave it available rather than
-    # grey out something that would have worked.
+    # Absent means the editor has not said yet: leave it available, since
+    # greying it out could disable something that would have worked.
     return bool(front.abilities.get(action.rstrip(":"), True)) if front else True
 
 
@@ -167,8 +167,8 @@ def close_window() -> None:
     no responder chain, so this destroys the window -- and pywebview's destroy
     emits delete-event, which is what raises the `closing` event `app.run`
     wired to confirm_close. So the menu item asks about unsaved changes by the
-    same path the title bar's button does, rather than by a second one that
-    would have to be kept in step.
+    same path the title bar's button does. A second path would have to be kept
+    in step.
     """
 
     def close():
@@ -238,8 +238,8 @@ def _open_help() -> None:
     registered for https -- Help did nothing at all and said nothing either.
     `open_url` waits for the opener and returns its verdict.
 
-    Reporting the URL is the fallback, and it is all we can do. What opens a
-    link is the desktop's business, and a sandbox makes that more so.
+    Reporting the URL is the fallback and all we can do: opening a link is
+    the desktop's business, more so inside a sandbox.
     """
     if desktop.open_url(HELP_URL):
         return
@@ -258,7 +258,7 @@ def show_about() -> None:
     route to the same sentences. The editor has an About panel of its own,
     which upstream switches off whenever `isDesktopApp` on the assumption that
     the native shell provides one; `build/upstream/patches/web-apps/0007` turns it back
-    on, and this is what the shell owes either way.
+    on. The shell owes this either way.
     """
 
     window.dialogs.say("Libera Suite", about.format_notice())
@@ -267,9 +267,9 @@ def show_about() -> None:
 def read_recent_documents() -> list[str]:
     """The remembered documents, for whichever menu is asking.
 
-    The list is shared by every session, so any one says where it is. Handed
-    the first, rather than binding it to the thread asking -- AppKit's menu
-    delegate, or `run()` itself -- which is what this used to do.
+    The list is shared by every session, so any one says where it is. This is
+    handed the first; it used to bind one to the thread asking (AppKit's menu
+    delegate, or `run()` itself).
     """
     first = next(iter(list(session.SESSIONS.values())), None)
     if first is None:

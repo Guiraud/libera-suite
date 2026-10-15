@@ -1,8 +1,8 @@
 """One Libera Suite per user: a second launch hands its documents to the first.
 
-Double-clicking a second document starts a second process, and a second
-process cannot share the first one's port -- so it would come up on another
-origin, which is another localStorage, which is an editor that has forgotten
+Double-clicking a second document starts a second process. That process
+cannot share the first one's port, so it would come up on another origin,
+which is another localStorage, which is an editor that has forgotten
 its theme, its units and every tip it has shown. It would also be a second
 icon in the taskbar for what the user thinks of as one application.
 
@@ -10,14 +10,14 @@ So the running instance says where it is, in `instance.json` under the state
 directory, and a later `libera FILE...` posts the paths to it and exits.
 
 Saying where it is comes late -- the window has to exist first -- so two
-launches at once both find nobody to hand off to: Explorer starts a process
+launches at once both find no instance to hand off to: Explorer starts a process
 per file of a multi-selection. One instance at a time is therefore claimed
 first, with a lock the operating system holds for the process and drops
 when it ends, however it ends. The others wait for the claimant to say where
 it is, and hand off to it. Two instances once shared a session directory, and
 each swept away the other's live sessions.
 
-The file carries the instance's token, which is also the key every request to
+The file holds the instance's token, which is also the key every request to
 its server needs (see `server.admission`): the windows have it in their URLs,
 and a second launch reads it here. The server is on 127.0.0.1, which any
 process on the machine and any web page the user visits can reach; only a
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Long enough for a busy instance to answer, short enough that a stale file
-# -- a crash left it, and nothing listens on that port now -- costs a user
+# (left by a crash, with nothing listening on that port now) costs a user
 # double-clicking a document no noticeable wait.
 HAND_OFF_TIMEOUT = 3.0
 
@@ -130,8 +130,8 @@ def withdraw() -> None:
     """Remove the announcement, if it is still ours. Called on the way out.
 
     Only ours: a second instance that could not reach this one (it was busy
-    starting) announces itself over the top, and the first one to exit must
-    not take the survivor's announcement with it.
+    starting) announces itself over the top. Whichever exits first must not
+    take the other's announcement with it.
     """
     with contextlib.suppress(OSError, ValueError):
         if json.loads(get_path().read_text(encoding="utf-8")).get("token") == TOKEN:

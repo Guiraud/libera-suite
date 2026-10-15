@@ -64,7 +64,7 @@ class TerseFormatter(logging.Formatter):
     """Two spaces and the message, which is what this already looked like.
 
     The host's output is read next to the editor's own, in a terminal someone
-    is also using for other things, so it stays quiet and shaped: indented,
+    is also using for other things. So it stays quiet and shaped: indented,
     marked when it matters, and told where it came from only in debug, where
     that is the question being asked.
     """
