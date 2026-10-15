@@ -4,7 +4,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 Two versions move here and they move independently. The **application** is this package, `libera`. The **editor payload** is the Euro-Office build it fetches on first use, versioned separately so that a fix to the host does not force a 120 MB re-download. `libera --version` prints both.
 
-## [Unreleased]
+## [0.4.2] - Unreleased
+
+### Fixed
+
+- **File > Reload could lose the edits since the previous reload.** It folds the edits into the document through a file of the same name every time: a conversion that wrote nothing found the previous reload's file there and read it back instead. An edit made while the fold ran was also lost.
+- **A save can no longer leave half a document behind.** The saved file was copied over the old one in place, so a crash or a full disk part way through left it truncated. It is now written beside it and put in its place in one step, the way each system's own applications save: the document keeps its permissions, its Finder tags and its other attributes, and a symbolic link stays one.
+- **Reload no longer freezes every window** while it converts the document.
+- **A conversion that never ends is a failed one** after ten minutes, where it used to leave the save waiting for good and, after a few such documents, every conversion.
+- **Save As and questions no longer hang when their dialog cannot be shown.** The failure is reported on macOS and Linux.
+- **Two copies of Libera Suite running at once no longer lock each other's windows out.** Each one's key went into a cookie of the same name, and the second replaced the first's.
+
+## [0.4.1] - 2026-10-14
 
 ### Security
 
