@@ -11,6 +11,10 @@ Two versions move here and they move independently. The **application** is this 
 - **Another account on the same computer could read the open document.** The editor's server, on `127.0.0.1`, checked the headers a web browser sends, which stop a web page and nothing else: `curl` read the open document and the recent list. Nothing in those checks depends on which account runs it. Every request now needs a key made at each launch: the windows have it in their address, and on disk only your account can read it. Measured on 0.4.0; fixed for every route, the editor's own files included.
 - **Libera Suite's own folder is now private to your account.** It holds a copy of each open document, the Recent list and the server's key, and was created readable by every account, so the home folder's permissions alone kept others out. Those are private by default on the distributions the install page names, but a home folder made before Ubuntu 21.04 is not. Each launch now makes the folder `700`, one an earlier version made included.
 
+### Fixed
+
+- **Save As RTF wrote no text** from a document opened from a `.txt` file, and from a `.docx` file that ends without section properties, until something in it was edited. A `.docx` file with a section break lost everything after the break. The converter read paragraphs into sections and made sections only from section properties. It is patch 0033 in the converter, so it comes with a new payload. Measured on payloads 0.2 to 0.4.
+
 ## [0.4.0] - 2026-10-12
 
 The first with payload **0.4**, so the editors are downloaded again once, about 100 MB on macOS. It fixes the converter where 0.3's host could only refuse a save or warn.

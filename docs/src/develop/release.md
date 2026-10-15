@@ -53,9 +53,9 @@ machine has `build/builders.toml` and ssh to the builders. The Mac is one of
 three builders.
 
 **Settle the two versions first.** `pyproject.toml` moves every release.
-`build/payload/payload.version` and `src/libera/payload/locate.py` move together, and
-only when the payload itself changed. Rebuilding a payload under a version that
-is already published overwrites artifacts a published wheel verifies against:
+`src/libera/payload/payload.version` moves only when the payload itself changed.
+The host and the build both read it, so there is no second copy to keep in
+step. Rebuilding a payload under a version that is already published overwrites artifacts a published wheel verifies against:
 that is how 0.1.0 broke.
 
 **`lb release status`** measures where a release has got to, against the
@@ -103,7 +103,7 @@ lb release ship bundles --only linux-arm64
 | `libera-X.Y.Z-amd64.flatpak` | a download | an x86_64 Linux machine, **payload included** |
 | `libera-X.Y.Z-arm64.flatpak` | a download | an arm64 machine, **payload included** |
 
-The tarballs go to `$BUILD_ROOT/out/dist/$PAYLOAD_VERSION`, which is `0.2` today and **not** the application version, `0.2.0`. The two reading 0.2 at the same time is a coincidence of counting. `build/payload/payload.version` and `pyproject.toml` move independently on purpose: a host fix should not force everyone to re-download 120 MB; a payload rebuilt from new upstream pins should not need a host release.
+The tarballs go to `$BUILD_ROOT/out/dist/$PAYLOAD_VERSION`, which is `0.2` today and **not** the application version, `0.2.0`. The two reading 0.2 at the same time is a coincidence of counting. `src/libera/payload/payload.version` and `pyproject.toml` move independently on purpose: a host fix should not force everyone to re-download 120 MB; a payload rebuilt from new upstream pins should not need a host release.
 
 ## Which machine can make what, and why
 
