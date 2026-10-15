@@ -1,0 +1,55 @@
+From 74a6895370cf8178e54012dd2fd8bbd38cfd9201 Mon Sep 17 00:00:00 2001
+From: Stefane Fermigier <sf@abilian.com>
+Date: Wed, 14 Oct 2026 15:24:52 +0200
+Subject: [PATCH] RtfFile: write the last section when the body has no w:sectPr
+
+The OOXML reader made an RTF section from each w:sectPr and from
+nothing else, so the paragraphs after the last one were never read.
+A body without a closing w:sectPr, which is how x2t's own plain text
+reader writes a document, came out as an RTF with no text at all, and
+one with a section break lost everything after the break. That last
+section now runs to the end of the body, with the default properties.
+---
+ RtfFile/OOXml/Reader/OOXDocumentReader.cpp | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/RtfFile/OOXml/Reader/OOXDocumentReader.cpp b/RtfFile/OOXml/Reader/OOXDocumentReader.cpp
+index 1687218556..b01ea6bded 100644
+--- a/RtfFile/OOXml/Reader/OOXDocumentReader.cpp
++++ b/RtfFile/OOXml/Reader/OOXDocumentReader.cpp
+@@ -73,6 +73,16 @@ bool OOXDocumentReader::Parse(ReaderParameter oParam)
+ 			section.start_para = m_ooxDocument->m_arrSections[i].start_elm;
+ 			section.end_para = m_ooxDocument->m_arrSections[i].end_elm;
+ 
++			// The section after the last section break has no w:sectPr when the body ends
++			// without one. It runs to the end, with the default properties: skipped, it
++			// took every paragraph after the break with it.
++			if (m_ooxDocument->m_arrSections[i].sect == NULL)
++			{
++				section.end_para = m_ooxDocument->m_arrItems.size();
++				m_poDocument->AddItem(section);
++				continue;
++			}
++
+ 			OOXSectionPropertyReader oSectReader(dynamic_cast<OOX::Logic::CSectionProperty*>(m_ooxDocument->m_arrSections[i].sect));
+ 			if (true == oSectReader.Parse(oParam, section.props->m_oProperty))
+ 			{
+@@ -127,11 +137,11 @@ bool OOXDocumentReader::Parse(ReaderParameter oParam)
+ 		if (m_ooxDocument->m_oSectPr.IsInit())// properties of the last section
+ 		{
+ 			OOXSectionPropertyReader oSectReader(m_ooxDocument->m_oSectPr.GetPointer());
+-			if (oSectReader.Parse(oParam, section.props->m_oProperty))
+-			{
+-				m_poDocument->AddItem(section);
+-			}
++			oSectReader.Parse(oParam, section.props->m_oProperty);
+ 		}
++		// Added with the default properties when the body ends without a w:sectPr, as
++		// x2t's own reader of plain text writes it: left out, the RTF had no text.
++		m_poDocument->AddItem(section);
+ 	}
+ 	//-------------------------------------------------------------------------------------------------------------
+ 	m_poDocument->RemoveItem(0); //blank upon initialization
+-- 
+2.55.0
+
