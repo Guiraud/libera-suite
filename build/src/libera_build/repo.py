@@ -14,7 +14,7 @@ from libera_build.process import capture
 from libera_build.report import RefusedError
 
 # Paths in a checkout, from its root: each is spelt here once.
-PAYLOAD_VERSION = Path("build", "payload", "payload.version")
+PAYLOAD_VERSION = Path("src", "libera", "payload", "payload.version")
 # The manifest the wheel ships, gitignored: whatever collect last stamped.
 MANIFEST = Path("src", "libera", "manifest.json")
 BUILDERS = Path("build", "builders.toml")
@@ -23,7 +23,7 @@ PATCHES = Path("build", "upstream", "patches")  # a directory per pinned repo
 
 
 def find_repo() -> Path:
-    """The repository root: the first directory up with build/payload/payload.version.
+    """The repository root: the first directory up with the payload version file.
 
     Walked to, never counted: this file moved once already, from build/lb.py to
     build/src/libera_build/.

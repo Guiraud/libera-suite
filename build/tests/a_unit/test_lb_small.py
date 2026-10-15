@@ -31,12 +31,14 @@ def test_a_remote_path_keeps_its_tilde_expandable():
 
 
 def test_the_payload_version_is_read_from_its_line(tmp_path):
-    (tmp_path / "build" / "payload").mkdir(parents=True)
-    (tmp_path / "build" / "payload" / "payload.version").write_text(
+    (tmp_path / "src" / "libera" / "payload").mkdir(parents=True)
+    (tmp_path / "src" / "libera" / "payload" / "payload.version").write_text(
         '# a comment = no\nversion = "0.4"\n'
     )
     assert versions.payload_version(tmp_path) == "0.4"
-    (tmp_path / "build" / "payload" / "payload.version").write_text("# nothing\n")
+    (tmp_path / "src" / "libera" / "payload" / "payload.version").write_text(
+        "# nothing\n"
+    )
     with pytest.raises(RefusedError):
         versions.payload_version(tmp_path)
 

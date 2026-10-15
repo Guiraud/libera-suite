@@ -16,6 +16,7 @@ import os
 import platform
 import sys
 from dataclasses import dataclass
+from importlib import resources
 from pathlib import Path
 from typing import TypeVar
 
@@ -23,7 +24,14 @@ import tomllib
 
 T = TypeVar("T")
 
-PAYLOAD_VERSION = "0.4"
+# The one definition, beside this module so the wheel and the frozen Windows
+# tree carry it; the build reads the same file.
+PAYLOAD_VERSION: str = tomllib.loads(
+    resources
+    .files("libera.payload")
+    .joinpath("payload.version")
+    .read_text(encoding="utf-8")
+)["version"]
 
 # The payload's executables are x2t.exe and tools\allfontsgen.exe on Windows.
 EXE = ".exe" if os.name == "nt" else ""

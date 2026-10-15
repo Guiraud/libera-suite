@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
-from libera.payload import installer, locate
+from libera.payload import installer
 from libera_build import versions
 from libera_build.report import RefusedError
 
@@ -49,28 +49,11 @@ def split_origin(url: str) -> tuple[str, str]:
     return f"{parts.scheme}://{parts.netloc}", zone
 
 
-def agreed_version(application: str, build: str) -> str:
-    """The payload version, once the application and the build agree on it.
-
-    Two definitions of one version is a way to publish to a directory the
-    application never reads, and the failure would not appear until somebody
-    ran --payload-install.
-    """
-    if application != build:
-        msg = (
-            f"build/payload/payload.version says {build}, locate.py {application}.\n"
-            f"  The artifacts would go to {application}/ and the build would name "
-            f"them {build}. Fix one before publishing anything."
-        )
-        raise RefusedError(msg)
-    return application
-
-
 def here(root: Path) -> Origin:
     """The origin this checkout publishes to. CDN_URL and ZONE override the
     two halves of DEFAULT_ORIGIN, for a test origin."""
     cdn_url, zone = split_origin(installer.DEFAULT_ORIGIN)
-    version = agreed_version(locate.PAYLOAD_VERSION, versions.payload_version(root))
+    version = versions.payload_version(root)
     return Origin(
         os.environ.get("CDN_URL") or cdn_url, os.environ.get("ZONE") or zone, version
     )

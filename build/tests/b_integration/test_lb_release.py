@@ -66,8 +66,10 @@ def driver(tmp_path) -> Path:
     (root / "build" / "src" / "libera_build").mkdir(parents=True)
     (root / "build" / "src" / "libera_build" / "__init__.py").write_text("")
     (root / "build" / "src" / "libera_build" / "__main__.py").write_text(STAND_IN)
-    (root / "build" / "payload").mkdir()
-    (root / "build" / "payload" / "payload.version").write_text('version = "9.9"\n')
+    (root / "src" / "libera" / "payload").mkdir(parents=True)
+    (root / "src" / "libera" / "payload" / "payload.version").write_text(
+        'version = "9.9"\n'
+    )
     (root / "pyproject.toml").write_text('[project]\nversion = "9.9.9"\n')
     (root / ".gitignore").write_text("tmp/\nbuild/builders.toml\n__pycache__/\n")
     subprocess.run([*GIT, "init", "-q", str(root)], check=True)
@@ -128,7 +130,7 @@ def test_a_builder_with_no_checkout_is_fine_only_if_update_will_make_one(driver,
 
 
 def test_a_missing_checkout_names_the_checkouts_that_are_there(driver, home):
-    other = home / "elsewhere" / "build" / "payload"
+    other = home / "elsewhere" / "src" / "libera" / "payload"
     other.mkdir(parents=True)
     (other / "payload.version").write_text('version = "9.9"\n')
     (problem,) = precheck.check_builder(context(driver, home, ["build"]), ARM)

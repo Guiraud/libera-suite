@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 import zipfile
 from typing import TYPE_CHECKING
 
@@ -360,6 +361,65 @@ def test_a_text_file_opens_past_an_emoji(tmp_path):
 
     export(notes, docx, apps.WORDS.ids_by_ext["docx"], None)
     assert "après" in zipfile.ZipFile(docx).read("word/document.xml").decode()
+
+
+def read_rtf_text(path: pathlib.Path) -> str:
+    """The text of an RTF x2t wrote, which spells every character `\\uN*`."""
+    body = path.read_text(encoding="ascii").split("\\fet2", 1)[1]
+    return "".join(chr(int(n)) for n in re.findall(r"\\u(\d+)\*", body))
+
+
+def write_docx_body(blank: pathlib.Path, document: pathlib.Path, body: str) -> None:
+    """The blank's package, with `body` for the inside of its w:body."""
+    with zipfile.ZipFile(blank) as src, zipfile.ZipFile(document, "w") as dst:
+        for item in src.infolist():
+            data = src.read(item)
+            if item.filename == "word/document.xml":
+                data = re.sub(
+                    rb"<w:body>.*</w:body>",
+                    f"<w:body>{body}</w:body>".encode(),
+                    data,
+                    flags=re.DOTALL,
+                )
+            dst.writestr(item, data)
+
+
+PARAGRAPH = "<w:p><w:r><w:t>{}</w:t></w:r></w:p>"
+BREAK = (
+    '<w:p><w:pPr><w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:pPr></w:p>'
+)
+SECTIONLESS = {
+    "no section": PARAGRAPH.format("après"),
+    "a break, then none": BREAK + PARAGRAPH.format("après"),
+}
+
+
+@pytest.mark.parametrize("body", SECTIONLESS.values(), ids=list(SECTIONLESS))
+def test_save_as_rtf_keeps_the_text_after_the_last_section(open_blank, tmp_path, body):
+    """x2t's RTF writer read paragraphs into sections, made from w:sectPr only.
+
+    A body with no closing w:sectPr lost what followed the last one, all of it
+    when there was none, and exited 0 over an RTF of headers. Patch 0033.
+    """
+    document = tmp_path / "sectionless.docx"
+    blank = open_blank(apps.WORDS)
+    write_docx_body(blank.document, document, body)
+    opened = open_in(apps.WORDS, document, tmp_path / "session")
+    rtf = tmp_path / "out.rtf"
+
+    export(opened, rtf, apps.WORDS.ids_by_ext["rtf"], None)
+    assert "après" in read_rtf_text(rtf)
+
+
+def test_a_text_file_saves_as_rtf_with_its_text(tmp_path):
+    """x2t's plain text reader writes a body with no w:sectPr, the case above."""
+    document = tmp_path / "notes.txt"
+    document.write_text("avant\naprès\n", encoding="utf-8")
+    notes = open_in(apps.WORDS, document, tmp_path / "session")
+    rtf = tmp_path / "out.rtf"
+
+    export(notes, rtf, apps.WORDS.ids_by_ext["rtf"], None)
+    assert "après" in read_rtf_text(rtf)
 
 
 def test_markdown_opens_and_saves(tmp_path):

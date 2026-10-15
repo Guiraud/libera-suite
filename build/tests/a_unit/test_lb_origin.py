@@ -25,12 +25,6 @@ def test_the_origin_splits_into_host_and_zone():
         place.split_origin("https://cdn.example/")
 
 
-def test_the_two_versions_must_agree_before_anything_is_published():
-    assert place.agreed_version("0.4", "0.4") == "0.4"
-    with pytest.raises(RefusedError, match=r"payload\.version says 0\.3"):
-        place.agreed_version("0.4", "0.3")
-
-
 def test_an_object_is_read_and_written_at_two_urls():
     assert ORIGIN.base == "https://cdn.example/libera/0.4"
     assert ORIGIN.api("0.4/x.tar.gz") == (

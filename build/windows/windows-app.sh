@@ -22,7 +22,7 @@ REPO="$(cd "$BUILD/.." && pwd)"
 
 [ -n "$EXE" ] || { echo "FATAL: this builds the Windows application; run it on Windows" >&2; exit 1; }
 
-PAYLOAD_VERSION="$(sed -n 's/^version *= *//p' "$BUILD/payload/payload.version" | tr -d '"')"
+PAYLOAD_VERSION="$(sed -n 's/^version *= *//p' "$REPO/src/libera/payload/payload.version" | tr -d '"')"
 DIST="$OUT/dist/$PAYLOAD_VERSION"
 WORK="$OUT/windows"
 APP_VERSION="$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$REPO/pyproject.toml" | head -1)"

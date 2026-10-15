@@ -42,12 +42,13 @@ def make_payload(root: Path) -> Path:
 
 
 def test_payload_version_matches_the_build() -> None:
-    """The wheel and the artifact builder must agree on the payload version.
+    """The host and the build read one file, and must read the same version.
 
-    Every format mismatch in this project has been two halves disagreeing about
-    a file. This is the cheapest possible guard against another one.
+    The host parses it as TOML; the build's scripts take the `version = ` line
+    with sed. Every format mismatch in this project has been two halves
+    disagreeing about a file.
     """
-    declared = (REPO / "build" / "payload" / "payload.version").read_text(
+    declared = (REPO / "src" / "libera" / "payload" / "payload.version").read_text(
         encoding="utf-8"
     )
     version = next(
@@ -489,9 +490,9 @@ def test_a_stamped_manifest_is_the_one_found():
 def test_the_stamped_manifest_is_for_the_payload_this_build_wants():
     """Bump the payload version and this goes red until the payload is rebuilt.
 
-    That window is real and expected: `build/payload/payload.version` and
-    `locate.PAYLOAD_VERSION` move first, the cores are rebuilt on three
-    machines afterwards, and until the last one lands the manifest in the tree
+    That window is real and expected: `src/libera/payload/payload.version`
+    moves first, the cores are rebuilt on three machines afterwards, and until
+    the last one lands the manifest in the tree
     describes the payload before the bump. So it skips rather than fails, and
     says what is outstanding.
 

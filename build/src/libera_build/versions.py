@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 def payload_version(root: Path) -> str:
     """The payload version, as dist.sh and flatpak.py read it.
 
-    build/payload/payload.version is a commented TOML-ish file, not a bare number, and
+    payload.version is a commented TOML-ish file, not a bare number, and
     reading it whole once printed the file's comment block as the version.
     """
     text = (root / PAYLOAD_VERSION).read_text(encoding="utf-8")

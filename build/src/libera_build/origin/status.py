@@ -73,9 +73,7 @@ def reachable(url: str) -> bool:
 def status(root: Path, origin: Origin, dist: Path) -> None:
     step("versions")
     say(f"    application   {versions.app_version(root):<8} (pyproject.toml)")
-    say(
-        f"    payload       {origin.version:<8} (payload.version and locate.py, agreed)"
-    )
+    say(f"    payload       {origin.version:<8} (src/libera/payload/payload.version)")
 
     step("this tree")
     _, tag = repo.git(root, "tag", "--points-at", "HEAD")
