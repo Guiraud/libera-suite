@@ -8,6 +8,7 @@ line below): five fields separated by commas, ended by a semicolon, no newline.
 from __future__ import annotations
 
 import os
+import sys
 
 import pytest
 
@@ -101,6 +102,10 @@ def test_a_lock_that_cannot_be_read_counts_as_someone_else(here):
 @pytest.mark.skipif(
     hasattr(os, "geteuid") and os.geteuid() == 0,
     reason="root writes into a read-only folder, and `lb linux test` runs as root",
+)
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows ignores a folder's mode bits: only an ACL makes it read-only",
 )
 def test_a_folder_we_cannot_write_to_does_not_stop_the_document_opening(here):
     """None is also what take() returns when it wrote the lock, so the file

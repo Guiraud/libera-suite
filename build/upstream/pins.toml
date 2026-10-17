@@ -5,13 +5,13 @@
 # Bumping a pin is a deliberate act that may require rebasing patches/.
 
 [repos]
-core       = "8d41aaa1dd296e08a5360d336752df01db7b1512"  # 2026-08-31
-sdkjs      = "2b0986e7f29c9875bfb85a8f503735d61f780cae"
-web-apps   = "1d7a82e1b5a026fa2ce473649712e0b0ae759224"
+core       = "5a33ce6c4a63387e8576c7e763b70cd971988b24"  # 2026-10-08, DesktopEditors v9.3.5-2
+sdkjs      = "0cde84e8dbfb299b53098532c8af142712830cc6"  # 2026-10-07, DesktopEditors v9.3.5-2
+web-apps   = "51c706eb619612c2d133ef76e2807cdffd799f96"  # 2026-10-08, DesktopEditors v9.3.5-2
 core-fonts = "2de90688e07e2442a5fffc434fdf0a3d212c1f42"
 # Blank and sample documents, per locale. core/Common/empty/*.bin looks like
 # it would do instead and does not: see build/README.md.
-document-templates = "d697ab3d75dbec104e4a99f47852398752cb2ace"  # 2025-05-19
+document-templates = "554851735b1fb1890a02ba1d57fed3e6c8b21425"  # 2026-10-08, DesktopEditors v9.3.5-2
 # Hunspell dictionaries. Only the languages in build/payload/dictionaries.txt ship;
 # the repository is 327 MB because it also carries thesauri and hyphenation,
 # neither of which the spell checker reads.

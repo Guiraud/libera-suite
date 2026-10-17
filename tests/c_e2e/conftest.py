@@ -35,7 +35,7 @@ from libera import payload as payload_mod
 from libera.host import apps
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator, Iterator
 
 ROOT = repo_root()
 
@@ -211,7 +211,7 @@ def _launch():
 
 
 @contextlib.contextmanager
-def running_editor(document: Path, work: Path) -> Iterator[Editor]:
+def running_editor(document: Path, work: Path) -> Generator[Editor]:
     """Serve one document, load it in a headless browser, report what happened.
 
     **Everything is torn down before the tests run, and that is the point.**

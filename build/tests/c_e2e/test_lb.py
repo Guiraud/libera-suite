@@ -7,6 +7,7 @@ the builders, which no test here can stand in for.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sysconfig
@@ -15,7 +16,7 @@ import urllib.request
 from pathlib import Path
 
 import pytest
-from libera_build import cli
+from libera_build import cli, repo, versions
 from libera_build.containers import Engine, host_arch
 
 
@@ -27,10 +28,11 @@ def find_lb() -> str:
     return shutil.which("lb") or pytest.skip("no `lb` installed: run `uv sync`")
 
 
-def lb(*args: str) -> subprocess.CompletedProcess:
+def lb(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(
         [find_lb(), *args],
         cwd=cli.REPO,
+        env=None if env is None else os.environ | env,
         capture_output=True,
         text=True,
         check=False,
@@ -62,8 +64,10 @@ def test_a_mistyped_command_says_so_and_runs_nothing():
     assert "+ " not in done.stdout
 
 
-def test_tidy_lists_without_deleting():
-    done = lb("tidy")
+def test_tidy_lists_without_deleting(tmp_path):
+    """Against an empty BUILD_ROOT: the real one is millions of files, which du
+    took more than the timeout to sum on the Windows builder."""
+    done = lb("tidy", env={"BUILD_ROOT": str(tmp_path / "build-root")})
     assert done.returncode == 0, done.stderr
     assert "nothing removed" in done.stdout or "nothing to tidy" in done.stdout
 
@@ -140,6 +144,9 @@ def test_push_dry_lists_every_upload_and_needs_no_token(monkeypatch):
     stamped = cli.REPO / "src" / "libera" / "manifest.json"
     if not stamped.is_file():
         pytest.skip("no manifest stamped in this checkout")
+    collected = repo.dist(versions.payload_version(cli.REPO))
+    if not (collected / "manifest.json").is_file():
+        pytest.skip(f"nothing collected to push in {collected}")
     monkeypatch.delenv("CDN_TOKEN", raising=False)
     done = lb("release", "push", "--dry-run")
     if "dirty tree" in done.stderr:

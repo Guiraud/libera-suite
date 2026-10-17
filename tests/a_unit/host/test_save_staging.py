@@ -90,7 +90,6 @@ def test_an_export_that_writes_an_empty_file_failed(note, monkeypatch):
     """x2t's exit status has said 0 over nothing before."""
     host, _ = note
     staged = host.work / "out.docx"
-    monkeypatch.setattr(convert, "read_font_dir", lambda _p: "")
 
     def x2t_writes_nothing(_session, _job):
         staged.touch()
@@ -147,12 +146,14 @@ def test_a_save_through_a_symlink_keeps_the_link(note, monkeypatch, tmp_path):
 
 def test_a_save_keeps_the_documents_mode(note, monkeypatch):
     host, document = note
+    # 0o666 on Windows, which keeps only a read-only bit.
     document.chmod(0o640)
+    before = document.stat().st_mode
     monkeypatch.setattr(convert, "export", exporting(b"the saved document"))
 
     saving.save_document(host, SaveRequest())
 
-    assert document.stat().st_mode & 0o777 == 0o640
+    assert document.stat().st_mode == before
 
 
 def test_a_new_document_gets_the_mode_a_new_file_gets(tmp_path):

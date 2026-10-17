@@ -32,7 +32,6 @@ from libera.host import (
     server,
     updates,
 )
-from libera.host.convert import ConversionError
 from libera.host.session import (
     SESSIONS,
     Session,
@@ -64,9 +63,12 @@ from libera.host.window import (
     show_session_edited,
     take_dropped,
 )
+from libera.payload import fonts, locate
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
+
+    from libera.host.convert import ConversionError
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +125,8 @@ def _open_start_window(port: int, title: str | None = None):
 def run(
     payload_root: Path, work: Path, documents: list[Path], *, title: str | None = None
 ) -> None:
-    """Open documents, one window each, and block until the last one closes.
+    """Open documents, one window each, and block until the last one closes
+    (on macOS, until Quit).
 
     With no documents this is `libera` on its own: the start window comes up
     instead, and goes away as soon as it has been used for something.
@@ -133,7 +136,14 @@ def run(
     # (the recent list, a new blank, the payload) is answered for a session,
     # even with no document shown, so there has to be one to answer for.
     timeline.mark("host")
-    first_session = Session(payload=payload_root, work=new_work(work), document=first)
+    layout = locate.Layout(payload_root)
+    first_session = Session(
+        payload=payload_root,
+        work=new_work(work),
+        document=first,
+        fonts=fonts.choose(layout),
+    )
+    logger.info("fonts: %s", first_session.fonts or "the payload's own")
     configure(first_session)
 
     port = server.find_free_port()
@@ -148,11 +158,12 @@ def run(
     previous_hook = threading.excepthook
     threading.excepthook = _say_thread_failed
 
+    converting = False
     if first is not None:
         # Before the window: opening a document destroys the previous session,
-        # and that session is where unsaved edits live.
-        opening.open_document(first_session, first)
-        timeline.mark("converted")
+        # and that session is where unsaved edits live. Its conversion waits
+        # for the window, and runs while the window loads the editor.
+        converting = opening.begin_opening(first_session, first)
     # Anything left by earlier runs that holds no unsaved edits.
     sweep_sessions(work, keep={first_session.id})
 
@@ -162,6 +173,10 @@ def run(
 
     window = _open_first_window(port, first_session, title)
     timeline.mark("window")
+    if first is not None and converting:
+        _convert_behind(first_session, first)
+    # After the first window, so that allfontsgen does not slow its document.
+    fonts.build_behind(layout, {first_session.fonts})
     # The rest open once the GUI loop is running: pywebview can only create a
     # window after start() from a thread that is not the one running it.
     if len(documents) > 1:
@@ -188,7 +203,9 @@ def run(
     # Edge backends will put the same data.
     #
     # `func` is pywebview's own "once the GUI loop starts", on a thread of its
-    # own: start() does not return until the last window closes.
+    # own: start() does not return until the last window closes, and on macOS
+    # a quit ends the process without its returning at all.
+    native.on_quit(_let_go_of_everything)
     try:
         webview.start(
             func=native.complete_startup,
@@ -197,13 +214,19 @@ def run(
             storage_path=str(payload_mod.get_state_dir()),
             menu=bar,
         )
+        native.stay_open()
     finally:
-        instance.withdraw()
         threading.excepthook = previous_hook
-        # However the windows went: a quit need not close each one first, yet
-        # no lock of ours may outlive the process.
-        for left in list(SESSIONS.values()):
-            locking.let_go(left)
+        _let_go_of_everything()
+
+
+def _let_go_of_everything() -> None:
+    """On the way out, however the windows went: a quit need not close each one
+    first, yet no lock of ours may outlive the process, nor the announcement a
+    second launch would hand its documents to."""
+    instance.withdraw()
+    for left in list(SESSIONS.values()):
+        locking.let_go(left)
 
 
 def _say_thread_failed(args: threading.ExceptHookArgs) -> None:
@@ -247,7 +270,9 @@ class WindowedShell:
         behind. It used to raise into whoever asked: a request lost its
         connection with no answer, a menu action printed a traceback no one saw,
         a session stayed registered with no window, and a second launch whose
-        hand-off failed that way started a second instance.
+        hand-off failed that way started a second instance. The window opens
+        before the converter has read the document (`_convert_behind`), so it
+        is that window which closes again.
         """
         # One window per document. Two windows on one file each converted and
         # saved it on their own, and the last save silently won.
@@ -258,20 +283,14 @@ class WindowedShell:
             return True
         document = document or make_new_document(app)
         made = create_session(document)
-        try:
-            opening.open_document(made, document)
-        except ConversionError:
-            # convert has logged what x2t said; the user needs to hear it too.
-            drop_session(made.id)
-            dialogs.say(
-                f"Libera Suite could not open \u201c{document.name}\u201d",
-                "The converter could not read it: it may be damaged, or in a "
-                "format Libera Suite cannot open.",
-            )
-            return False
-
+        converting = opening.begin_opening(made, document)
         _show_session(self.port, made, document)
-        close_start_window()
+        timeline.mark("window", again=True)
+        if converting:
+            # The start window goes once there is a document to show instead.
+            _convert_behind(made, document, done=close_start_window)
+        else:
+            close_start_window()
         return True
 
     def show_start_window(self) -> None:
@@ -318,9 +337,38 @@ class WindowedShell:
         return take_dropped(names)
 
 
+def _convert_behind(
+    session: Session, document: Path, done: Callable[[], None] = lambda: None
+) -> None:
+    """The document's conversion, while its window loads the editor. A
+    document the converter refuses is said on screen, and its window closed."""
+
+    def failed(_error: ConversionError) -> None:
+        # convert has logged what x2t said; the user needs to hear it too.
+        dialogs.say(
+            f"Libera Suite could not open \u201c{document.name}\u201d",
+            "The converter could not read it: it may be damaged, or in a "
+            "format Libera Suite cannot open.",
+        )
+        close_session_window(session)
+
+    opening.convert_behind(session, document, failed, done)
+
+
 def close_session(session: Session) -> None:
     locking.let_go(session)
     drop_session(session.id)
+    if not SESSIONS:
+        # A request that names no session is answered for the first: a second
+        # launch's hand-off, the start window's. On macOS the application runs
+        # on once its last window has closed, and refused them all.
+        configure(
+            Session(
+                payload=session.payload,
+                work=new_work(session.work.parent),
+                fonts=session.fonts,
+            )
+        )
 
 
 def _open_rest(window, documents: list[Path], open_window) -> None:

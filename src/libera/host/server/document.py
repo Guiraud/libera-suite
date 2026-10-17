@@ -29,7 +29,10 @@ logger = logging.getLogger(__name__)
 
 @endpoint("GET", "opened")
 def serve_opened(r: Request) -> Response:
-    """The converted document, Editor.bin, for the editor to open."""
+    """The converted document, Editor.bin, for the editor to open: once the
+    conversion its window was opened beside has finished."""
+    if r.session.converting is not None:
+        r.session.converting.join()
     data = r.session.editor_bin.read_bytes()
     return answer_json({"b64": base64.b64encode(data).decode(), "len": len(data)})
 

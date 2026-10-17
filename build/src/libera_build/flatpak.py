@@ -22,7 +22,6 @@ import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from libera.manifest import Manifest
 from libera_build import repo, versions
 from libera_build.artifacts import bundle_name, core_name
 from libera_build.containers import Engine, Mount, Run, interactive, linux_platform
@@ -201,36 +200,11 @@ class Builder:
 
     # --- the steps ---------------------------------------------------------------
 
-    def stamp_bundled_manifest(self) -> None:
-        """The wheel's manifest, from the payload being bundled.
-
-        The installer prefers the manifest baked into the wheel over the one
-        beside the artifacts, deliberately, and src/libera/manifest.json is
-        gitignored: on a builder it is whatever an earlier run left there. The
-        two builders had drifted in opposite directions, one refusing in the
-        sandbox ("manifest is for payload 0.1"), one shipping a wheel with no
-        provenance in it. Stamping it from the dist makes them one release.
-        """
-        src = self.dist / "manifest.json"
-        if not src.is_file():
-            msg = f"no manifest.json in {self.dist}"
-            raise RefusedError(msg)
-        found = Manifest.read(src).payload_version
-        want = versions.payload_version(REPO)
-        if found != want:
-            msg = (
-                f"{src} is for payload {found} and this tree wants {want}.\n"
-                "  The bundle would carry editors the application refuses to load."
-            )
-            raise RefusedError(msg)
-        shutil.copyfile(src, REPO / repo.MANIFEST)
-        say(f"    manifest  payload {found}, from {self.dist}")
-
     def wheels(self) -> int:
         """The offline wheel set, assembled aside and moved into place: a set
         that is present but half-filled is worse than one that is absent."""
         step("wheels, for a build with no network")
-        self.stamp_bundled_manifest()
+        versions.stamp_bundled_manifest(REPO, self.dist)
         tmp = WORK / "wheels.tmp"
         shutil.rmtree(tmp, ignore_errors=True)
         tmp.mkdir(parents=True)

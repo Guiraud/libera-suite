@@ -67,6 +67,26 @@
     },
   });
 
+  // -- the font list ---------------------------------------------------------
+  // Each window has the font list its session was made with, and a window
+  // opened after the machine's fonts changed has a newer one. RequireJS loads
+  // AllFonts.js as a script from a path in the page's own config, so the
+  // request would name no session and get the first window's list; the
+  // session goes on here, where the script's src is set.
+  const ALL_FONTS = /(^|\/)sdkjs\/common\/AllFonts\.js$/;
+  const scriptSrc = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, "src");
+  Object.defineProperty(HTMLScriptElement.prototype, "src", {
+    configurable: true,
+    enumerable: true,
+    get: scriptSrc.get,
+    set: function (v) {
+      scriptSrc.set.call(
+        this,
+        typeof v === "string" && ALL_FONTS.test(v) ? hostUrl(v) : v,
+      );
+    },
+  });
+
   // -- ascdesktop://fonts/<id> ------------------------------------------------
   // sdkjs hard-codes this scheme in LoadFontAsync. A real host registers a
   // scheme handler (QWebEngineUrlSchemeHandler); here we just rewrite the URL,

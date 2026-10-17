@@ -6,6 +6,7 @@ NSAlert: Any
 NSAlertStyleWarning: Any
 NSApp: Any
 NSAppleEventManager: Any
+NSApplicationWillTerminateNotification: Any
 NSBeep: Any
 NSFileHandlingPanelOKButton: Any
 NSMenu: Any

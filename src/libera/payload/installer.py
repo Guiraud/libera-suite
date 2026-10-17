@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from libera.manifest import Manifest, ManifestError
-from libera.payload import generate, locate
+from libera.payload import fonts, generate, locate
 from libera.payload.locate import Payload, PayloadError
 
 if TYPE_CHECKING:
@@ -337,4 +337,24 @@ def install(
         )
         _swap_in(staged, dest, say)
 
-    return Payload(dest, "installed")
+    installed = Payload(dest, "installed")
+    _index_installed_fonts(installed, say)
+    return installed
+
+
+def _index_installed_fonts(layout: locate.Layout, say: Callable[[str], object]) -> None:
+    """Index the machine's fonts now, while the first start waits for the
+    payload anyway, so that its first window has them.
+
+    Not a failed install when it fails: the payload works without them, and
+    the next window to open tries again.
+    """
+    if not fonts.is_wanted() or fonts.get_index_dir(layout).is_dir():
+        return
+    say("  indexing the fonts installed on this machine")
+    try:
+        count = fonts.build(layout, fonts.get_index_dir(layout))
+    except PayloadError as e:
+        say(f"    not indexed: {e}")
+        return
+    say(f"    {count} fonts")

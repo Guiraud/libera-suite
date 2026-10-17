@@ -1,9 +1,10 @@
-"""The small pure parts: artifact names, the host protocol's helpers, versions."""
+"""The small pure parts: artifact names, the host protocol's helpers, versions,
+the benchmark's trace."""
 
 from __future__ import annotations
 
 import pytest
-from libera_build import artifacts, versions
+from libera_build import artifacts, bench, versions
 from libera_build.hosts import facts_from, remote_path
 from libera_build.release import on
 from libera_build.report import RefusedError
@@ -71,3 +72,54 @@ def test_a_pointer_names_digits_and_dots_and_nothing_else_is_a_release():
     assert not versions.is_prerelease("1.10")
     for pre in ("0.4.0rc1", "0.4.0a2", "0.4.0.post1", "0.4.0+local", "0.4.0.dev3"):
         assert versions.is_prerelease(pre), pre
+
+
+def test_the_document_is_on_screen_when_the_window_last_changed(tmp_path):
+    """The window changes many times, and the editor says it is ready twice,
+    before the last of them. `settled` is the last change; `editor-ready` the
+    first time it was said."""
+    trace = tmp_path / "startup.trace"
+    trace.write_text(
+        "100.5 python\n101.0 screen\n102.0 editor-ready\n102.4 screen\n"
+        "102.7 editor-ready\n103.1 screen\n",
+        encoding="utf-8",
+    )
+    reached = bench.read_trace(trace, started=100.0)
+    assert reached == pytest.approx({
+        "python": 0.5,
+        "editor-ready": 2.0,
+        "settled": 3.1,
+    })
+
+
+def test_a_run_waits_for_the_window_to_be_still_after_the_editor_is_ready():
+    ready = {"editor-ready": 4.0, "settled": 5.0}
+    assert not bench.is_done({"first-request": 2.0}, 60.0, watching=True)
+    assert not bench.is_done(ready, 5.0 + bench.QUIET - 0.1, watching=True)
+    assert bench.is_done(ready, 5.0 + bench.QUIET + 0.1, watching=True)
+    assert bench.is_done(ready, 4.1, watching=False)
+
+
+def test_a_document_opened_in_the_running_application_is_timed_on_its_own(
+    tmp_path,
+):
+    """The host writes its stages again for a later document, into the trace
+    the launch filled; the first window's watcher goes on writing there too.
+    Only what came after the second document was asked for counts, and its
+    window's changes are its own watcher's."""
+    trace, screen = tmp_path / "startup.trace", tmp_path / "again.trace"
+    trace.write_text(
+        "100.5 python\n101.0 converted\n102.0 editor-ready\n103.0 screen\n"
+        "110.3 python\n110.9 window\n111.2 converted\n112.6 screen\n"
+        "113.0 editor-ready\n",
+        encoding="utf-8",
+    )
+    screen.write_text("111.0 screen\n113.5 screen\n", encoding="utf-8")
+    reached = bench.read_again(trace, screen, asked=110.0)
+    assert reached == pytest.approx({
+        "python": 0.3,
+        "window": 0.9,
+        "converted": 1.2,
+        "editor-ready": 3.0,
+        "settled": 3.5,
+    })

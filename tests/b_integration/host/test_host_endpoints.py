@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import pytest
 from support import ScriptedShell
 
-from libera.host import apps, convert, hooks, recents, session as sessions
+from libera.host import apps, convert, hooks, opening, recents, session as sessions
 from libera.host.server import BRIDGE_PARTS
 
 if TYPE_CHECKING:
@@ -34,6 +34,20 @@ def test_opened_hands_over_the_converted_document(live: LiveHost):
     # LocalStartOpen base64-decodes this straight into the editor.
     assert body["len"] == live.host.editor_bin.stat().st_size
     assert len(body["b64"]) > 0
+
+
+def test_opened_waits_for_the_conversion_the_window_opened_beside(live: LiveHost):
+    """A window opens while its document converts, and the editor asks for it
+    about two seconds later: a conversion slower than that has to be waited
+    for, not answered with whatever is on disk."""
+    shutil.rmtree(live.host.doc)
+    failed: list = []
+    opening.convert_behind(live.host, live.document, failed.append)
+
+    body = live.json("opened")
+
+    assert failed == []
+    assert body["len"] == live.host.editor_bin.stat().st_size > 0
 
 
 def test_an_unknown_host_route_is_a_404(live: LiveHost):

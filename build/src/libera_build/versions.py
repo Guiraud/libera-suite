@@ -9,12 +9,14 @@ second.
 from __future__ import annotations
 
 import re
+import shutil
 from typing import TYPE_CHECKING
 
 import tomllib
 
-from libera_build.repo import PAYLOAD_VERSION
-from libera_build.report import RefusedError
+from libera.manifest import Manifest
+from libera_build.repo import MANIFEST, PAYLOAD_VERSION
+from libera_build.report import RefusedError, say
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,3 +50,31 @@ def is_prerelease(version: str) -> bool:
     and the install scripts do too: a pre-release is reached by its own name.
     """
     return not re.fullmatch(r"\d+(\.\d+)*", version)
+
+
+def stamp_bundled_manifest(root: Path, dist: Path) -> None:
+    """The wheel's manifest, from the artifacts about to be installed or bundled.
+
+    The installer prefers the manifest baked into the wheel over the one
+    beside the artifacts, deliberately, and src/libera/manifest.json is
+    gitignored: on a builder it is whatever an earlier run left there. The
+    two builders had drifted in opposite directions, one refusing in the
+    sandbox ("manifest is for payload 0.1"), one shipping a wheel with no
+    provenance in it; and `lb linux test` on a builder installed against the
+    last release's ("manifest is for payload 0.4.1"). Each builder makes its
+    own editors.tar.gz, so the one collected here will not do either.
+    """
+    src = dist / "manifest.json"
+    if not src.is_file():
+        msg = f"no manifest.json in {dist}"
+        raise RefusedError(msg)
+    found = Manifest.read(src).payload_version
+    want = payload_version(root)
+    if found != want:
+        msg = (
+            f"{src} is for payload {found} and this tree wants {want}.\n"
+            "  The application would refuse to load those editors."
+        )
+        raise RefusedError(msg)
+    shutil.copyfile(src, root / MANIFEST)
+    say(f"    manifest  payload {found}, from {dist}")

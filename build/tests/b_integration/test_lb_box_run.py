@@ -4,6 +4,7 @@ against scratch directories and a LocalHost builder."""
 from __future__ import annotations
 
 import shutil
+import sys
 
 import pytest
 from libera_build import buildbox, released_gui, tidy, versions
@@ -72,6 +73,10 @@ def volume_box(tmp_path, monkeypatch):
     )
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the stand-in is an sh script, which Windows does not run",
+)
 def test_an_export_that_brought_nothing_is_not_an_earlier_ones(volume_box):
     """The volume holds no build; this machine holds an earlier export's
     manifest and tarball, which the check used to find and believe."""
@@ -83,6 +88,10 @@ def test_an_export_that_brought_nothing_is_not_an_earlier_ones(volume_box):
         box.exported()
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the stand-in is an sh script, which Windows does not run",
+)
 def test_an_export_lands_beside_what_this_machine_has(volume_box):
     box, built, here = volume_box
     built.mkdir(parents=True)

@@ -8,10 +8,11 @@ Libera Suite is early. This page is a status list: it says what is built, what i
 | :--- | :--- |
 | **Four editors** | Windows 10 and 11 on x64, Linux on x86_64 and arm64, macOS on Apple Silicon. Words, Tables and Slides edit; Diagrams reads Visio files. |
 | **Open and save** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
-| **Export** | Save As offers a format popup per editor, PDF included. Every format offered was checked by converting to it. |
+| **Export** | Save As offers a format popup per editor, PDF included. Every format offered is checked by converting a document to it and reading its text back. |
 | **Images** | Preserved on open and save; Insert ▸ Image works. |
 | **Print** | Renders to PDF, asks where to keep it, and opens it in your PDF viewer. |
 | **Spell checking** | Five languages, with suggestions. See below. |
+| **In your language** | The editors follow your system's language, and a new document starts from your region's blank: A4 paper everywhere but the US, and spell-checked in your language. The menu bar, the start window and the dialogs are still in English. |
 | **Recent documents** | File ▸ Open Recent remembers the last 20. |
 | **Several documents at once** | Of any kind, one window each: from File ▸ New or File ▸ Open, by double-clicking in the file manager, or as `libera *.docx`. The file's type picks the editor. |
 | **In the Start menu and the launcher** | On Windows, the installer puts Libera Suite in the Start menu, on the desktop and in Explorer's *Open with*. On Linux, the Flatpak adds it to the launcher with its icon and file associations, and `libera --launcher-install` does the same for any other install. |
@@ -88,7 +89,7 @@ Tracked changes and comments are attributed to a person, whose name is written i
 
 ### Fonts
 
-Libera Suite ships a core font set: Liberation, Carlito, Caladea, Open Sans and a few others, enough to render ordinary documents faithfully at 7 MB. The full set is 248 MB. A document that asks for a font outside that set, and outside the fonts installed on your machine, gets a substitute. Widening the set, particularly for CJK, is an open decision.
+Libera Suite ships a core font set: Liberation, Carlito, Caladea, Open Sans and a few others, enough to render ordinary documents faithfully at 7 MB. The full set is 248 MB. A document that asks for a font outside that set uses the one installed on your machine, on screen and in its PDF, and gets a substitute only when your machine does not have it either. Libera Suite lists your fonts when it first starts, and again in the background whenever you install or remove one; the windows you open after that use the new list. Widening the set, particularly for CJK, is an open decision.
 
 ### Rendering fidelity
 

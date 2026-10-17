@@ -24,7 +24,7 @@ from libera import gui, launcher, payload as payload_mod
 from libera.host import apps, convert, instance, opening, server, session
 from libera.host.convert import ConversionError
 from libera.host.session import NotReadyError
-from libera.payload import NoPayloadError, PayloadError
+from libera.payload import NoPayloadError, PayloadError, fonts
 
 if TYPE_CHECKING:
     import argparse
@@ -258,6 +258,7 @@ def serve(args: argparse.Namespace) -> int:
     """Serve the editor without a window. Used by the regression harness."""
     try:
         p = payload_mod.resolve()
+        font_index = fonts.choose(p)
     except PayloadError as e:
         return _fail(e)
 
@@ -276,6 +277,7 @@ def serve(args: argparse.Namespace) -> int:
         payload=p.root,
         work=work,
         document=document,
+        fonts=font_index,
         shot=Path(args.shot).expanduser() if args.shot else None,
     )
     session.configure(served)
@@ -376,6 +378,7 @@ def convert_documents(args: argparse.Namespace) -> int:
     try:
         plan = plan_conversions(args)
         p = payload_mod.resolve()
+        font_index = fonts.choose(p)
     except (CannotConvertError, PayloadError) as e:
         return _fail(e)
     if args.outdir:
@@ -385,7 +388,8 @@ def convert_documents(args: argparse.Namespace) -> int:
     with tempfile.TemporaryDirectory(prefix="libera-convert-") as scratch:
         for index, (src, target, ext) in enumerate(plan):
             try:
-                staged = _convert_one(p.root, Path(scratch) / str(index), src, ext)
+                work = Path(scratch) / str(index)
+                staged = _convert_one(p.root, font_index, work, src, ext)
             except ConversionError as e:
                 failed += _fail(f"{src}: {e}")
                 continue
@@ -401,8 +405,12 @@ def convert_documents(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
-def _convert_one(payload: Path, work: Path, src: Path, ext: str) -> Path:
-    converting = session.Session(payload=payload, work=work, document=src)
+def _convert_one(
+    payload: Path, font_index: Path | None, work: Path, src: Path, ext: str
+) -> Path:
+    converting = session.Session(
+        payload=payload, work=work, document=src, fonts=font_index
+    )
     convert.convert_to_editor_bin(converting, src)
     converting.out_dir.mkdir(parents=True)
     staged = converting.out_dir / f"{src.stem}.{ext}"
@@ -475,6 +483,7 @@ def open_documents(args: argparse.Namespace) -> int:
     # this process is done: see `host/instance.py` for why there is only ever
     # one. Before the window and the payload checks, which the running one has
     # already passed.
+    # Only to one running with this launch's configuration.
     if instance.hand_off(documents):
         return 0
 
@@ -506,16 +515,6 @@ def _run(p: payload_mod.Payload, documents: list[Path]) -> int:
     except (NotReadyError, instance.BusyError) as e:
         _refuse(CANNOT_START, [str(e)])
         return 1
-    except ConversionError:
-        # As a later document's is: convert has logged what x2t said.
-        _refuse(
-            CANNOT_START,
-            [
-                (
-                    f"The converter could not read {documents[0].name}: it may "
-                    "be damaged, or in a format Libera Suite cannot open."
-                )
-            ],
-        )
-        return 1
+    # A first document the converter refuses is said in its window, which
+    # opens before the conversion ends, as a later document's is.
     return 0

@@ -355,13 +355,15 @@
               const item = document.createElement("li");
               const button = document.createElement("button");
               button.className = "recent";
-              const parts = entry.path.split("/");
+              // Either separator: a Windows path has backslashes, and cut at
+              // "/" alone it was all name.
+              const cut = Math.max(entry.path.lastIndexOf("/"), entry.path.lastIndexOf("\\"));
               const name = document.createElement("span");
               name.className = "name";
-              name.textContent = parts.pop();
+              name.textContent = entry.path.slice(cut + 1);
               const where = document.createElement("span");
               where.className = "where";
-              where.textContent = parts.join("/") || "/";
+              where.textContent = entry.path.slice(0, cut) || "/";
               button.append(name, where);
               button.onclick = once(() =>
                 host("open-recent", JSON.stringify({ id: entry.id })),

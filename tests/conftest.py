@@ -24,6 +24,13 @@ from support import build_roots, make_sample_docx
 from libera import logs, payload
 from libera.host import instance, session
 from libera.host.server import diagnostics
+from libera.payload import fonts
+
+# The payload's fonts alone, in this process and in every `libera` it starts:
+# with the machine's counted, the same document lays out differently on two
+# machines, and the render checks compare pixels. A test of the machine's
+# fonts turns them back on for itself.
+os.environ.setdefault(fonts.SWITCH, "0")
 
 
 def _built_payload() -> Path | None:

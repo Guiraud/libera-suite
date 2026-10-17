@@ -66,6 +66,9 @@ class Editor:
         # these, and saying so is the difference between a stall and a stopwatch.
         self.failed: list[str] = []
         page.on("requestfailed", lambda r: self.failed.append(f"{r.url} ({r.failure})"))
+        # And every one it made, for a test of where one went.
+        self.requested: list[str] = []
+        page.on("request", lambda r: self.requested.append(r.url))
 
     def report(self) -> dict:
         with urllib.request.urlopen(self._calls, timeout=30) as r:
@@ -196,7 +199,10 @@ def editor_with(tmp_path, sample_document, monkeypatch):
     """
 
     def _open(
-        owned: list[dict], document: Path, locked_by: str | None
+        owned: list[dict],
+        document: Path,
+        locked_by: str | None,
+        fonts: Path | None,
     ) -> Iterator[Editor]:
         monkeypatch.setattr(server.editor, "list_owned_keys", lambda: owned)
         sessions.SESSIONS.clear()
@@ -204,6 +210,7 @@ def editor_with(tmp_path, sample_document, monkeypatch):
             payload=payload_mod.resolve().root,
             work=tmp_path / "0",
             document=document,
+            fonts=fonts,
         )
         sessions.configure(opened)
         opening.open_document(opened, document)
@@ -221,9 +228,10 @@ def editor_with(tmp_path, sample_document, monkeypatch):
         owned: list[dict],
         document: Path | None = None,
         locked_by: str | None = None,
+        fonts: Path | None = None,
     ) -> Editor:
         document = document or sample_document
-        httpd, port, opened = _open(owned, document, locked_by)
+        httpd, port, opened = _open(owned, document, locked_by, fonts)
         made.append(httpd)
         play = sync_playwright().start()
         made.append(play)

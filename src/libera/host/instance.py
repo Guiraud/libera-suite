@@ -23,6 +23,11 @@ and a second launch reads it here. The server is on 127.0.0.1, which any
 process on the machine and any web page the user visits can reach; only a
 process running as this user can read the file, which `write_atomically`
 creates readable by its owner alone.
+
+It also names the configuration the instance runs with (`libera --config`),
+and a launch hands its documents only to an instance running with its own:
+the other would open them with its configuration, and this one's would be
+ignored without a word.
 """
 
 from __future__ import annotations
@@ -38,7 +43,7 @@ import time
 import urllib.request
 from typing import IO, TYPE_CHECKING
 
-from libera.host.session import write_atomically
+from libera.host.session import read_atomically, write_atomically
 from libera.payload import locate
 
 if sys.platform == "win32":
@@ -74,7 +79,13 @@ def announce(port: int) -> None:
     target = get_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     write_atomically(
-        target, json.dumps({"port": port, "token": TOKEN, "pid": os.getpid()})
+        target,
+        json.dumps({
+            "port": port,
+            "token": TOKEN,
+            "pid": os.getpid(),
+            "config": _config(),
+        }),
     )
     logger.info("instance: announced on port %d", port)
 
@@ -113,12 +124,18 @@ def become(documents: list[Path]) -> IO[bytes] | None:
     documents are with the instance that has it.
 
     Raises BusyError when the claimant has neither said where it is nor ended
-    within CLAIM_WAIT.
+    within CLAIM_WAIT; at once, when it runs with another configuration.
     """
     deadline = time.monotonic() + CLAIM_WAIT
     while (held := claim()) is None:
         if hand_off(documents):
             return None
+        if (known := _read_announcement()) and known[2] != _config():
+            msg = (
+                "Libera Suite is already running, with another configuration. "
+                "Quit it to start with this one."
+            )
+            raise BusyError(msg)
         if time.monotonic() > deadline:
             msg = "another Libera Suite is starting and has not answered; try again"
             raise BusyError(msg)
@@ -134,23 +151,23 @@ def withdraw() -> None:
     take the other's announcement with it.
     """
     with contextlib.suppress(OSError, ValueError):
-        if json.loads(get_path().read_text(encoding="utf-8")).get("token") == TOKEN:
+        if json.loads(read_atomically(get_path())).get("token") == TOKEN:
             get_path().unlink()
 
 
 def hand_off(documents: list[Path]) -> bool:
     """Give the documents to a running instance. True means it took them.
 
-    False means there is none to take them -- no announcement, or one that
-    nothing answers -- and the caller starts the application itself. With no
+    False means there is none to take them -- no announcement, one that
+    nothing answers, or one running with another configuration -- and the
+    caller starts the application itself. With no
     documents the running instance puts its start window up, which is what
     clicking the icon of an application that is already open does elsewhere.
     """
-    try:
-        known = json.loads(get_path().read_text(encoding="utf-8"))
-        port, token = int(known["port"]), str(known["token"])
-    except (OSError, ValueError, KeyError, TypeError):
+    known = _read_announcement()
+    if known is None or known[2] != _config():
         return False
+    port, token, _ = known
 
     _allow_foreground()
     body = json.dumps({"documents": [str(d) for d in documents]})
@@ -168,6 +185,22 @@ def hand_off(documents: list[Path]) -> bool:
         return False
     logger.info("instance: handed %d document(s) to port %d", len(documents), port)
     return took
+
+
+def _read_announcement() -> tuple[int, str, str | None] | None:
+    """The running instance's port, token and configuration; None when no
+    announcement says."""
+    try:
+        known = json.loads(read_atomically(get_path()))
+        return int(known["port"]), str(known["token"]), known.get("config")
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _config() -> str | None:
+    """The configuration named for this process, as an announcement says it."""
+    named = locate.get_named_config()
+    return str(named.resolve()) if named else None
 
 
 def _allow_foreground() -> None:

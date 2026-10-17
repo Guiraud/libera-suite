@@ -15,7 +15,7 @@ import threading
 from typing import TYPE_CHECKING
 
 from libera.host import apps
-from libera.host.session import is_inside, write_atomically
+from libera.host.session import is_inside, read_atomically, write_atomically
 
 if TYPE_CHECKING:
     from libera.host.session import Session
@@ -83,7 +83,7 @@ def read_recents(session: Session) -> list[dict]:
     if not session.recents.is_file():
         return []
     try:
-        entries = json.loads(session.recents.read_text(encoding="utf-8"))
+        entries = json.loads(read_atomically(session.recents))
     except (ValueError, OSError) as e:
         # An empty Recent list is the right behaviour, since a corrupt file
         # must not stop a menu opening. Doing it silently, though, means no one

@@ -61,7 +61,9 @@ def make_app(payload: pathlib.Path) -> Callable[..., Iterable[bytes]]:
     def static(path: str) -> bottle.HTTPResponse:
         if_none_match = bottle.request.headers.get("If-None-Match", "")
         return _answer(
-            lambda _session: payload_files.serve_file(payload, path, if_none_match)
+            lambda session: payload_files.serve_file(
+                payload, path, if_none_match, session.fonts
+            )
         )
 
     return _with_headers(app)

@@ -12,6 +12,7 @@ import pathlib
 from libera.host.server import editor
 from libera.host.server.api import Refused, Request, Response, endpoint
 from libera.host.session import is_inside
+from libera.payload import fonts
 
 # The editor registers a service worker at the origin root. This is the one it
 # gets: it caches nothing, and clears what upstream's cached.
@@ -23,7 +24,12 @@ def serve_service_worker(_r: Request) -> Response:
     return Response(body=SERVICE_WORKER.read_bytes(), content_type=editor.JAVASCRIPT)
 
 
-def serve_file(payload: pathlib.Path, path: str, if_none_match: str) -> Response:
+def serve_file(
+    payload: pathlib.Path,
+    path: str,
+    if_none_match: str,
+    font_index: pathlib.Path | None = None,
+) -> Response:
     """A payload file, with the bridge spliced into every HTML page, the
     editor's iframe included.
 
@@ -32,11 +38,16 @@ def serve_file(payload: pathlib.Path, path: str, if_none_match: str) -> Response
     archive's times, so two payloads can hold the same name with the same
     Last-Modified. The tag is the file's full path, size and nanosecond mtime,
     so a different payload root, or a regenerated file, is a different tag.
+
+    With an index of the machine's fonts, the font list and the font menu's
+    pictures are the index's.
     """
-    target = payload / path
+    root, target = payload, payload / path
+    if font_index is not None and (own := fonts.find_served(font_index, path)):
+        root, target = font_index, own
     if target.is_dir():
         target /= "index.html"
-    if not is_inside(payload, target):
+    if not is_inside(root, target):
         raise Refused(404)
     if target.suffix == ".html":
         body = target.read_bytes()
@@ -105,10 +116,25 @@ def _deobfuscated(data: bytes) -> bytes:
 
 @endpoint("GET", "fonts", prefix=True)
 def serve_font(r: Request) -> Response:
-    """A web font, with the obfuscation the web loader expects undone."""
+    """A web font, with the obfuscation the web loader expects undone; or,
+    from an index of the machine's fonts, the font file its number names."""
+    if r.session.fonts is not None:
+        return _serve_installed_font(r.session.fonts, r.path)
     f = r.session.layout.fonts / r.path
     if not is_inside(r.session.layout.fonts, f):
         raise Refused(404)
     return Response(
         body=_deobfuscated(f.read_bytes()), content_type="application/octet-stream"
     )
+
+
+def _serve_installed_font(index: pathlib.Path, number: str) -> Response:
+    """The font at that place in the index, untouched: nothing obfuscated it.
+
+    A number and nothing else, so a page can reach no file the index does not
+    list. isascii as well, because int() reads other scripts' digits too.
+    """
+    files = fonts.read_font_files(index / "AllFonts.js")
+    if not (number.isascii() and number.isdigit() and int(number) < len(files)):
+        raise Refused(404)
+    return Response(content_type="application/octet-stream", file=files[int(number)])

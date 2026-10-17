@@ -65,6 +65,11 @@ class Toolkit(Protocol):
     def run_on_gui_thread(self, work: Callable[[], T]) -> T:
         """Run work where the toolkit wants it, and return its answer."""
 
+    def make_window(
+        self, title: str, url: str, width: int, height: int
+    ) -> Window | None:
+        """pywebview's create_window, made where the toolkit can make it."""
+
     def find_key_window(self, windows: Sequence[Window]) -> Window | None:
         """The window the toolkit says is in front, if it says."""
 
@@ -98,6 +103,13 @@ class Toolkit(Protocol):
     def complete_startup(self, then: Callable[[], None]) -> None:
         """Once the application runs: `then`, which installs the menus."""
 
+    def on_quit(self, work: Callable[[], None]) -> None:
+        """Run `work` when the application quits without start() returning."""
+
+    def stay_open(self) -> None:
+        """Once start() has returned: keep the application running, where that
+        is the platform's way, until it quits."""
+
 
 def run_on_gui_thread(work: Callable[[], T]) -> T:
     """Run it here.
@@ -107,6 +119,11 @@ def run_on_gui_thread(work: Callable[[], T]) -> T:
     MessageBoxW) sees to its own thread.
     """
     return work()
+
+
+def make_window(title: str, url: str, width: int, height: int) -> Window | None:
+    """pywebview's own."""
+    return webview.create_window(title, url, width=width, height=height)
 
 
 def find_key_window(windows: Sequence[Window]) -> Window | None:
@@ -181,3 +198,12 @@ def complete_startup(then: Callable[[], None]) -> None:
     """Run it: pywebview calls this as the GUI loop starts, with nothing else
     left to wait for."""
     then()
+
+
+def on_quit(work: Callable[[], None]) -> None:
+    """Nothing: there is no Quit but closing the last window, after which
+    start() returns and its caller does the rest."""
+
+
+def stay_open() -> None:
+    """Nothing: closing the last window is quitting, here."""

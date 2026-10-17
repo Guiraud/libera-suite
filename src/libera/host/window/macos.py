@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, TypeVar
 import AppKit
 import Foundation
 import objc
+import webview
 from PyObjCTools import AppHelper
 
 from libera.host import about, hooks
@@ -81,6 +82,33 @@ def run_on_gui_thread(work: Callable[[], T]) -> T:
     if failure is not None:
         raise failure
     return answer
+
+
+def make_window(title: str, url: str, width: int, height: int) -> Window | None:
+    """pywebview's create_window, except for the first window after none.
+
+    pywebview names the first window it knows "master" and makes it at once,
+    on the thread that asks, which it expects to be the one about to call
+    start(). Once the last window has closed and the application runs on
+    (stay_open), the next window is a "master" again, asked for by a request
+    thread, and AppKit refuses: "NSWindow should only be instantiated on the
+    main thread". So with no window, it is made on the GUI thread, by the two
+    steps create_window takes once start() has run. There, create_window only
+    lists it.
+    """
+    gui = webview.guilib
+    if webview.windows or gui is None:
+        # Another window open, or start() still to come: pywebview's own way.
+        return webview.create_window(title, url, width=width, height=height)
+
+    def make() -> Window | None:
+        window = webview.create_window(title, url, width=width, height=height)
+        if window is None or not window._initialize(gui=gui):
+            return None
+        gui.create_window(window)
+        return window
+
+    return run_on_gui_thread(make)
 
 
 def find_key_window(windows: Sequence[Window]) -> Window | None:
@@ -412,6 +440,55 @@ def complete_startup(then: Callable[[], None]) -> None:
         _accept_documents_from_finder()
 
     AppHelper.callAfter(attempt)
+
+
+def on_quit(work: Callable[[], None]) -> None:
+    """Run `work` as the application quits.
+
+    Cmd-Q is pywebview's menu item, `terminate:`, and AppKit ends the process
+    inside start(), which never returns: whatever its caller meant to do on
+    the way out did not happen. Every document's lock file stayed behind, so
+    to LibreOffice, or to Libera Suite under another account, the document
+    was still being edited by us.
+    """
+    center = Foundation.NSNotificationCenter.defaultCenter()
+    center.addObserverForName_object_queue_usingBlock_(
+        AppKit.NSApplicationWillTerminateNotification, None, None, lambda _note: work()
+    )
+
+
+def stay_open() -> None:
+    """Keep running with no window, until Quit, as a Mac application does.
+
+    A document opened later, by a double-click or a second `libera`, then
+    goes to this process and skips the launch: on screen in about 1.7 s
+    instead of 2.5 to 3 (notes/21-startup-and-size.md).
+
+    pywebview stops AppKit's loop when its last window closes, which is what
+    made start() return; this runs the loop again, for as long as the windows
+    keep going. pywebview also stops it on a Cmd-Q its webview catches, with
+    windows open: that is a quit, so this returns.
+    """
+    while not webview.windows:
+        # pywebview drops its delegate with its last window, and sets it
+        # again with its next.
+        AppKit.NSApp.setDelegate_(REOPENER)
+        AppKit.NSApp.run()
+
+
+class LiberaReopener(AppKit.NSObject):
+    """The application's delegate while no window is open."""
+
+    @objc.typedSelector(b"Z@:@Z")
+    def applicationShouldHandleReopen_hasVisibleWindows_(self, _app, _visible):
+        """A click on the Dock icon: the start window. Off the GUI thread,
+        where pywebview creates a window."""
+        threading.Thread(target=hooks.shell.show_start_window, daemon=True).start()
+        return False
+
+
+# Alive for the life of the process: NSApplication does not retain its delegate.
+REOPENER = LiberaReopener.alloc().init()
 
 
 def _name_the_application() -> None:

@@ -4,6 +4,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 Two versions move here and they move independently. The **application** is this package, `libera`. The **editor payload** is the Euro-Office build it fetches on first use, versioned separately so that a fix to the host does not force a 120 MB re-download. `libera --version` prints both.
 
+## [0.5.0] - Unreleased
+
+The first with payload **0.5**, so the editors are downloaded again once.
+
+### Added
+
+- **The fonts installed on your machine.** A document set in a font you have installed shows in it, on screen and in its PDF, where it used to get a substitute. The fonts are listed as the editors are installed, and again in the background whenever one is installed or removed; the windows opened after that use the new list. Nothing is copied. `installed_fonts = false` in the configuration file keeps to the fonts Libera Suite ships.
+- **The editors in your language.** Words, Tables, Slides and Diagrams follow your system's language, where they were always in English, and `ui_language` in the configuration file chooses another. A new document starts from the blank for your language and region: A4 paper everywhere but the US, where every one used to be US Letter, and spell-checked in your language. The menu bar, the start window and the dialogs are still in English. In French, Italian, Spanish and Portuguese the editors needed strings the translations lacked, and Words never became editable; the missing strings are now in English.
+
+### Changed
+
+- **A document is on screen sooner.** Its window opens at once and the editor loads while the document is converted, where the window used to wait for the conversion: on our Mac, about a second sooner for a small Words document. A document the converter cannot read now opens its window, says so, and closes it again, the first one of a launch included, which used to say so in the terminal.
+- **The editors follow Euro-Office's own desktop release.** They are built from the revisions behind Euro-Office's Desktop Editors 9.3.5-2, of 2026-10-08, where they were from August's. A bug Euro-Office has fixed in its desktop editors is fixed here too.
+
+### Removed
+
+- **Tables no longer saves as `.xlsb`**, Excel's binary workbook. The converter crashed writing one on Linux, with payload 0.5 as with 0.4.1. Save as `.xlsx` instead; Excel opens both.
+
+### Fixed
+
+- **On Windows, the start window's Recent list shows each document's name**, with its folder beneath, where it showed the whole path as the name.
+- **The font menu draws each name whole.** Each name was squeezed into a row two pixels shorter than its picture, and thin white lines ran through some names.
+- **An `.xlsb` file opens.** It used to open as an empty presentation, Excel's own files included.
+- **On macOS, quitting with Cmd-Q leaves no document locked.** The lock beside each open document stayed behind, so LibreOffice, or Libera Suite under another account, took the document for one still being edited. Closing the windows first did release it.
+- **On Windows, the Recent list could lose its entries.** Windows refuses to replace a file another window is reading at that instant, and to read one being replaced. A read that failed was taken for an empty list, which the next document opened then saved over everyone's entries; the other state files, such as the document a window has open, failed the same way. Both sides now try again for a moment.
+
 ## [0.4.2] - Unreleased
 
 ### Fixed

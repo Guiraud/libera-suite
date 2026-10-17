@@ -10,10 +10,11 @@ La interfaz de Libera Suite está en inglés: los menús y botones se citan aqu�
 | :--- | :--- |
 | **Cuatro editores** | Windows 10 y 11 en x64, Linux en x86_64 y arm64, macOS en Apple Silicon. Words, Tables y Slides editan; Diagrams lee archivos de Visio. |
 | **Abrir y guardar** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
-| **Exportar** | Save As ofrece una lista de formatos para cada editor, PDF incluido. Cada formato ofrecido se ha comprobado con una conversión real. |
+| **Exportar** | Save As ofrece una lista de formatos para cada editor, PDF incluido. Cada formato ofrecido se comprueba con una conversión real, cuyo texto se vuelve a leer. |
 | **Imágenes** | Se conservan al abrir y al guardar; Insert ▸ Image funciona. |
 | **Imprimir** | Genera un PDF, pregunta dónde guardarlo y lo abre en tu visor de PDF. |
 | **Corrección ortográfica** | Cinco idiomas, con sugerencias. Más abajo, los detalles. |
+| **En tu idioma** | Los editores siguen el idioma de tu sistema, y un documento nuevo parte de la plantilla en blanco de tu región: papel A4 en todas partes salvo en Estados Unidos, y corrección ortográfica en tu idioma. La barra de menús, la ventana de inicio y los diálogos siguen en inglés. |
 | **Documentos recientes** | File ▸ Open Recent recuerda los últimos 20. |
 | **Varios documentos a la vez** | También de tipos distintos, una ventana para cada uno: desde File ▸ New o File ▸ Open, con doble clic en el gestor de archivos o con `libera *.docx`. El tipo de archivo elige el editor. |
 | **En el menú Inicio y en el menú de aplicaciones** | En Windows, el instalador añade Libera Suite al menú Inicio y al escritorio, y la incluye en *Abrir con* del Explorador de archivos. En Linux, el Flatpak la añade al menú de aplicaciones con su icono y sus asociaciones de archivos; `libera --launcher-install` hace lo mismo con cualquier otra instalación. |
@@ -90,7 +91,7 @@ Los cambios registrados y los comentarios se atribuyen a una persona, cuyo nombr
 
 ### Fuentes
 
-Libera Suite incluye un conjunto básico de fuentes: Liberation, Carlito, Caladea, Open Sans y algunas más, suficientes para mostrar fielmente documentos corrientes, en 7 MB. El conjunto completo ocupa 248 MB. Un documento que pide una fuente que no está ni en este conjunto ni entre las instaladas en tu máquina recibe una fuente sustituta. Está por decidir si se amplía el conjunto, sobre todo para el chino, el japonés y el coreano.
+Libera Suite incluye un conjunto básico de fuentes: Liberation, Carlito, Caladea, Open Sans y algunas más, suficientes para mostrar fielmente documentos corrientes, en 7 MB. El conjunto completo ocupa 248 MB. Un documento que pide una fuente que no está en este conjunto usa la instalada en tu máquina, en pantalla y en su PDF, y solo recibe una fuente sustituta si tu máquina tampoco la tiene. Libera Suite hace la lista de tus fuentes en el primer arranque, y de nuevo en segundo plano cada vez que instalas o quitas una; las ventanas que abras después usan la lista nueva. Está por decidir si se amplía el conjunto, sobre todo para el chino, el japonés y el coreano.
 
 ### Fidelidad de la presentación
 

@@ -88,7 +88,7 @@ def parse_version(text: str) -> tuple[tuple[int, ...], int, str, int]:
 def check(current: str, origin: str, state: Path, now: float) -> None:
     """Fetch the pointer unless today's check is done, and tell a newer
     version once. Raises what the fetch or the answer raises."""
-    seen = json.loads(state.read_text(encoding="utf-8")) if state.is_file() else {}
+    seen = json.loads(session.read_atomically(state)) if state.is_file() else {}
     if now - seen.get("checked", 0) < DAY:
         return
     channel = find_channel()

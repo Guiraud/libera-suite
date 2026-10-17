@@ -13,6 +13,10 @@ Sie öffnet und speichert die Dateiformate von Microsoft Office und LibreOffice,
 
 [Libera Suite installieren](main/install.md){ .md-button .md-button--primary }
 
+## In sechs Folien
+
+<div class="deck" data-pdf="/en/pdf/Libera%20Suite.pdf"><a href="/en/pdf/Libera%20Suite.pdf">Libera Suite, in sechs Folien (PDF)</a></div>
+
 ## Wo das Projekt steht
 
 Alle vier laufen heute unter **Windows** 10 und 11 (x64), **Linux** (x86_64 und arm64) und **macOS** (Apple Silicon). Das Projekt ist jung. [Was heute funktioniert](main/status.md) führt den Stand auf: was gebaut ist, was halb fertig ist und was noch nicht begonnen wurde.

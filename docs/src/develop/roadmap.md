@@ -2,63 +2,87 @@
 
 This page says what we are doing next and what we have decided against. [What works today](../main/status.md) is the companion page: it describes the present; this one describes the intent.
 
-Nothing here has a date. The project is small; the things at the top are the things being worked on.
+Nothing here has a date. The order is the commitment.
 
-## Now: the first installs
+## The goal, as a test
 
-Nothing in the build stands in the way any more. The payload origin is up, both
-Flatpak bundles are published, the wheel is on PyPI, and one command installs
-it on each platform. People are the missing piece: Libera Suite has not yet
-been installed by anyone outside the project, on their own machine, against
-their own documents.
+Libera Suite is meant to replace Microsoft Office. We read that as one test: **an organisation of a few dozen people, on Windows and macOS, uninstalls Office and does not reinstall it within a month.** Each release removes one reason it would. These are the reasons, roughly in the order such an organisation meets them:
 
-That is the next piece of work, and none of it is engineering. The first few
-real installs will find things no amount of testing here would, because every
-check in this repository runs on a machine that built the thing.
+1. It cannot be installed without a security warning, or by an administrator onto many machines.
+2. It does not speak the users' language.
+3. A document from outside looks wrong.
+4. Something done daily is missing: tabs, a password-protected file, a signature, a PDF to fill in, a Visio diagram to edit.
+5. It is not clear who maintains it, or for how long.
 
-**Installing the payload without a terminal** is what used to be here. Every
-channel that can ship the editors now does: the Flatpak has them inside it,
-and `curl … | sh` fetches them without the user naming a directory. The one
-channel that cannot is PyPI, whose users are at a prompt already. A window that
-offers to download still has a place as a fallback, though it gates nothing.
+## Now: 0.5, the beta in other people's hands
 
-## Next
+The beta has been public since October 2026. 0.5 is about what its testers meet first.
 
-**Signing and notarisation on macOS.** Everything is already ad-hoc signed, because Apple Silicon refuses to run a binary with no signature at all and the toolchain applies one for free. The absence of a Developer ID therefore does not stop Libera Suite running. It leaves Gatekeeper's quarantine prompt in the way, which on macOS 15 and later right-click ▸ Open no longer dismisses. That is a poor first five minutes.
+**The interface in your language.** The editor already has its own translations; the menus, the start window and the dialogs do not. 0.5 runs the whole application in the system's language, starting with French, German, Italian and Spanish, the languages this site has. A new document follows it too: today File ▸ New gives a US Letter page in American English, whatever the system says.
 
-**A `.flatpakref`.** Both bundles are built, hosted and installable today, and a document converts inside the sandbox on each. The one-URL install is still missing: a `.flatpakref` on a server, and Flathub after that.
+**The fonts installed on your machine.** 0.5 makes the fonts installed on the machine visible to the editor and to the converter alike, so the screen and the PDF agree. Until then the editor saw only the fonts Libera Suite ships, and a document set in a font you had installed got a substitute.
 
-**Windows, after the first installer.** A Windows installer, for x64, has shipped since 0.3.0. Three things are missing. The installer is not code-signed, so SmartScreen warns about the download. Windows on ARM runs the x64 build under emulation, as there is no native one. The payload origin holds no Windows core, so `pip install libera` on Windows has no editors to fetch; the installer brings its own.
+**A save that loses the text is a failed save.** Every format Save As offers is now checked by reading the document's text back. The application itself will refuse a save whose result has lost the text, and keep the document recoverable.
 
-**Keyboard shortcuts on Linux and Windows.** The menu bar is there and every item on it works. None of them has a key equivalent. On Linux that is because pywebview's GTK menu has none: giving the bar shortcuts means reaching past it to `Gtk.Application.set_accels_for_action`, and then deciding which keys the page has to stop handling. What the same keys do on Windows has not been measured yet.
+**Nothing leaves your machine, by construction.** Today it is a promise about our code. 0.5 makes the editor's page unable to reach the network at all, and measures whether the converter ever tries to.
 
-**An update path.** Nothing tells a tester that a newer version exists. Saying so in the release notes is enough for a beta. A version check that mentions it once is better. Automatic updates are their own project.
+**Following Euro-Office's desktop release.** Euro-Office now publishes desktop builds of its own. Our editors move to the revisions behind them, so a bug fixed there is fixed here.
 
-**A redistributable application bundle.** `Libera.app` today is a launcher around the interpreter it was built with. It embeds no Python and no payload, so it runs from your own checkout and is not something you can hand to somebody else.
+**Old editor versions are removed.** Each update leaves the previous version's editors on disk, about 400 MB each. 0.5 removes the ones no copy of Libera Suite still uses.
 
-## Later
+**Installs without a warning.** Three things wait on accounts and keys, and each ships in a 0.5.x as soon as it is ready: signing and notarisation on macOS, where Gatekeeper's prompt is a poor first five minutes; a `.flatpakref`, then Flathub; and code signing on Windows, so SmartScreen stops warning about the installer.
 
-**Tabs.** One window per document today. Windows exist and the Window menu lists them; merging them into one needs real support: `newWindowForTab:`, and moving a document between windows. Turning the tab bar back on does not do it.
+## Next: parity with Euro-Office Desktop
 
-**Editing PDFs and diagrams.** Upstream has a PDF editor, which `build/engine/dist.sh` leaves out of the payload because nothing routes to it yet. Diagrams opens `.vsdx` and shows it; the converter refuses every Visio output format, so there is nothing to save and no blank to start from. Both are upstream capabilities we have not wired up.
+Euro-Office publishes a desktop application of its own, built on the same editors as Libera Suite. Someone comparing the two should find nothing in it that is missing here. Every feature on this list exists upstream already, in the editors we ship or beside them, so the work is wiring each one to the host and testing it, not writing it. This is the order we do them in.
 
-**Password-protected documents, digital signatures, mail merge.** Upstream features, none of them reachable today.
+**Tabs.** One window per document today. Several documents in one window needs real support: `newWindowForTab:` on macOS, its equivalent on Linux and Windows, and moving a document from one window to another.
 
-**Your name in documents.** Tracked changes and comments are attributed to your account's full name, which you cannot yet change.
+**The interface in every language the editors speak.** The editors are translated into 46 languages. 0.5 translates our own part (the menus, the start window, the dialogs) into four. The rest follow, each once a native speaker has read it: our part is small beside the editors'.
 
-**More fonts, particularly CJK.** The shipped set is 7 MB and renders ordinary documents faithfully; the full set is 248 MB. Where the line goes is an open decision, with CJK the case that most obviously argues for moving it.
+**PDF: editing and forms.** Upstream has a PDF editor and a form creator, which the payload leaves out because nothing routes to them yet. Both come in: annotating and editing a PDF, filling in a form and saving it, and creating one. A viewer alone would add little to the system's own, so PDF ships when saving holds up.
 
-**In-application help.** Upstream ships a manual, but it documents ONLYOFFICE and weighs 84 MB in eight languages, so Libera Suite does not ship it. Help comes back when there is documentation of our own to point at; these pages are the substitute.
+**Password-protected documents and digital signatures.** Upstream has both, and neither is reachable today. Opening and saving a protected document, then signing one and checking a signature.
+
+**Plugins, including the AI assistant.** Upstream's plugin system, and the plugins it carries, AI assistant included. The AI assistant is off until it is configured, and it talks only to a provider the user chooses, which may run on their own machine. [What leaves your machine](../index.md#what-leaves-your-machine) will say so beside everything else.
+
+**Documents on a Nextcloud, ownCloud or Seafile server.** As in Euro-Office Desktop, a window on the server's own editors: the documents stay on that server, and editing with other people is that server's work. It is off until the user adds a server, and a local document's window never reaches the network either way.
+
+**Signed installers**, on macOS and Windows, are already in 0.5.x, above.
+
+## Alongside
+
+**The host becomes a runtime.** The package splits in two: a host that runs apps, and the editors as one app among others. Nothing changes for a user. It comes when a second app does, or earlier if the boundary between the Apache-licensed host and the AGPL editors has to be shown in the code.
+
+**Fidelity, measured.** A document from outside that looks wrong is the third reason on the list. The editor is mature, so a wrong layout is more often our packaging (a font, a resource) than the engine. Only a measurement finds those: a corpus of test documents, reference PDFs exported from Word, a score per page, and a harness that gives the same pixels twice. The score then gates releases, and every document a user reports goes into the corpus.
+
+## Later, towards 1.0
+
+One feature at a time, each measured before it is promised. Most exist in the editor already and are not wired up.
+
+**Editing diagrams.** Diagrams opens `.vsdx` and shows it. The converter writes no Visio format, so this needs converter work first. Euro-Office Desktop does not edit diagrams either.
+
+**Mail merge.** An upstream feature, not reachable today.
+
+**In-application help.** Upstream's manual documents ONLYOFFICE and weighs 84 MB, so Libera Suite does not ship it. Help comes back when there is documentation of our own to point at; these pages are the substitute.
+
+**More fonts, particularly CJK.** The shipped set is 7 MB and renders ordinary documents faithfully; the full set is 248 MB. Where the line goes is an open decision, and the fidelity corpus will say how many documents fall back.
+
+**Windows on ARM.** It runs the x64 build under emulation today.
+
+## 1.0
+
+1.0 means the test above passes for one real organisation. On top of the features: signed installers on Windows and macOS, a deployment an administrator can script (an MSI or equivalent, a `pkg`, a system Flatpak), a published support window for each release, and a security contact. The fifth reason is answered by Abilian's commitment, written down where an organisation's procurement can find it.
 
 ## Not now
 
 These are outside the current product. Each could arrive one day, in the shape described here. None is being worked on.
 
-**Collaboration, cloud storage, accounts.** Libera Suite edits files on your disk. The engine underneath it is collaborative-first with that switched off. Some form of shared editing may come back, as a mode or as a product of its own. Nothing in the local application waits on it.
+**A collaboration server of our own, and accounts.** Libera Suite edits files on your disk, and opens the ones on a server you already use (see above). Running such a server is a separate product, which may reuse the host. Nothing in the local application waits on it.
 
-**Telemetry, analytics, crash reporting.** There is none today. The beta adds none. Anything of the kind would be opt-in and off until you turn it on. [What leaves your machine](../index.md#what-leaves-your-machine) would list it beside everything else the application does on the network.
+**Telemetry, analytics, crash reporting.** There is none. Anything of the kind would be opt-in and off until you turn it on. [What leaves your machine](../index.md#what-leaves-your-machine) would list it beside everything else the application does on the network.
 
-**Changing the document engine.** Not something we do today. The patch queue is 37 patches across three repositories. Twenty-one make it build on macOS and eight on Windows. Seven more are configuration, branding and build fixes, and one fixes an upstream UI bug. **None touches the editing engine** (see [the patch queue](patches.md)). That is what keeps a pin bump a rebase of build configuration. It is a discipline, so if we ever do need the engine to behave differently, the change goes in the same way: one reviewable patch, offered upstream first.
+**Changing the document engine.** The patch queue makes upstream build on macOS and Windows, brands it, and fixes the converter, mostly for OpenDocument files. **None of it touches the editing engine** (see [the patch queue](patches.md)), which is what keeps following upstream affordable. If we ever need the engine to behave differently, the change goes in the same way: one reviewable patch, offered upstream first.
 
 ## How to influence this
 

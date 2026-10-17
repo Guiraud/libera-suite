@@ -124,7 +124,6 @@ TABLES = App(
         261: ("xlsm", 261),
         262: ("xltx", 262),
         263: ("xltm", 263),
-        264: ("xlsb", 264),
         266: ("ots", 266),
         276: ("tsv", 276),
         513: ("pdf", 513),
@@ -132,7 +131,6 @@ TABLES = App(
     save_formats=(
         ("Excel Workbook (.xlsx)", "xlsx"),
         ("Excel Template (.xltx)", "xltx"),
-        ("Excel Binary Workbook (.xlsb)", "xlsb"),
         ("OpenDocument Spreadsheet (.ods)", "ods"),
         ("OpenDocument Template (.ots)", "ots"),
         ("PDF (.pdf)", "pdf"),

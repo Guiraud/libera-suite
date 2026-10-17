@@ -31,37 +31,43 @@ def running(tmp_path, monkeypatch):
         msg = f"x2t could not convert {document.name} (exit status 1)"
         raise ConversionError(msg)
 
-    monkeypatch.setattr(app.opening, "open_document", refuse)
-    monkeypatch.setattr(app, "create_window", lambda *_a, **_k: pytest.fail("a window"))
+    monkeypatch.setattr(app.opening.convert, "convert_to_editor_bin", refuse)
+    monkeypatch.setattr(app, "create_window", lambda *_a, **_k: FakeWindow("w1"))
+    closed: list[str] = []
+    monkeypatch.setattr(
+        app, "close_session_window", lambda session: closed.append(session.id)
+    )
     said: list[str] = []
     monkeypatch.setattr(
         app.dialogs, "say", lambda heading, _detail: said.append(heading)
     )
-    yield said
+    yield said, closed
     SESSIONS.clear()
 
 
-def test_it_is_said_on_screen_and_leaves_no_session_behind(running, tmp_path):
+def test_it_is_said_on_screen_and_its_window_closed(running, tmp_path):
+    """The window opens before the converter has read the document, so that
+    the editor loads meanwhile; the window of one it refuses closes again,
+    and its session goes with it."""
+    said, closed = running
     broken = tmp_path / "broken.docx"
     broken.write_bytes(b"not a document")
 
-    app.WindowedShell(43110).open_window(broken)
+    assert app.WindowedShell(43110).open_window(broken)
+    (made,) = (s for s in SESSIONS.values() if s.id != "0")
+    assert made.converting is not None
+    made.converting.join()
 
-    assert running == ["Libera Suite could not open “broken.docx”"]
-    assert list(SESSIONS) == ["0"], "a session was left with no window"
+    assert said == ["Libera Suite could not open “broken.docx”"]
+    assert closed == [made.id]
 
 
-def test_run_reaches_the_gui_loop_with_windows_to_open_in(tmp_path, monkeypatch):
-    """run(), with fakes for what needs a display, up to webview.start().
-
-    The windowed shell has to be in place before the first document opens,
-    which may ask whether to recover its unsaved edits; the server starts
-    first so that the shell knows its port. The toolkit's own preparation is
-    left out: on a Mac it renames the process.
-    """
+@pytest.fixture
+def no_display(tmp_path, monkeypatch):
+    """run(), with fakes for what needs a display, up to webview.start(), which
+    each test fakes its own way. The toolkit's own preparation is left out: on
+    a Mac it renames the process."""
     from types import SimpleNamespace
-
-    import webview
 
     from libera.host import hooks
 
@@ -73,6 +79,11 @@ def test_run_reaches_the_gui_loop_with_windows_to_open_in(tmp_path, monkeypatch)
     # run() announces itself; somewhere of this test's own, not the shared path.
     monkeypatch.setattr(app.instance, "get_path", lambda: tmp_path / "instance.json")
     monkeypatch.setattr(app.native, "prepare", lambda: None)
+    # On macOS it runs AppKit's loop again once start() returns.
+    monkeypatch.setattr(app.native, "stay_open", lambda: None)
+    # It builds the font index on a thread that outlives the test, holding the
+    # lock the font tests take.
+    monkeypatch.setattr(app.fonts, "build_behind", lambda *_: None)
     monkeypatch.setattr(
         app.server,
         "make_server",
@@ -82,10 +93,22 @@ def test_run_reaches_the_gui_loop_with_windows_to_open_in(tmp_path, monkeypatch)
         app,
         "create_window",
         lambda *_a, **_k: SimpleNamespace(
-            uid="w", events=SimpleNamespace(closed=Event())
+            uid="w", events=SimpleNamespace(closing=Event(), closed=Event())
         ),
     )
     monkeypatch.setattr(windows, "_start_windows", [])
+
+
+def test_run_reaches_the_gui_loop_with_windows_to_open_in(
+    no_display, tmp_path, monkeypatch
+):
+    """The windowed shell has to be in place before the first document opens,
+    which may ask whether to recover its unsaved edits; the server starts
+    first so that the shell knows its port."""
+    import webview
+
+    from libera.host import hooks
+
     at_start: list = []
     monkeypatch.setattr(webview, "start", lambda **_: at_start.append(hooks.shell))
 
@@ -98,6 +121,79 @@ def test_run_reaches_the_gui_loop_with_windows_to_open_in(tmp_path, monkeypatch)
     assert at_start[0].windowed
     (first,) = SESSIONS.values()
     assert first.work.parent == tmp_path / "sessions"
+
+
+def test_a_first_document_the_converter_refuses_is_said_and_its_window_closed(
+    no_display, tmp_path, monkeypatch
+):
+    """The first window too opens before the conversion ends. A refusal used
+    to raise out of run(), before there was any window; it is now said, and
+    its window closed, as a later document's is."""
+    import webview
+
+    broken = tmp_path / "broken.docx"
+    broken.write_bytes(b"not a document")
+
+    def refuse(_session, document):
+        msg = f"x2t could not convert {document.name} (exit status 1)"
+        raise ConversionError(msg)
+
+    monkeypatch.setattr(app.opening.convert, "convert_to_editor_bin", refuse)
+    said: list[str] = []
+    monkeypatch.setattr(app.dialogs, "say", lambda heading, _: said.append(heading))
+    closed: list[str] = []
+    monkeypatch.setattr(
+        app, "close_session_window", lambda session: closed.append(session.id)
+    )
+
+    converting: list = []
+
+    def gui_loop(**_):
+        (session,) = SESSIONS.values()
+        converting.append(session.converting)
+        session.converting.join()
+
+    monkeypatch.setattr(webview, "start", gui_loop)
+
+    app.run(tmp_path / "payload", tmp_path / "sessions", [broken])
+
+    (thread,) = converting
+    assert thread is not None, "converted before the window was made"
+    assert said == ["Libera Suite could not open “broken.docx”"]
+    assert len(closed) == 1, "the window stayed open"
+
+
+def test_a_quit_that_never_returns_from_the_gui_loop_still_lets_go(
+    no_display, tmp_path, monkeypatch
+):
+    """Cmd-Q on macOS ends the process inside webview.start(), so nothing after
+    it runs: the document's lock file and the announcement to a second launch
+    used to stay behind. What the toolkit runs on quitting has to release them.
+    """
+    import webview
+
+    document = tmp_path / "report.docx"
+    document.write_bytes(b"a document")
+    quitting: list = []
+    monkeypatch.setattr(app.native, "on_quit", quitting.append)
+    left: list[bool] = []
+
+    def quit_inside_the_gui_loop(**_):
+        (session,) = SESSIONS.values()
+        session.write_current_document(document)
+        locking.hold(session, document)
+        assert locking.lock_path(document).is_file()
+        for work in quitting:
+            work()
+        # Checked here, before run()'s own way out, which a quit never reaches.
+        left.append(locking.lock_path(document).exists())
+        left.append((tmp_path / "instance.json").exists())
+
+    monkeypatch.setattr(webview, "start", quit_inside_the_gui_loop)
+
+    app.run(tmp_path / "payload", tmp_path / "sessions", [])
+
+    assert left == [False, False], "the lock or the announcement outlived the quit"
 
 
 class Hooks(UserList):
@@ -138,7 +234,10 @@ def showing(tmp_path, monkeypatch):
     first.window = "w1"
     window = FakeWindow("w1")
     monkeypatch.setattr(webview, "windows", [window])
-    monkeypatch.setattr(app.opening, "open_document", lambda *_: None)
+    monkeypatch.setattr(app.opening, "begin_opening", lambda *_: True)
+    monkeypatch.setattr(
+        app.opening, "convert_behind", lambda _s, _d, _failed, done: done()
+    )
     created: list[str] = []
 
     def create(title, _url, *_a, **_k):
@@ -222,3 +321,20 @@ def test_a_thread_that_fails_says_so_on_screen(monkeypatch):
     worker.join()
 
     assert said == ["Libera Suite ran into a problem"]
+
+
+def test_the_last_window_closed_leaves_a_session_to_answer_for(tmp_path):
+    """On macOS the application runs on with no window. A request that names
+    no session, a second launch's hand-off among them, is answered for the
+    first; with none left, every one was refused."""
+    SESSIONS.clear()
+    last = Session(payload=tmp_path / "payload", work=tmp_path / "sessions" / "0")
+    configure(last)
+
+    app.close_session(last)
+
+    (left,) = SESSIONS.values()
+    assert left.id != last.id
+    assert left.document is None
+    assert left.payload == last.payload
+    SESSIONS.clear()

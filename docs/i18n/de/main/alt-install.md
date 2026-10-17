@@ -22,12 +22,14 @@ Es schreibt nur nach `~/.local/bin` und `~/.local/share`. Öffnen Sie seine Adre
 
 ## pipx oder uv
 
-Libera Suite steht auf PyPI unter dem Namen `libera` und braucht Python 3.12 oder neuer. Unter macOS:
+Libera Suite steht auf PyPI unter dem Namen `libera` und braucht Python 3.12 oder neuer. Unter macOS und Windows:
 
 ```sh
 uv tool install libera      # oder: pipx install libera
 libera --payload-install
 ```
+
+Zum Ausprobieren ohne Installation startet `uvx libera` sie aus einem Zwischenspeicher; beim ersten Start bietet sie an, die Editoren herunterzuladen.
 
 Unter Linux zeichnet GTK das Fenster. Dessen Python-Anbindung stammt aus Ihrer Distribution und ist für deren eigenes Python gebaut. Eine isolierte Umgebung sieht sie nicht, deshalb braucht `pipx` zwei Optionen:
 

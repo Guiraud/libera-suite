@@ -141,6 +141,20 @@ El mismo archivo desactiva la búsqueda diaria de una versión nueva, con una l�
 check_updates = false
 ```
 
+Otra se limita a las fuentes que incluye Libera Suite, sin las instaladas en tu máquina, para que un documento se vea igual en todos los ordenadores:
+
+```toml
+installed_fonts = false
+```
+
+Y otra fija el idioma de los editores, cuando no debe ser el de tu sistema. Un documento nuevo sigue tomando el tamaño de papel de la región de tu sistema:
+
+```toml
+ui_language = "fr"
+```
+
+Para usar otro archivo durante un arranque, sin tocar este, indíquelo con `libera --config ARCHIVO` (o `-c ARCHIVO`), o en la variable de entorno `LIBERA_CONFIG`. Un Libera Suite iniciado así no entrega sus documentos a uno que ya esté abierto, que los abriría con su propia configuración: ciérrelo primero.
+
 ## Dónde van tus archivos de trabajo
 
 Mientras un documento está abierto, Libera Suite mantiene una carpeta de sesión junto a sus datos de aplicación. Contiene la copia de trabajo del editor y un registro continuo de tus cambios, lo que hace que guardar sea rápido y deshacer sea fiable. No es una copia de seguridad: el documento está donde lo guardaste.

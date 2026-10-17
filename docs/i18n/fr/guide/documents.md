@@ -141,6 +141,20 @@ Le même fichier désactive la recherche quotidienne d'une nouvelle version, sur
 check_updates = false
 ```
 
+Une autre s'en tient aux polices fournies par Libera Suite, sans celles installées sur votre machine, pour qu'un document s'affiche de la même façon sur tous les ordinateurs :
+
+```toml
+installed_fonts = false
+```
+
+Une dernière fixe la langue des éditeurs, quand elle ne doit pas être celle de votre système. Un nouveau document prend toujours son format de papier dans la région de votre système :
+
+```toml
+ui_language = "fr"
+```
+
+Pour utiliser un autre fichier le temps d'un lancement, sans toucher à celui-ci, indiquez-le avec `libera --config FICHIER` (ou `-c FICHIER`), ou dans la variable d'environnement `LIBERA_CONFIG`. Un Libera Suite lancé ainsi ne confie pas ses documents à celui qui serait déjà ouvert, qui les ouvrirait avec sa propre configuration : quittez d'abord ce dernier.
+
 ## Où vont vos fichiers de travail
 
 Tant qu'un document est ouvert, Libera Suite conserve un dossier de session à côté de ses données d'application. Il contient la copie de travail de l'éditeur et le journal de vos modifications : l'enregistrement est ainsi rapide et l'annulation fiable. Ce n'est pas une sauvegarde : le document est là où vous l'avez enregistré.

@@ -13,6 +13,10 @@ Elle ouvre et enregistre les formats de fichiers de Microsoft Office et de Libre
 
 [Installer Libera Suite](main/install.md){ .md-button .md-button--primary }
 
+## En six diapositives
+
+<div class="deck" data-pdf="/en/pdf/Libera%20Suite.pdf"><a href="/en/pdf/Libera%20Suite.pdf">Libera Suite, en six diapositives (PDF)</a></div>
+
 ## Où en est le projet
 
 Les quatre fonctionnent dès aujourd'hui, sous **Windows** 10 et 11 (x64), **Linux** (x86_64 et arm64) et **macOS** (Apple Silicon). Le projet est jeune. La page [État des lieux](main/status.md) détaille les fonctions terminées, celles qui sont en chantier et celles qui restent à entreprendre.

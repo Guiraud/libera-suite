@@ -4,10 +4,12 @@ Libera Suite does not fork upstream. It pins an upstream revision and applies a 
 
 ```
 build/upstream/pins.toml            the upstream revisions, by hash
-build/upstream/patches/core/        27 patches
-build/upstream/patches/web-apps/     6 patches
-build/upstream/patches/sdkjs/        1 patch
+build/upstream/patches/core/
+build/upstream/patches/web-apps/
+build/upstream/patches/sdkjs/
 ```
+
+The pins follow Euro-Office's own desktop releases: the revisions its `DesktopEditors` repository names for a release are the ones we build.
 
 `build/engine/build.sh fetch` resets each repository to its pinned hash, cleans it, and applies the series with `git am`, which does not fuzz. A patch that has stopped applying is news: investigate it.
 
@@ -19,7 +21,13 @@ It also makes the AGPL obligation concrete: the corresponding source for a relea
 
 ## What is in it
 
-**`core`: 28 patches, 21 macOS and 7 Windows.** Upstream ported the build from qmake to CMake and the port dropped the Mac branches wholesale; the root `.pro` files are gone. The macOS series puts them back: boost, ICU, OpenSSL and V8 on macOS, the Cocoa file transporter, Core Text font enumeration, Mach-O link options and rpath, plus a handful of platform defines. The Windows series (`0022`–`0028`) is smaller and newer: boost through `build.bat`, an external OpenSSL from vcpkg, a namespace cryptopp no longer has, two guards around code that MSVC rejects, and one C runtime for every DLL, V8 included, because core's libraries hand `FILE*` handles to one another.
+**`core`: the build, the converter, and OpenDocument.** Patches keep their numbers when others leave the queue, so the numbering has gaps.
+
+- *macOS.* Upstream ported the build from qmake to CMake and the port dropped the Mac branches. We put them back in a series of about twenty patches; Euro-Office has since built macOS itself, and the queue keeps only what its build still lacks: `memalign`, which macOS does not have, for openjpeg (`0018`), and two V8 build options of our own (`0009`, `0010`).
+- *Windows.* Boost's engine built with a named toolset (`0022`), an external OpenSSL from vcpkg (`0024`), a namespace cryptopp no longer has (`0025`), and one C runtime for every DLL, V8 included, because core's libraries hand `FILE*` handles to one another (`0028`).
+- *Elsewhere in the build.* Third-party builders that stream their output (`0023`), doctrenderer against an OpenSSL without MD2 (`0026`), and `hypotf` bound to its old glibc version so the Linux core loads on RHEL 9 (`0032`).
+- *The converter.* A large CSV read whole (`0029`), characters outside the BMP (`0030`), no empty row after a UTF-8 CSV (`0031`), and the last section of an RTF written (`0033`).
+- *OpenDocument* (`0101` onwards). Fixes to reading and writing `.odt`, `.ods` and `.odp`, each found against LibreOffice's own test documents.
 
 **`web-apps`: 8 patches, and `sdkjs`: 1.** Four are build fixes. Theme tokens were not substituted when deploying HTML. Two cap how many tasks a build phase runs at once. The fourth runs `npm` and webpack through `node`, since on Windows both exist only as `.cmd` files that Node will not spawn without a shell. One is a rendering fix, for unsized SVG icons in the language picker rendering at 300×150, the CSS default for a replaced element with no intrinsic size. Two are configuration changes that are ours alone. Two are branding. One drops upstream's favicon. The other keeps *About* reachable in the desktop build, where upstream hides it: that dialog shows the licence and the attribution.
 

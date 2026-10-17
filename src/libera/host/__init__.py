@@ -3,6 +3,7 @@
 The layers, innermost first, and nothing imports anything above it:
 
     about      who wrote what: the attribution every surface has to say
+    language   the user's language and region: the editor's, and the blank's
     apps       the four editors, and the six things that differ between them
     shortcuts  the key equivalents the menu bar owns, and the page yields
     changelog  every edit since a document was opened

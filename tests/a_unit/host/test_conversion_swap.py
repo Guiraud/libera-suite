@@ -118,7 +118,6 @@ def test_a_fold_whose_export_writes_nothing_keeps_the_edits(edited, monkeypatch)
     back in place of every edit since."""
     edited.out_dir.mkdir(parents=True, exist_ok=True)
     (edited.out_dir / "recovered.docx").write_bytes(b"the previous reload")
-    monkeypatch.setattr(convert, "read_font_dir", lambda _index: edited.work)
 
     def run(_session, *args):
         # The export (a job file) writes nothing; the way back in (three

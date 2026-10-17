@@ -141,6 +141,20 @@ Dieselbe Datei schaltet die tägliche Suche nach einer neuen Version ab, mit ein
 check_updates = false
 ```
 
+Eine weitere beschränkt sich auf die Schriften, die Libera Suite mitliefert, ohne die auf Ihrem Rechner installierten, damit ein Dokument auf jedem Computer gleich aussieht:
+
+```toml
+installed_fonts = false
+```
+
+Und eine legt die Sprache der Editoren fest, wenn es nicht die Ihres Systems sein soll. Ein neues Dokument richtet sein Papierformat weiterhin nach der Region Ihres Systems:
+
+```toml
+ui_language = "fr"
+```
+
+Um für einen Start eine andere Datei zu verwenden, ohne diese anzutasten, geben Sie sie mit `libera --config DATEI` (oder `-c DATEI`) oder in der Umgebungsvariablen `LIBERA_CONFIG` an. Ein so gestartetes Libera Suite übergibt seine Dokumente nicht an ein bereits laufendes, das sie mit seiner eigenen Konfiguration öffnen würde: Beenden Sie dieses zuerst.
+
 ## Wo Ihre Arbeitsdateien liegen
 
 Solange ein Dokument geöffnet ist, hält Libera Suite einen Sitzungsordner neben ihren Anwendungsdaten. Er enthält die Arbeitskopie des Editors und ein laufendes Protokoll Ihrer Änderungen, was das Speichern schnell und das Rückgängigmachen zuverlässig macht. Er ist keine Sicherung: Das Dokument liegt dort, wo Sie es gespeichert haben.

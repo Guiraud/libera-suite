@@ -20,11 +20,14 @@ from libera.host.window.portable import (
     close_window,
     complete_startup,
     find_key_window,
+    make_window,
+    on_quit,
     prepare,
     run_on_gui_thread,
     run_save_panel,
     set_fullscreen,
     show_edited,
+    stay_open,
 )
 
 if TYPE_CHECKING:
@@ -37,11 +40,14 @@ __all__ = [
     "close_window",
     "complete_startup",
     "find_key_window",
+    "make_window",
+    "on_quit",
     "prepare",
     "run_on_gui_thread",
     "run_save_panel",
     "set_fullscreen",
     "show_edited",
+    "stay_open",
     "tell",
 ]
 

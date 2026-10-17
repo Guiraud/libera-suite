@@ -99,6 +99,11 @@ lint.extend-ignore = [
     "PLC0415", # Foundation is macOS-only, pwd is Unix-only
     "TC003",   # pathlib is used at runtime, not only in annotations
 ]
+# language.py asks the OS for the user's language and region: Foundation on
+# macOS, kernel32 on Windows.
+"src/libera/host/language.py" = [
+    "PLC0415", # Foundation is macOS-only, windll Windows-only
+]
 # launcher.py runs update-desktop-database, which is the system's own tool and
 # the only way the Open With menu learns about a new association.
 "src/libera/launcher.py" = [
@@ -198,6 +203,8 @@ lint.extend-ignore = [
     "PLR6301", # AppKit calls these, not us
     "BLE001",  # run_on_gui_thread catches whatever the work raised on the GUI
                # thread, to raise it again on the thread that asked
+    "SLF001",  # Window._initialize: make_window takes create_window's own
+               # steps on the GUI thread, which pywebview has no call for
 ]
 # PyGObject is a system package, so it can be missing wherever this module is
 # merely imported -- the test tier, `--serve` on a headless box -- and only a
@@ -325,6 +332,12 @@ lint.extend-ignore = [
 "tests/b_integration/test_manifest_stamp.py" = [
     "S404", # subprocess import
     "S603", # sys.executable, argv form, no shell
+]
+# test_convert.py reads a PDF's text layer with pdftotext, since nothing in
+# the payload or the standard library reads one.
+"tests/b_integration/host/test_convert.py" = [
+    "S404", # subprocess import
+    "S603", # pdftotext found by shutil.which, argv form, no shell
 ]
 # test_save_staging.py tags a document with /usr/bin/xattr, the way Finder
 # would, since Python has no extended-attribute calls on macOS.

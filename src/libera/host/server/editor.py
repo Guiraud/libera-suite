@@ -14,7 +14,7 @@ import urllib.parse
 from typing import TYPE_CHECKING
 
 from libera import timeline
-from libera.host import desktop, hooks, instance, shortcuts
+from libera.host import desktop, hooks, instance, language, shortcuts
 from libera.host.desktop import lookup_local_user
 from libera.host.server import diagnostics
 from libera.host.server.api import NO_CONTENT, Refused, Request, Response, endpoint
@@ -124,7 +124,7 @@ def receive_page_log(r: Request) -> Response:
     for c in calls:
         diagnostics.count(diagnostics.SEEN, c["name"])
         if c["name"] == "onDocumentContentReady":
-            timeline.mark("editor-ready")
+            timeline.mark("editor-ready", again=True)
 
     for e in events:
         logger.warning("[%s] %s: %s", e["frame"], e["kind"], e["text"])
@@ -212,7 +212,8 @@ def make_editor_url(port: int, session: Session, title: str) -> str:
     ext = pathlib.Path(title).suffix.lstrip(".").lower() or app.ext
     return (
         f"http://127.0.0.1:{port}/web-apps/apps/api/documents/index.html"
-        f"?doctype={app.doctype}&mode={mode}&lang=en"
+        f"?doctype={app.doctype}&mode={mode}"
+        f"&lang={urllib.parse.quote(language.get_language())}"
         f"&title={urllib.parse.quote(title)}"
         f"&filetype={ext}&session={urllib.parse.quote(session.id)}"
         f"&key={instance.TOKEN}"

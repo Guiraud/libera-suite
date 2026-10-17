@@ -12,6 +12,7 @@ came from reading `H` on a thread that had bound none, or the wrong one.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -22,10 +23,14 @@ import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, TypeVar
 
-from libera.host import apps
+from libera.host import apps, language
 from libera.host.changelog import ChangeLog
-from libera.payload import locate
+from libera.payload import fonts, locate
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +47,9 @@ class Session:
 
     payload: pathlib.Path
     work: pathlib.Path
+    # The index of the fonts installed on the machine this window was opened
+    # with (payload/fonts.py), or None for the payload's own fonts alone.
+    fonts: pathlib.Path | None = None
     document: pathlib.Path | None = None
     shot: pathlib.Path | None = None
     # Which editor this window is. Derived from the document when not given,
@@ -67,6 +75,9 @@ class Session:
     # streams edits on one thread while a save, a close or a reload converts
     # on another, and a log read half-appended loses the last edit.
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
+    # The conversion of the document, while its window loads the editor
+    # (opening.convert_behind); asking for Editor.bin waits for it.
+    converting: threading.Thread | None = field(default=None, repr=False)
 
     @property
     def id(self) -> str:
@@ -90,6 +101,16 @@ class Session:
     def layout(self) -> locate.Layout:
         """Where each part of the payload is: see locate.Layout."""
         return locate.Layout(self.payload)
+
+    @property
+    def all_fonts(self) -> pathlib.Path:
+        """The AllFonts.js of filesystem paths, which x2t reads."""
+        return self.fonts / "AllFonts.js" if self.fonts else self.layout.all_fonts
+
+    @property
+    def font_dir(self) -> pathlib.Path:
+        """Where x2t finds font_selection.bin, which it calls its font folder."""
+        return self.fonts or self.layout.sdkjs_common
 
     @property
     def unsaved_marker(self) -> pathlib.Path:
@@ -138,7 +159,7 @@ class Session:
         if app.blank is None:
             msg = f"{app.title} cannot create documents"
             raise NotReadyError(msg)
-        return self.layout.blanks / app.blank
+        return language.find_blank_dir(self.layout.blanks) / app.blank
 
     # --- session state, written
     @property
@@ -172,7 +193,7 @@ class Session:
         read it after a crash."""
         if not self.current_file.is_file():
             return None
-        text = self.current_file.read_text(encoding="utf-8").strip()
+        text = read_atomically(self.current_file).strip()
         return pathlib.Path(text) if text else None
 
     def write_current_document(self, document: pathlib.Path) -> None:
@@ -252,12 +273,18 @@ def create_session(document: pathlib.Path | None = None) -> Session:
 
     Sessions share the payload and the recents list and nothing else: each has
     its own working copy, change log and unsaved marker, because each is
-    editing a different document.
+    editing a different document, and its own font list, the newest when it
+    was made.
     """
     template = next(iter(list(SESSIONS.values())))
+    layout = locate.Layout(template.payload)
+    # The fonts as they are now, if their index is built; and if it is not, it
+    # is built for the windows after this one.
+    fonts.build_behind(layout, {s.fonts for s in list(SESSIONS.values())})
     made = Session(
         payload=template.payload,
         work=new_work(template.work.parent),
+        fonts=fonts.choose(layout),
         document=document,
     )
     configure(made)
@@ -339,4 +366,29 @@ def write_atomically(path: pathlib.Path, text: str) -> None:
     )
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(text)
-    pathlib.Path(staged).replace(path)
+    _retrying(lambda: pathlib.Path(staged).replace(path))
+
+
+def read_atomically(path: pathlib.Path) -> str:
+    """A file `write_atomically` writes, read whole: the old text or the new."""
+    return _retrying(lambda: path.read_text(encoding="utf-8"))
+
+
+# Windows will not replace a file another thread has open, nor open one while
+# it is being replaced: PermissionError, on either side. On the Windows builder
+# two readers and one writer, for two seconds, had 1,940 of 2,216 replaces fail
+# and 883 reads; a failed read of the Recent list is an empty one, which the
+# next save then writes over everyone's entries. Each side holds the file for
+# microseconds, so trying again is enough. Elsewhere PermissionError is a real
+# refusal, and it is raised half a second later than it would have been.
+RETRIES = 50
+RETRY_PAUSE = 0.01
+T = TypeVar("T")
+
+
+def _retrying(action: Callable[[], T]) -> T:
+    for _ in range(RETRIES):
+        with contextlib.suppress(PermissionError):
+            return action()
+        time.sleep(RETRY_PAUSE)
+    return action()

@@ -145,8 +145,10 @@ def test_only_the_handler_knows_the_web_framework():
     """
     src = SRC / "libera"
     importers = sorted(
-        str(p.relative_to(src))
+        p.relative_to(src).as_posix()
         for p in src.rglob("*.py")
-        if re.search(r"(?m)^\s*(import bottle|from bottle\b)", p.read_text())
+        if re.search(
+            r"(?m)^\s*(import bottle|from bottle\b)", p.read_text(encoding="utf-8")
+        )
     )
     assert importers == ["host/server/adapter.py"]

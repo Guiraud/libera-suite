@@ -10,11 +10,13 @@ from __future__ import annotations
 import csv
 import io
 import re
+import shutil
+import subprocess
 import zipfile
 from typing import TYPE_CHECKING
 
 import pytest
-from support import ScriptedShell
+from support import ScriptedShell, repo_root
 
 from libera import payload as payload_mod
 from libera.host import apps, hooks, opening, session as sessions
@@ -35,22 +37,105 @@ OFFERED = [
 ]
 
 
+SENTENCE = "Libera keeps this sentence"
+
+
+def _write_source(app: apps.App, tmp_path: pathlib.Path) -> pathlib.Path:
+    """A document of `app`'s kind holding SENTENCE.
+
+    Words reads it from a .txt and Tables from a .csv: x2t's Editor.bin from a
+    .txt has no section properties, the shape that made Save As RTF write no
+    text through payloads 0.2 to 0.4. Slides has no plain-text source, so the
+    sentence goes into the blank's title.
+    """
+    if app.name == "words":
+        source = tmp_path / "source.txt"
+        source.write_text(SENTENCE + "\n", encoding="utf-8")
+        return source
+    if app.name == "tables":
+        source = tmp_path / "source.csv"
+        source.write_text(SENTENCE + "\n", encoding="utf-8")
+        return source
+    assert app.blank is not None
+    blank = payload_mod.resolve().root / "empty" / app.blank
+    source = tmp_path / f"source.{app.ext}"
+    empty_title = '<a:p><a:endParaRPr lang="en-US" dirty="0"/></a:p>'
+    titled = f'<a:p><a:r><a:rPr lang="en-US"/><a:t>{SENTENCE}</a:t></a:r></a:p>'
+    with zipfile.ZipFile(blank) as zin, zipfile.ZipFile(source, "w") as zout:
+        for item in zin.infolist():
+            data = zin.read(item)
+            if item.filename == "ppt/slides/slide1.xml":
+                xml = data.decode("utf-8-sig")
+                assert empty_title in xml, "the blank's title is not where it was"
+                data = xml.replace(empty_title, titled, 1).encode()
+            zout.writestr(item, data)
+    return source
+
+
+def _read_text(path: pathlib.Path) -> bytes:
+    """Everything in `path` that can hold text, as bytes to search, with each
+    run of whitespace made one space.
+
+    A package's parts, unpacked; a
+    PDF's text layer through pdftotext, which breaks a title across lines;
+    RTF's text, out of its \\u escapes; anything else as it is.
+    """
+    if zipfile.is_zipfile(path):
+        with zipfile.ZipFile(path) as z:
+            data = b"\n".join(z.read(name) for name in z.namelist())
+    elif path.suffix == ".pdf":
+        pdftotext = shutil.which("pdftotext")
+        if pdftotext is None:
+            pytest.skip("no pdftotext to read the PDF's text layer")
+        run = subprocess.run(
+            [pdftotext, str(path), "-"], capture_output=True, check=True
+        )
+        data = run.stdout
+    elif path.suffix == ".rtf":
+        data = read_rtf_text(path).encode()
+    else:
+        data = path.read_bytes()
+    return re.sub(rb"\s+", b" ", data)
+
+
 @pytest.mark.parametrize(
     ("app", "ext"), OFFERED, ids=[f"{a.name}-{e}" for a, e in OFFERED]
 )
-def test_every_format_every_editor_offers_is_one_x2t_writes(
-    open_blank, tmp_path: pathlib.Path, app: apps.App, ext: str
+def test_every_format_every_editor_offers_keeps_the_text(
+    tmp_path: pathlib.Path, app: apps.App, ext: str
 ):
-    """The Save As popup promises these, for each editor in turn.
+    """The Save As popup promises these, for each editor in turn, and each
+    one has to carry the document's text, not just exist.
 
     x2t refuses a fair few ids sitting right beside the ones it accepts -- xls
     (258), ppt (130), odg (140), every legacy binary and flat-XML format -- so
-    the only way to know which is which is to ask it.
+    the only way to know which is which is to ask it. And it exits 0 having
+    written a well-formed file with no body: Save As RTF did that for three
+    payloads while this test checked only that the file was not empty.
     """
-    blank = open_blank(app)
+    session = open_in(app, _write_source(app, tmp_path), tmp_path / app.name)
     out = tmp_path / f"out.{ext}"
-    export(blank, out, app.ids_by_ext[ext], None)
-    assert out.stat().st_size > 0
+
+    export(session, out, app.ids_by_ext[ext], None)
+
+    assert SENTENCE.encode() in _read_text(out)
+
+
+def test_an_xlsb_opens_with_its_text(tmp_path: pathlib.Path):
+    """Tables opens .xlsb, Excel's binary workbook, and no longer saves one:
+    x2t crashed writing it on Linux (SIGSEGV), in payloads 0.4.1 and 0.5.
+
+    Opened as x2t opens a .xlsx, it came back an empty presentation, exit 0,
+    for Excel's own files too. This one was written by x2t on macOS, where
+    writing it does not crash."""
+    document = tmp_path / "sentence.xlsb"
+    shutil.copy(repo_root() / "tests/b_integration/host/data/sentence.xlsb", document)
+    table = open_in(apps.TABLES, document, tmp_path / "session")
+    out = tmp_path / "out.xlsx"
+
+    export(table, out, apps.TABLES.ids_by_ext["xlsx"], None)
+
+    assert SENTENCE.encode() in _read_text(out)
 
 
 @pytest.mark.parametrize("app", apps.ALL, ids=lambda a: a.name)

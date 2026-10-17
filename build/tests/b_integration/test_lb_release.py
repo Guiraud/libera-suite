@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 from libera_build import repo
 from libera_build.artifacts import MIN_BUNDLE_BYTES
+from libera_build.containers import host_arch, linux_platform
 from libera_build.hosts import LocalHost
 from libera_build.inventory import Builder
 from libera_build.release import builds, precheck
@@ -88,7 +89,9 @@ def home(tmp_path) -> Path:
     return found
 
 
-ARM = Builder("linux-arm64", "arm", None, False, "~/checkout")
+# Named for this machine's own architecture, which precheck asks the builder
+# for: a linux-arm64 stand-in failed it on every x86_64 machine.
+ARM = Builder(linux_platform(host_arch()), "arm", None, False, "~/checkout")
 
 
 def context(driver: Path, home: Path, phases: list[str]) -> Context:
@@ -129,6 +132,9 @@ def test_a_builder_with_no_checkout_is_fine_only_if_update_will_make_one(driver,
     assert "no checkout at ~/checkout" in problem
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="Git Bash spells this machine's paths its own way"
+)
 def test_a_missing_checkout_names_the_checkouts_that_are_there(driver, home):
     other = home / "elsewhere" / "src" / "libera" / "payload"
     other.mkdir(parents=True)
@@ -155,8 +161,10 @@ def test_a_build_that_says_ok_is_then_checked_for_its_artifact(driver, home):
         asked.append(b.platform)
 
     assert ran(driver, home, "ok --arch arm64", verify) is None
-    assert asked == ["linux-arm64"]
-    log = (driver / "tmp" / "remote" / "linux-arm64.log").read_text()
+    assert asked == [ARM.platform]
+    log = (driver / "tmp" / "remote" / f"{ARM.platform}.log").read_text(
+        encoding="utf-8"
+    )
     assert "stand-in lb ok --arch arm64" in log
 
 
@@ -171,10 +179,16 @@ def test_a_build_that_fails_says_how_and_skips_the_check(driver, home):
 def test_a_byte_that_is_not_utf8_is_logged_and_does_not_end_the_run(driver, home):
     """Python on Windows writes a pipe in cp1252, and its `…` ended a ship."""
     assert ran(driver, home, "cp1252") is None
-    log = (driver / "tmp" / "remote" / "linux-arm64.log").read_text()
+    log = (driver / "tmp" / "remote" / f"{ARM.platform}.log").read_text(
+        encoding="utf-8"
+    )
     assert "a\N{REPLACEMENT CHARACTER}b" in log
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="killing the parent on Windows does not reach the wrapper that reports",
+)
 def test_a_build_that_never_says_how_is_not_believed(driver, home):
     problem = ran(driver, home, "vanish")
     assert "without saying how" in problem

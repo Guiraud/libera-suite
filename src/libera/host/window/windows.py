@@ -58,7 +58,7 @@ def create_window(title: str, url: str, size: tuple[int, int] = WINDOW_SIZE) -> 
     dereferences.
     """
     width, height = size
-    window = webview.create_window(title, url, width=width, height=height)
+    window = native.make_window(title, url, width, height)
     if window is None:
         msg = f"pywebview could not make a window for {title}"
         raise NotReadyError(msg)

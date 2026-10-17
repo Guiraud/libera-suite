@@ -19,6 +19,7 @@
     calls,
     getFromHost,
     getFromHostSync,
+    hostUrl,
     log,
     openedHere,
     postToHost,
@@ -459,13 +460,18 @@
     GetBackupPlugins: () => JSON.stringify([]),
     getViewportSettings: () => ({}),
     _getViewportSettings: () => "{}",
-    GetFontThumbnailHeight: () => 26,
+    // The height allfontsgen draws each name at. The font menu reads its sprite
+    // in rows of this many pixels times the scale, and shows each row this
+    // high: at 26 every 28-pixel picture was squeezed, and lost lines of pixels.
+    GetFontThumbnailHeight: () => 28,
     getDictionariesPath: () => "/dictionaries",
 
     // --- discovered by POC-0: sdk-all-min.js reads .length on the return of
     //     GetEncryptedHeader at load time, and web-apps asks for the font sprite.
     GetEncryptedHeader: () => "ENCRYPTED;",
-    getFontsSprite: (sfx) => `/sdkjs/common/Images/fonts_thumbnail${sfx || ""}.png`,
+    // The session's own pictures, which match its font list (bridge-page.js).
+    getFontsSprite: (sfx) =>
+      hostUrl(`/sdkjs/common/Images/fonts_thumbnail${sfx || ""}.png`),
     CryptoMode: 0,
 
     // --- called WITHOUT a feature check, so absence is never correct ----------
@@ -532,6 +538,11 @@
     // test_bridge_surface to see it -- and a no-op costs a line where being
     // wrong costs a frozen editor.
     onFileLockedClose: () => undefined,
+    // The Wayland clipboard: sdkjs writes through it only when
+    // _isNativeClipboardAvailable() also finds RendererProcessVariable.isWayland
+    // and cefQuery, which this host defines neither of, so it is never called.
+    // The check is in a helper, out of test_bridge_surface's sight.
+    nativeClipboardWrite: () => undefined,
 
     CheckNeedWheel: () => true, // C++: always true (compat stub)
     LoadJS: () => 0,

@@ -64,9 +64,12 @@ def test_documents_opened_together_are_all_remembered(session, tmp_path):
 
 
 def test_a_state_file_is_never_seen_half_written(session, tmp_path):
-    """A reader sees the old contents or the new, never an empty file."""
+    """A reader sees the old contents or the new, never an empty file.
+
+    And neither side fails: on Windows, replacing a file a reader has open, or
+    opening one being replaced, is a PermissionError."""
     long_path = tmp_path / ("x" * 200) / "doc.docx"
-    seen: list[str] = []
+    seen: list[pathlib.Path | None] = []
     stop = time.monotonic() + 0.5
 
     def write(_):
@@ -75,14 +78,13 @@ def test_a_state_file_is_never_seen_half_written(session, tmp_path):
 
     def read(_):
         while time.monotonic() < stop:
-            if session.current_file.is_file():
-                seen.append(session.current_file.read_text(encoding="utf-8"))
+            seen.append(session.read_current_document())
 
     session.write_current_document(long_path)
     run_together(lambda f: f(None), [write, read, read])
 
     assert seen
-    assert set(seen) == {str(long_path)}
+    assert set(seen) == {long_path}
 
 
 def test_the_registry_can_be_walked_while_windows_open_and_close(session, tmp_path):
@@ -168,8 +170,6 @@ def test_an_edit_during_a_save_neither_waits_nor_is_half_read(session, monkeypat
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(convert, "run_x2t", x2t_reading_the_log)
-    # What export prepares before x2t runs needs a payload; this needs none.
-    monkeypatch.setattr(convert, "read_font_dir", lambda _p: "")
     saving = threading.Thread(
         target=convert.export,
         args=(session, saved, 65, None),

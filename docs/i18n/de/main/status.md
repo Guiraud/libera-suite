@@ -10,10 +10,11 @@ Die Oberfläche von Libera Suite ist englisch: Menüs und Schaltflächen werden 
 | :--- | :--- |
 | **Vier Editoren** | Windows 10 und 11 auf x64, Linux auf x86_64 und arm64, macOS auf Apple Silicon. Words, Tables und Slides bearbeiten; Diagrams liest Visio-Dateien. |
 | **Öffnen und speichern** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
-| **Exportieren** | Save As bietet für jeden Editor eine Formatliste an, PDF eingeschlossen. Jedes angebotene Format wurde durch eine echte Konvertierung geprüft. |
+| **Exportieren** | Save As bietet für jeden Editor eine Formatliste an, PDF eingeschlossen. Jedes angebotene Format wird durch eine echte Konvertierung geprüft, deren Text danach wieder gelesen wird. |
 | **Bilder** | Bleiben beim Öffnen und Speichern erhalten; Insert ▸ Image funktioniert. |
 | **Drucken** | Erzeugt ein PDF, fragt, wo es aufbewahrt werden soll, und öffnet es in Ihrem PDF-Betrachter. |
 | **Rechtschreibprüfung** | Fünf Sprachen, mit Vorschlägen. Siehe unten. |
+| **In Ihrer Sprache** | Die Editoren folgen der Sprache Ihres Systems, und ein neues Dokument beginnt mit der leeren Vorlage Ihrer Region: A4-Papier überall außer in den USA, und Rechtschreibprüfung in Ihrer Sprache. Menüleiste, Startfenster und Dialoge sind noch auf Englisch. |
 | **Zuletzt verwendete Dokumente** | File ▸ Open Recent merkt sich die letzten 20. |
 | **Mehrere Dokumente gleichzeitig** | Auch verschiedener Art, jedes in seinem Fenster: über File ▸ New oder File ▸ Open, per Doppelklick im Dateimanager oder mit `libera *.docx`. Der Dateityp bestimmt den Editor. |
 | **Im Startmenü und im Anwendungsmenü** | Unter Windows legt das Installationsprogramm Libera Suite im Startmenü und auf dem Desktop ab und trägt sie im Explorer unter *Öffnen mit* ein. Unter Linux trägt das Flatpak sie mit Symbol und Dateizuordnungen in das Anwendungsmenü ein; `libera --launcher-install` tut dasselbe für jede andere Installation. |
@@ -90,7 +91,7 @@ Nachverfolgte Änderungen und Kommentare werden einer Person zugeordnet, deren N
 
 ### Schriften
 
-Libera Suite liefert einen Grundbestand an Schriften mit: Liberation, Carlito, Caladea, Open Sans und einige weitere, genug, um gewöhnliche Dokumente originalgetreu darzustellen, bei 7 MB. Der vollständige Satz umfasst 248 MB. Ein Dokument, das eine Schrift verlangt, die weder in diesem Bestand noch unter den auf Ihrem Rechner installierten Schriften ist, erhält eine Ersatzschrift. Ob der Bestand erweitert wird, besonders für Chinesisch, Japanisch und Koreanisch, ist noch offen.
+Libera Suite liefert einen Grundbestand an Schriften mit: Liberation, Carlito, Caladea, Open Sans und einige weitere, genug, um gewöhnliche Dokumente originalgetreu darzustellen, bei 7 MB. Der vollständige Satz umfasst 248 MB. Ein Dokument, das eine Schrift außerhalb dieses Bestands verlangt, verwendet die auf Ihrem Rechner installierte, auf dem Bildschirm wie im PDF, und erhält nur dann eine Ersatzschrift, wenn auch Ihr Rechner sie nicht hat. Libera Suite erfasst Ihre Schriften beim ersten Start und erneut im Hintergrund, wann immer Sie eine installieren oder entfernen; die danach geöffneten Fenster verwenden die neue Liste. Ob der Bestand erweitert wird, besonders für Chinesisch, Japanisch und Koreanisch, ist noch offen.
 
 ### Treue der Darstellung
 

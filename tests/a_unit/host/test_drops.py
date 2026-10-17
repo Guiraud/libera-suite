@@ -114,7 +114,7 @@ def test_documents_open_in_windows_and_the_rest_go_back(tmp_path, monkeypatch):
     )
 
     assert opened == [Path("/a/report.docx")]
-    assert answer == {"paths": ["/a/photo.png"]}
+    assert answer == {"paths": [str(Path("/a/photo.png"))]}
 
 
 def test_a_body_that_is_not_a_list_of_names_is_refused(tmp_path, monkeypatch):

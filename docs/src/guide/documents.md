@@ -139,6 +139,20 @@ The same file turns off the daily check for a newer version, with a line of its 
 check_updates = false
 ```
 
+And one keeps to the fonts Libera Suite ships, leaving out those installed on your machine, so that a document looks the same on every computer:
+
+```toml
+installed_fonts = false
+```
+
+And one sets the editors' language, when it should not be your system's. A new document still takes its paper size from your system's region:
+
+```toml
+ui_language = "fr"
+```
+
+To use another file for one run, without touching this one, name it with `libera --config FILE` (or `-c FILE`), or in the `LIBERA_CONFIG` environment variable. A Libera Suite started that way does not hand its documents to one already running, which would open them with its own configuration: quit that one first.
+
 ## Where your working files go
 
 While a document is open, Libera Suite keeps a session directory alongside its application data. It holds the editor's working copy and a running log of your changes, which makes saving fast and undo reliable. It is not a backup: the document is where you saved it.

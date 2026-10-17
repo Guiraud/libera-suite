@@ -10,10 +10,11 @@ L'interfaccia di Libera Suite è in inglese: menu e pulsanti sono citati qui com
 | :--- | :--- |
 | **Quattro editor** | Windows 10 e 11 su x64, Linux su x86_64 e arm64, macOS su Apple Silicon. Words, Tables e Slides modificano; Diagrams legge i file Visio. |
 | **Aprire e salvare** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
-| **Esportare** | Save As propone un elenco di formati per ogni editor, PDF compreso. Ogni formato proposto è stato verificato con una conversione reale. |
+| **Esportare** | Save As propone un elenco di formati per ogni editor, PDF compreso. Ogni formato proposto è verificato con una conversione reale, di cui si rilegge il testo. |
 | **Immagini** | Conservate all'apertura e al salvataggio; Insert ▸ Image funziona. |
 | **Stampare** | Genera un PDF, chiede dove conservarlo e lo apre nel tuo lettore di PDF. |
 | **Controllo ortografico** | Cinque lingue, con suggerimenti. Vedi sotto. |
+| **Nella tua lingua** | Gli editor seguono la lingua del tuo sistema, e un nuovo documento parte dal modello vuoto della tua regione: carta A4 ovunque tranne che negli Stati Uniti, e controllo ortografico nella tua lingua. La barra dei menu, la finestra iniziale e le finestre di dialogo sono ancora in inglese. |
 | **Documenti recenti** | File ▸ Open Recent ricorda gli ultimi 20. |
 | **Più documenti insieme** | Anche di tipi diversi, una finestra ciascuno: da File ▸ New o File ▸ Open, con un doppio clic nel gestore dei file o con `libera *.docx`. Il tipo di file sceglie l'editor. |
 | **Nel menu Start e nel menu delle applicazioni** | Su Windows, il programma di installazione aggiunge Libera Suite al menu Start e al desktop, e la inserisce in *Apri con* di Esplora file. Su Linux, il Flatpak la aggiunge al menu delle applicazioni con la sua icona e le associazioni dei file; `libera --launcher-install` fa lo stesso per qualsiasi altra installazione. |
@@ -90,7 +91,7 @@ Le revisioni e i commenti sono attribuiti a una persona, il cui nome viene scrit
 
 ### Caratteri
 
-Libera Suite fornisce un insieme di caratteri di base: Liberation, Carlito, Caladea, Open Sans e pochi altri, abbastanza per mostrare fedelmente documenti ordinari, in 7 MB. L'insieme completo pesa 248 MB. Un documento che chiede un carattere assente sia da questo insieme sia dai caratteri installati sulla tua macchina riceve un carattere sostitutivo. Se ampliare l'insieme, in particolare per cinese, giapponese e coreano, è ancora da decidere.
+Libera Suite fornisce un insieme di caratteri di base: Liberation, Carlito, Caladea, Open Sans e pochi altri, abbastanza per mostrare fedelmente documenti ordinari, in 7 MB. L'insieme completo pesa 248 MB. Un documento che chiede un carattere assente da questo insieme usa quello installato sulla tua macchina, sullo schermo come nel suo PDF, e riceve un carattere sostitutivo solo se nemmeno la tua macchina lo ha. Libera Suite fa l'elenco dei tuoi caratteri al primo avvio, e di nuovo in sottofondo ogni volta che ne installi o ne rimuovi uno; le finestre aperte dopo usano il nuovo elenco. Se ampliare l'insieme, in particolare per cinese, giapponese e coreano, è ancora da decidere.
 
 ### Fedeltà della resa
 

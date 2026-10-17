@@ -10,10 +10,11 @@ L'interface de Libera Suite est en anglais : les noms des menus et des boutons s
 | :--- | :--- |
 | **Quatre éditeurs** | Windows 10 et 11 sur x64, Linux sur x86_64 et arm64, macOS sur Apple Silicon. Words, Tables et Slides modifient les documents ; Diagrams lit les fichiers Visio. |
 | **Ouvrir et enregistrer** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
-| **Exporter** | Save As propose une liste de formats pour chaque éditeur, PDF compris. Chaque format proposé a été vérifié par une conversion réelle. |
+| **Exporter** | Save As propose une liste de formats pour chaque éditeur, PDF compris. Chaque format proposé est vérifié par une conversion réelle, dont le texte est relu. |
 | **Images** | Conservées à l'ouverture et à l'enregistrement ; Insert ▸ Image fonctionne. |
 | **Imprimer** | Produit un PDF, demande où le conserver et l'ouvre dans votre lecteur de PDF. |
 | **Correction orthographique** | Cinq langues, avec suggestions. Voir plus bas. |
+| **Dans votre langue** | Les éditeurs suivent la langue de votre système, et un nouveau document part du modèle vierge de votre région : papier A4 partout sauf aux États-Unis, et correction orthographique dans votre langue. La barre de menus, la fenêtre d'accueil et les boîtes de dialogue restent en anglais. |
 | **Documents récents** | File ▸ Open Recent retient les 20 derniers. |
 | **Plusieurs documents à la fois** | De tous types, une fenêtre chacun : par File ▸ New ou File ▸ Open, d'un double-clic dans le gestionnaire de fichiers, ou avec `libera *.docx`. Le type du fichier choisit l'éditeur. |
 | **Dans le menu Démarrer et le menu des applications** | Sous Windows, l'installateur ajoute Libera Suite au menu Démarrer, sur le bureau et dans *Ouvrir avec* de l'Explorateur. Sous Linux, le Flatpak l'ajoute au menu des applications avec son icône et ses associations de fichiers ; `libera --launcher-install` fait de même pour toute autre installation. |
@@ -90,7 +91,7 @@ Les modifications suivies et les commentaires sont attribués à une personne, d
 
 ### Polices
 
-Libera Suite fournit un jeu de polices de base : Liberation, Carlito, Caladea, Open Sans et quelques autres, de quoi afficher fidèlement des documents ordinaires, pour 7 Mo. L'ensemble complet pèse 248 Mo. Un document qui demande une police absente de ce jeu comme des polices installées sur votre machine reçoit une police de substitution. L'élargissement de ce jeu, notamment aux écritures chinoise, japonaise et coréenne, reste à décider.
+Libera Suite fournit un jeu de polices de base : Liberation, Carlito, Caladea, Open Sans et quelques autres, de quoi afficher fidèlement des documents ordinaires, pour 7 Mo. L'ensemble complet pèse 248 Mo. Un document qui demande une police absente de ce jeu utilise celle installée sur votre machine, à l'écran comme dans son PDF, et ne reçoit une police de substitution que si votre machine ne l'a pas non plus. Libera Suite dresse la liste de vos polices au premier démarrage, puis de nouveau en arrière-plan chaque fois que vous en installez ou en retirez une ; les fenêtres ouvertes ensuite utilisent la nouvelle liste. L'élargissement de ce jeu, notamment aux écritures chinoise, japonaise et coréenne, reste à décider.
 
 ### Fidélité du rendu
 

@@ -12,6 +12,7 @@ of that name.
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,6 +29,13 @@ def main(argv: list[str] | None = None) -> int:
     timeline.mark("python")
     parser = _make_parser()
     args = parser.parse_args(argv)
+    if args.config is not None:
+        named = Path(args.config).expanduser().resolve()
+        if not named.is_file():
+            parser.error(f"--config: no such file: {named}")
+        # Through the environment, so that every reader of the configuration,
+        # and every process this one starts, reads the same file.
+        os.environ["LIBERA_CONFIG"] = str(named)
     logs.setup(args.verbose, quiet=args.quiet)
     locate.make_state_dir_private()
     return _choose_command(parser, args)(args)
@@ -60,6 +68,15 @@ def _make_parser() -> argparse.ArgumentParser:
         help="say more: -v what it is doing, -vv how, -vvv every request",
     )
     parser.add_argument("-q", "--quiet", action="store_true", help="errors only")
+    parser.add_argument(
+        "-c",
+        "--config",
+        metavar="FILE",
+        help=(
+            "read FILE instead of the usual config.toml (also LIBERA_CONFIG);"
+            " documents are then not handed to a Libera Suite already running"
+        ),
+    )
     _add_payload_options(parser)
     _add_launcher_options(parser)
     parser.add_argument(

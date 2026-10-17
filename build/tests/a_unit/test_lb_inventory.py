@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from libera_build import inventory
 from libera_build.inventory import Builder
@@ -93,7 +95,7 @@ def test_a_builder_with_no_dist_is_read_where_its_build_writes(monkeypatch):
     one directory and `collect` fetched from another."""
     monkeypatch.setenv("BUILD_ROOT", "/here")
     mac, x86, arm = inventory.parse(GOOD, "builders.toml")
-    assert inventory.dist_of(mac) == "/here/out/dist"
+    assert inventory.dist_of(mac) == str(Path("/here") / "out" / "dist")
     assert inventory.dist_of(x86) == "~/b/out/dist"
     assert inventory.dist_of(arm) == "~/euro-office-build/linux-arm64/out/dist"
     windows = Builder("windows-x86_64", "win", None, False, "~/r")

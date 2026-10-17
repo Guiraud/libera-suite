@@ -197,6 +197,26 @@ if [ -d "$BUILD/payload/theme/$THEME" ] && [ -f "$EMBED_LOGO" ]; then
     cp "$OUR_WORDMARK" "$EMBED_LOGO"
 fi
 
+# Every editor's strings in every language, with English where the language
+# has none. The editor takes a string from its locale file, else the default
+# its view's code carries -- and Euro-Office added strings with no default, in
+# en.json alone. A missing one is undefined, and one of those, the toolbar's
+# tipSmartPicker, throws while Words is loading: in French, Italian, Spanish
+# and Portuguese it never becomes editable. See notes/24-interface-language.md.
+echo "==> locales, English where a translation is missing"
+py - "$PAYLOAD"/web-apps/apps/*/main/locale <<'FILL'
+import json, pathlib, sys
+for folder in map(pathlib.Path, sys.argv[1:]):
+    english = json.loads((folder / "en.json").read_text(encoding="utf-8"))
+    filled = 0
+    for path in folder.glob("*.json"):
+        strings = json.loads(path.read_text(encoding="utf-8"))
+        if english.keys() - strings.keys():
+            path.write_text(json.dumps({**english, **strings}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            filled += 1
+    print(f"  {folder.parent.parent.name}: {filled} languages filled in")
+FILL
+
 # The blank documents, from document-templates: new/<locale>/new.docx and its
 # pptx/xlsx siblings, 45 locales.
 #
@@ -206,23 +226,35 @@ fi
 # built on it renders underlined with its lines piled on top of each other.
 # Upstream's own x2t produces identical output from it, so the values are in
 # the .bin. This repo is the real source.
-echo "==> blank documents ($BLANK_LOCALE)"
+#
+# $BLANK_LOCALE's in empty/ itself, and every locale's in empty/<locale>/, for
+# the host to choose by the user's language and region: they differ in paper
+# (en-US alone is Letter) and in the language a new document spell-checks in.
+# "default" is no locale, and not copied.
+echo "==> blank documents ($BLANK_LOCALE, and every locale)"
 BLANK_SRC="$SRC/document-templates/new/$BLANK_LOCALE"
 [ -d "$BLANK_SRC" ] || { echo "FATAL: no templates for $BLANK_LOCALE -- run build.sh fetch document-templates" >&2; exit 1; }
 rm -rf "$PAYLOAD/empty"
 mkdir -p "$PAYLOAD/empty"
 cp "$BLANK_SRC"/new.* "$PAYLOAD/empty/"
+for locale_dir in "$SRC/document-templates/new"/*-*/; do
+    locale="$(basename "$locale_dir")"
+    mkdir "$PAYLOAD/empty/$locale"
+    cp "$locale_dir"new.* "$PAYLOAD/empty/$locale/"
+done
 
 # The defaults these carry are what every new document inherits, so check them
 # rather than trust them.
-py - "$PAYLOAD/empty/new.docx" <<'CHECK'
+py - "$PAYLOAD"/empty/new.docx "$PAYLOAD"/empty/*/new.docx <<'CHECK'
 import re, sys, zipfile
-d = re.search(r"<w:docDefaults>.*?</w:docDefaults>",
-              zipfile.ZipFile(sys.argv[1]).read("word/styles.xml").decode("utf-8", "replace"), re.S)
-assert d, "blank template has no docDefaults"
-assert "<w:u " not in d.group(0), "blank template carries a default underline"
-line = re.search(r'w:line="(\d+)"', d.group(0))
-assert line is None or int(line.group(1)) >= 200, f"blank template leading is {line.group(1)}"
+for blank in sys.argv[1:]:
+    d = re.search(r"<w:docDefaults>.*?</w:docDefaults>",
+                  zipfile.ZipFile(blank).read("word/styles.xml").decode("utf-8", "replace"), re.S)
+    assert d, f"{blank} has no docDefaults"
+    assert "<w:u " not in d.group(0), f"{blank} carries a default underline"
+    line = re.search(r'w:line="(\d+)"', d.group(0))
+    assert line is None or int(line.group(1)) >= 200, f"{blank}'s leading is {line.group(1)}"
+assert len(sys.argv) > 40, f"only {len(sys.argv) - 2} locales' blanks"
 CHECK
 
 # One payload root, as notes/05-packaging.md defines it: the binaries belong

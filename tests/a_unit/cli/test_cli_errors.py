@@ -15,7 +15,6 @@ from support import repo_root
 from libera import cli, payload
 from libera.cli import commands
 from libera.host import app
-from libera.host.convert import ConversionError
 from libera.host.session import NotReadyError
 from libera.manifest import Manifest
 from libera.payload import NoPayloadError
@@ -245,32 +244,6 @@ def test_any_refusal_to_start_is_shown_when_there_is_no_terminal(
     assert code == 1
     assert "missing: AllFonts.js" in out.err
     assert [paragraphs for _, paragraphs, _ in shown] == [["missing: AllFonts.js"]]
-
-
-def test_a_first_document_that_will_not_convert_is_said_not_raised(
-    monkeypatch, tmp_path, capsys, no_window
-):
-    """A later document that will not open gets a dialog. The first raised
-    out of run(): a traceback in a terminal, and nothing at all from a
-    launcher."""
-    document = tmp_path / "broken.docx"
-    document.write_bytes(b"x")
-    shown = []
-    monkeypatch.setattr(commands.gui, "show_problem", lambda *a: shown.append(a))
-    monkeypatch.setattr(commands.sys.stdin, "isatty", lambda: False)
-
-    def refuse(*_a, **_k):
-        msg = "x2t could not convert broken.docx (exit status 1)"
-        raise ConversionError(msg)
-
-    monkeypatch.setattr(app, "run", refuse)
-
-    code, out = run([str(document)], capsys)
-
-    assert code == 1
-    assert "Traceback" not in out.err
-    assert "could not read broken.docx" in out.err
-    assert len(shown) == 1
 
 
 @pytest.mark.parametrize(

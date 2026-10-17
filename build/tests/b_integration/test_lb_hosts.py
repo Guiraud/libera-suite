@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -30,6 +31,10 @@ def scp_log(tmp_path, monkeypatch) -> Path:
     return log
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the stand-in is an sh script, which Windows does not run",
+)
 def test_a_copy_cannot_sit_at_a_password_prompt(scp_log, tmp_path):
     """The options ssh gets, scp gets, both ways: an unattended release must
     fail fast rather than wait for a password nobody will type."""
@@ -42,6 +47,10 @@ def test_a_copy_cannot_sit_at_a_password_prompt(scp_log, tmp_path):
         assert "-o ConnectTimeout=10" in line
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the stand-in is an sh script, which Windows does not run",
+)
 def test_collect_does_not_take_the_last_releases_file_for_a_copy(scp_log, tmp_path):
     local = tmp_path / "core-linux-arm64.tar.gz"
     local.write_bytes(b"the last release's core")

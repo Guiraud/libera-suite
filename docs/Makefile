@@ -3,7 +3,7 @@
 # Zensical is a dev dependency of libera itself, so `--project ..` runs it from
 # the repository's venv rather than needing one in here.
 
-.PHONY: all preprocess build serve preview check clean publish deploy figures shots cards images
+.PHONY: all preprocess build serve preview check switcher clean publish deploy figures shots cards images
 
 ZENSICAL = uv run --project .. zensical
 
@@ -52,6 +52,11 @@ shots:
 # The Open Graph cards, after shots: they show the Words screenshot.
 cards:
 	uv run --project .. --with playwright python cards.py
+
+# Where a click on the language selector or a cross-edition link lands, in a
+# real browser, over the built site: see switcher.py.
+switcher:
+	uv run --project .. --with playwright python switcher.py
 
 # Fail on warnings — a broken cross-reference is a broken build.
 check: preprocess

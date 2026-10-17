@@ -226,7 +226,18 @@ def get_sessions_dir() -> Path:
     return get_state_dir() / "sessions"
 
 
+def get_named_config() -> Path | None:
+    """The configuration named for this run, by `libera --config` (which sets
+    LIBERA_CONFIG) or LIBERA_CONFIG itself, in place of the usual file: a
+    development setup beside the user's own, which it must not touch."""
+    named = os.environ.get("LIBERA_CONFIG")
+    return Path(named).expanduser() if named else None
+
+
 def get_config_file() -> Path:
+    named = get_named_config()
+    if named is not None:
+        return named
     xdg = os.environ.get("XDG_CONFIG_HOME")
     if sys.platform == "darwin" and not xdg:
         return get_state_dir() / "config.toml"
@@ -251,6 +262,10 @@ def _read_config(key: str, kind: type[T], expected: str) -> T | None:
     """
     f = get_config_file()
     if not f.is_file():
+        if f == get_named_config():
+            # Named and not there is a typo, not "nothing configured".
+            msg = f"LIBERA_CONFIG names {f}, which is not a file"
+            raise PayloadError(msg)
         return None
     try:
         value = tomllib.loads(f.read_text(encoding="utf-8")).get(key)

@@ -8,6 +8,8 @@ and each swept away the other's live sessions.
 
 from __future__ import annotations
 
+import io
+
 import pytest
 
 from libera.host import instance
@@ -67,3 +69,35 @@ def test_a_claimant_that_never_answers_is_said_so(claimed, monkeypatch):
 
     with pytest.raises(instance.BusyError, match="has not answered"):
         instance.become([])
+
+
+def test_a_launch_with_another_configuration_is_never_handed_off(
+    claimed, tmp_path, monkeypatch
+):
+    """The running instance would open the documents with its configuration,
+    and the one named for this launch would be ignored without a word."""
+    monkeypatch.setenv("LIBERA_CONFIG", str(tmp_path / "dev.toml"))
+    instance.announce(port=1)
+    monkeypatch.delenv("LIBERA_CONFIG")
+
+    assert instance.hand_off([]) is False
+    with pytest.raises(instance.BusyError, match="another configuration"):
+        instance.become([])
+
+
+def test_a_launch_with_the_same_configuration_is_handed_off(
+    claimed, tmp_path, monkeypatch
+):
+    """`libera -c dev.toml FILE` twice: the second goes to the first."""
+    monkeypatch.setenv("LIBERA_CONFIG", str(tmp_path / "dev.toml"))
+    instance.announce(port=1)
+    asked: list = []
+
+    def answer(request, timeout):
+        asked.append(request.full_url)
+        return io.BytesIO(b'{"opened": true}')
+
+    monkeypatch.setattr(instance.urllib.request, "urlopen", answer)
+
+    assert instance.become([]) is None
+    assert asked[0].startswith("http://127.0.0.1:1/__host__/hand-off")

@@ -113,3 +113,23 @@ def test_the_classification_recognises_a_feature_check(live_payload):
     unguarded = unguarded_calls(live_payload)
     for name in ("SetLocalRestrictions", "CallMediaPlayerCommand"):
         assert name not in unguarded, f"{name} is guarded in the payload"
+
+
+def test_the_font_menu_rows_are_as_high_as_allfontsgen_draws_them(live_payload):
+    """The menu reads each name from its sprite at the height the bridge
+    reports, times the scale: a row of any other height shows a name cut
+    across or squeezed until it loses lines of pixels.
+    """
+    reported = re.search(r"GetFontThumbnailHeight: \(\) => (\d+)", BRIDGE.read_text())
+    assert reported, "the bridge no longer reports the thumbnail height"
+    height = int(reported[1])
+    images = live_payload / "sdkjs/common/Images"
+    # A PNG's height is the big-endian word at bytes 20-24 of its header.
+    rows, extra = divmod(
+        int.from_bytes((images / "fonts_thumbnail.png").read_bytes()[20:24]), height
+    )
+    assert rows > 1, "the 1x sprite holds no list of names"
+    assert extra == 0, f"the 1x sprite is not made of {height}-pixel rows"
+    for scale in (1.25, 1.5, 1.75, 2):
+        sprite = images / f"fonts_thumbnail@{scale:g}x.png"
+        assert int.from_bytes(sprite.read_bytes()[20:24]) == rows * height * scale

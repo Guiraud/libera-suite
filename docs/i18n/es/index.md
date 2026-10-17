@@ -13,6 +13,10 @@ Abre y guarda los formatos de archivo de Microsoft Office y de LibreOffice, así
 
 [Instala Libera Suite](main/install.md){ .md-button .md-button--primary }
 
+## En seis diapositivas
+
+<div class="deck" data-pdf="/en/pdf/Libera%20Suite.pdf"><a href="/en/pdf/Libera%20Suite.pdf">Libera Suite, en seis diapositivas (PDF)</a></div>
+
 ## En qué punto está el proyecto
 
 Los cuatro funcionan hoy en **Windows** 10 y 11 (x64), **Linux** (x86_64 y arm64) y **macOS** (Apple Silicon). El proyecto es joven. [Qué funciona hoy](main/status.md) recoge su estado: qué está hecho, qué lo está solo en parte y qué no se ha empezado.

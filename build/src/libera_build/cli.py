@@ -854,7 +854,12 @@ def add_others(groups: Groups) -> None:
         "bench",
         "a document to the screen, stage by stage (libera_build/bench.py)",
         bench,
-        epilog=examples("bench", "bench DOC.docx --runs 5", "bench --app Libera.app"),
+        epilog=examples(
+            "bench",
+            "bench DOC.docx --runs 5",
+            "bench DOC.docx --idle 20",
+            "bench --app Libera.app",
+        ),
     )
     p.set_defaults(passes_on=True)
 

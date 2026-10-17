@@ -2,10 +2,11 @@
 
     locate     where a payload is, and whether it is the right one
     generate   the parts that can only be built on this machine
+    fonts      the index of the fonts installed on it, beside the payload
     installer  fetch, verify, unpack, generate, put in place
 
-One module per verb, in that order, and nothing imports upward. The three
-each answer one question; they were once one 442-line module.
+One module per verb, in that order, and nothing imports upward. Each
+answers one question; they were once one 442-line module.
 
 The names below are the package's surface and are re-exported so that
 `payload.resolve(...)` still reads the way it did. Code *inside* the package
@@ -33,6 +34,7 @@ from libera.payload.locate import (
     get_current_platform,
     get_data_dir,
     get_installed_dir,
+    get_named_config,
     get_sessions_dir,
     get_state_dir,
     is_complete,
@@ -48,6 +50,7 @@ __all__ = [
     "get_current_platform",
     "get_data_dir",
     "get_installed_dir",
+    "get_named_config",
     "get_sessions_dir",
     "get_state_dir",
     "install",

@@ -56,33 +56,15 @@ def generate(root: Path) -> int:
     web.mkdir(parents=True, exist_ok=True)
     images.mkdir(parents=True, exist_ok=True)
 
-    # Its output is kept, so a failure becomes a PayloadError that says what
-    # it said: check=True raised CalledProcessError, which nothing above
-    # catches, and threw the reason away with the captured stderr.
-    try:
-        run = subprocess.run(
-            [
-                str(allfontsgen),
-                f"--input={fonts_src}",
-                f"--allfonts-web={layout.web_all_fonts}",
-                f"--allfonts={layout.all_fonts}",
-                f"--images={images}",
-                f"--selection={layout.sdkjs_common / 'font_selection.bin'}",
-                f"--output-web={web}",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            env=locate.make_tool_env(layout.bin),
-            creationflags=locate.NO_WINDOW,
-        )
-    except OSError as e:
-        msg = f"could not run {allfontsgen}: {e}"
-        raise PayloadError(msg) from e
-    if run.returncode != 0:
-        said = (run.stderr or run.stdout).strip() or "nothing"
-        msg = f"allfontsgen failed (exit {run.returncode}) and said: {said}"
-        raise PayloadError(msg)
+    run_allfontsgen(
+        layout,
+        f"--input={fonts_src}",
+        f"--allfonts-web={layout.web_all_fonts}",
+        f"--allfonts={layout.all_fonts}",
+        f"--images={images}",
+        f"--selection={layout.sdkjs_common / 'font_selection.bin'}",
+        f"--output-web={web}",
+    )
     # The counts, not the exit code: allfontsgen exits 0 having found nothing
     # when its directory walk has no live branch, and writes a well-formed
     # AllFonts.js with an empty font list. An editor built on that renders every
@@ -115,3 +97,30 @@ def generate(root: Path) -> int:
         encoding="utf-8",
     )
     return found
+
+
+def run_allfontsgen(layout: locate.Layout, *args: str) -> None:
+    """Run the payload's allfontsgen, and raise what it said if it failed.
+
+    Its output is kept, so a failure becomes a PayloadError that says what
+    it said: check=True raised CalledProcessError, which nothing above
+    catches, and threw the reason away with the captured stderr. Exiting 0
+    is no proof it found anything: the caller counts what it wrote.
+    """
+    allfontsgen = layout.allfontsgen
+    try:
+        run = subprocess.run(
+            [str(allfontsgen), *args],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=locate.make_tool_env(layout.bin),
+            creationflags=locate.NO_WINDOW,
+        )
+    except OSError as e:
+        msg = f"could not run {allfontsgen}: {e}"
+        raise PayloadError(msg) from e
+    if run.returncode != 0:
+        said = (run.stderr or run.stdout).strip() or "nothing"
+        msg = f"allfontsgen failed (exit {run.returncode}) and said: {said}"
+        raise PayloadError(msg)

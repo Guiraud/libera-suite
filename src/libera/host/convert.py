@@ -9,11 +9,9 @@ them back into a file where `saving` says it goes.
 from __future__ import annotations
 
 import csv
-import functools
 import logging
 import os
 import pathlib
-import re
 import shutil
 import subprocess
 import tempfile
@@ -22,38 +20,12 @@ from typing import TYPE_CHECKING
 from xml.sax.saxutils import escape
 
 from libera.host.changelog import ChangeLog
-from libera.host.session import NotReadyError
 from libera.payload import locate
 
 if TYPE_CHECKING:
     from libera.host.session import Session
 
 logger = logging.getLogger(__name__)
-
-
-@functools.cache
-def read_font_dir(index: pathlib.Path) -> pathlib.Path:
-    """The directory of real TTFs, read back from the index built against it.
-
-    An installed payload unpacks them into fonts-src; a dev payload points
-    straight at the core-fonts checkout. Neither can be assumed, and the index
-    is the one thing that always knows.
-
-    x2t needs the directory as well as the index: given the wrong one,
-    GetFontInfoByParams returns NULL and CPdfWriter::GetFontPath dereferences
-    it: a segfault, with no error message.
-
-    The drive letter is optional because allfontsgen writes Windows paths as
-    `C:/...`, forward slashes and all.
-    """
-    m = re.search(
-        r'"((?:[A-Za-z]:)?/[^"]+)/[^/"]+\.(?:ttf|otf|ttc)"',
-        index.read_text(encoding="utf-8"),
-    )
-    if not m:
-        msg = f"no font paths in {index}; the payload was never generated"
-        raise NotReadyError(msg)
-    return pathlib.Path(m.group(1))
 
 
 def choose_x2t_output(run: subprocess.CompletedProcess) -> str:
@@ -190,7 +162,7 @@ def write_csv_open_job(
         m_sFileFrom=copy,
         m_sFileTo=editor_bin,
         m_nFormatTo=CANVAS_SPREADSHEET,
-        m_sFontDir=session.layout.sdkjs_common,
+        m_sFontDir=session.font_dir,
         m_nCsvTxtEncoding=UTF_16LE,
         m_nCsvDelimiter=DELIMITERS[delimiter],
     )
@@ -233,16 +205,28 @@ def _convert_in(session: Session, src: pathlib.Path) -> None:
             m_sFileFrom=src,
             m_sFileTo=editor_bin,
             m_nFormatTo=CANVAS_WORD,
-            m_sFontDir=session.layout.sdkjs_common,
+            m_sFontDir=session.font_dir,
             m_nCsvTxtEncoding=UTF_8,
         )
         run = run_x2t(session, str(markdown))
+    elif suffix == ".xlsb":
+        # The three-argument form takes an .xlsb for a presentation and writes
+        # an empty one (PPTY), exit 0: no .xlsb ever opened, Excel's included.
+        xlsb = write_job(
+            session,
+            "open.xml",
+            m_sFileFrom=src,
+            m_sFileTo=editor_bin,
+            m_nFormatTo=CANVAS_SPREADSHEET,
+            m_sFontDir=session.font_dir,
+        )
+        run = run_x2t(session, str(xlsb))
     else:
         run = run_x2t(
             session,
             str(src),
             str(editor_bin),
-            str(session.layout.sdkjs_common / "font_selection.bin"),
+            str(session.font_dir / "font_selection.bin"),
         )
     if run.returncode != 0 or not editor_bin.is_file():
         logger.error("open failed rc=%s\n%s", run.returncode, choose_x2t_output(run))
@@ -331,8 +315,8 @@ def _export(
         # The index of filesystem paths. Not the browser's, which holds none:
         # handed that one, x2t fails deep inside sdkjs with "Cannot read
         # property 'length' of null".
-        m_sAllFontsPath=session.layout.all_fonts,
-        m_sFontDir=read_font_dir(session.layout.all_fonts),
+        m_sAllFontsPath=session.all_fonts,
+        m_sFontDir=session.font_dir,
         **options,
     )
     # Whatever is there already would pass the check below for x2t's output.
