@@ -1,7 +1,7 @@
-From cf34d366402d4797494f6963a153ba5a137cbb77 Mon Sep 17 00:00:00 2001
+From 5e90eeadce0ce3a0017b5e7f2586821d99f44a60 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sfermigier@gmail.com>
 Date: Mon, 5 Oct 2026 22:04:16 +0200
-Subject: [PATCH 30/31] unicode: size the UTF-16 buffer for characters outside
+Subject: [PATCH 11/82] unicode: size the UTF-16 buffer for characters outside
  the BMP
 
 fromUnicode gave u_strFromWCS one UTF-16 unit per wchar_t. On macOS and

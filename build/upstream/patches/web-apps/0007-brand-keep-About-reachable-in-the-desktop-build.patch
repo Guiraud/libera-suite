@@ -1,7 +1,7 @@
-From daedf913e204ec6017278bce6c533db7dbb1aeed Mon Sep 17 00:00:00 2001
+From 1001e335ed594e00e6414d717098c985a634cba7 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Mon, 28 Sep 2026 17:51:13 +0200
-Subject: [PATCH] brand: keep About reachable in the desktop build
+Subject: [PATCH 7/8] brand: keep About reachable in the desktop build
 
 Two places switched the About panel off whenever the page found
 window.AscDesktopEditor, on the assumption that the native shell provides one

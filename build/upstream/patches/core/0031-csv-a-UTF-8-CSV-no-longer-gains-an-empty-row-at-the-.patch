@@ -1,7 +1,7 @@
-From d0486c90f26d417d3b773778aa743ba0121d8649 Mon Sep 17 00:00:00 2001
+From ed4b18114114646524e69b9f162251b54beeb742 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sfermigier@gmail.com>
 Date: Mon, 5 Oct 2026 22:04:25 +0200
-Subject: [PATCH 31/31] csv: a UTF-8 CSV no longer gains an empty row at the
+Subject: [PATCH 12/82] csv: a UTF-8 CSV no longer gains an empty row at the
  end
 
 utf8_2_unicode sized its string for one unit per byte, zero-filled it,

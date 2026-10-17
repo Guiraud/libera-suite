@@ -1,8 +1,8 @@
-From eab7603a71c05d3678f46c6691a19fe9815e6c35 Mon Sep 17 00:00:00 2001
+From 4783960614b94dd2023dc572e9c6f9585762485f Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 16:55:48 +0200
-Subject: [PATCH 147/148] OdfFile writer: a sheet name with a space is quoted
- in a cell address
+Subject: [PATCH 61/82] OdfFile writer: a sheet name with a space is quoted in
+ a cell address
 
 A validation's and a named expression's table:base-cell-address gave
 the sheet name as it is. The schema, like the formula syntax, wants a

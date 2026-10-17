@@ -1,7 +1,7 @@
-From 2cac28de82a806eb266631f8565de738bf522197 Mon Sep 17 00:00:00 2001
+From c5daaf85a20568a30aec62160cc0feb9212bdf97 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 21:54:43 +0200
-Subject: [PATCH 168/168] OdfFile reader: escape text in formulas, filters,
+Subject: [PATCH 82/82] OdfFile reader: escape text in formulas, filters,
  comments and fields
 
 Some text went into the OOXML unescaped, so an & or a < in it made the

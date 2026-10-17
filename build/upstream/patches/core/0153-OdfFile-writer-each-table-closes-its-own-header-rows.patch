@@ -1,7 +1,7 @@
-From f2cc45d30f42d23909e52b9a4a75f4216334b57a Mon Sep 17 00:00:00 2001
+From 0d6d6962531b8042b8f83998bc29382e003422a2 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 18:32:42 +0200
-Subject: [PATCH 153/156] OdfFile writer: each table closes its own header rows
+Subject: [PATCH 67/82] OdfFile writer: each table closes its own header rows
 
 Whether rows were being added to table:table-header-rows was one flag
 for the whole document, cleared only when a normal row followed. A table

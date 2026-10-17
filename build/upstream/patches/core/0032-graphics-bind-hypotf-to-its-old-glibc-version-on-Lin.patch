@@ -1,7 +1,7 @@
-From d94b0ed1abf69821c232dd771306ff6118969cd8 Mon Sep 17 00:00:00 2001
+From 32db5a99dff8e6e13dfcdd9d42bc613deae71ee0 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sfermigier@gmail.com>
 Date: Mon, 5 Oct 2026 22:17:59 +0200
-Subject: [PATCH] graphics: bind hypotf to its old glibc version on Linux
+Subject: [PATCH 13/82] graphics: bind hypotf to its old glibc version on Linux
 
 libgraphics was the only library in the Linux core that needed
 GLIBC_2.35, for one hypotf call in HarfBuzz's hb-outline.hh: glibc 2.35
@@ -10,25 +10,30 @@ newer glibc binds the new one. The converter then could not load on
 RHEL 9 and its rebuilds (glibc 2.34). A force-included header binds the
 old version, GLIBC_2.2.5 on x86_64 and GLIBC_2.17 on arm64.
 ---
- DesktopEditor/graphics/cmake/CMakeLists.txt |  3 +++
+ DesktopEditor/graphics/cmake/CMakeLists.txt |  8 ++++++
  DesktopEditor/graphics/cmake/glibc-hypotf.h | 27 +++++++++++++++++++++
- 2 files changed, 30 insertions(+)
+ 2 files changed, 35 insertions(+)
  create mode 100644 DesktopEditor/graphics/cmake/glibc-hypotf.h
 
 diff --git a/DesktopEditor/graphics/cmake/CMakeLists.txt b/DesktopEditor/graphics/cmake/CMakeLists.txt
-index 274a71cb19..0afa9ed60a 100644
+index e8686f32c8..900cbdf9b7 100644
 --- a/DesktopEditor/graphics/cmake/CMakeLists.txt
 +++ b/DesktopEditor/graphics/cmake/CMakeLists.txt
-@@ -1082,6 +1082,9 @@ endif()
- if(LINUX)
-     target_compile_options(graphics PRIVATE
-         -fpermissive
-+        # hypotf at its old symbol version, so the core loads on glibc 2.34
-+        # (RHEL 9): see glibc-hypotf.h.
-+        -include ${CMAKE_CURRENT_SOURCE_DIR}/glibc-hypotf.h
+@@ -1072,6 +1072,14 @@ if(LINUX)
      )
  endif()
  
++if(LINUX)
++    target_compile_options(graphics PRIVATE
++        # hypotf at its old symbol version, so the core loads on glibc 2.34
++        # (RHEL 9): see glibc-hypotf.h.
++        -include ${CMAKE_CURRENT_SOURCE_DIR}/glibc-hypotf.h
++    )
++endif()
++
+ # dynamic libs
+ target_link_libraries(graphics PUBLIC
+     Boost::system
 diff --git a/DesktopEditor/graphics/cmake/glibc-hypotf.h b/DesktopEditor/graphics/cmake/glibc-hypotf.h
 new file mode 100644
 index 0000000000..cf2510164a

@@ -1,7 +1,7 @@
-From 940b7f4804e6c2358955e369c7a3c823b025ed60 Mon Sep 17 00:00:00 2001
+From 8a3bb65550807b0154e489d8750148a098882b8d Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 18:32:42 +0200
-Subject: [PATCH 149/156] OdfFile writer: a media object's preview is embedded,
+Subject: [PATCH 63/82] OdfFile writer: a media object's preview is embedded,
  and so is the media
 
 In a presentation, a picture that plays audio or video took the

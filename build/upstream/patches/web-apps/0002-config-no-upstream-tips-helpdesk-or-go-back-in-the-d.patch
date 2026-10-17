@@ -1,8 +1,8 @@
-From f6b6b0d89c186aecfb66459752f9ed034771a65b Mon Sep 17 00:00:00 2001
+From b101a056adc31290275ef6376ae197f908d9aca9 Mon Sep 17 00:00:00 2001
 From: Libera build <build@libera.invalid>
 Date: Fri, 11 Sep 2026 13:21:26 +0200
-Subject: [PATCH] config: no upstream tips, helpdesk or go-back in the desktop
- editor
+Subject: [PATCH 2/8] config: no upstream tips, helpdesk or go-back in the
+ desktop editor
 
 The desktop index.html hardcodes ONLYOFFICE's own deployment: a feedback
 button pointing at helpdesk.onlyoffice.com, a go-back button aimed at
@@ -14,7 +14,7 @@ product.
  1 file changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/apps/api/documents/index.html.desktop b/apps/api/documents/index.html.desktop
-index 76aa66c3a8..09e2389707 100644
+index b3d81c1ec3..569d82d37e 100644
 --- a/apps/api/documents/index.html.desktop
 +++ b/apps/api/documents/index.html.desktop
 @@ -104,10 +104,13 @@

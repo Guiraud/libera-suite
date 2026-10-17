@@ -1,7 +1,7 @@
-From 0b8870cc2ca06f70adbd3748808284eb273acafc Mon Sep 17 00:00:00 2001
+From 376b706d2288ef7f3fd72dd22f50fc061d759600 Mon Sep 17 00:00:00 2001
 From: SF on Windows <sf+windows@abilian.com>
 Date: Tue, 29 Sep 2026 05:03:11 +0000
-Subject: [PATCH] build: spawn npm and webpack through node, for Windows
+Subject: [PATCH 8/8] build: spawn npm and webpack through node, for Windows
 
 Two tasks spawned a command that only exists as a .cmd on Windows:
 mobile:install ran `npm`, and every webpack task ran
@@ -15,16 +15,15 @@ require.resolve('webpack-cli/bin/cli.js'), which is what the sdkjs
 pipeline already does; npm goes through the npm-cli.js that ships
 beside this node, on win32 only. No shell means no argument quoting to
 get wrong.
-
 ---
  build/scripts/build-pipeline.js | 19 +++++++++++++++----
  1 file changed, 15 insertions(+), 4 deletions(-)
 
 diff --git a/build/scripts/build-pipeline.js b/build/scripts/build-pipeline.js
-index 98da5bec8a..a7fe27ad47 100755
+index 8f0f81a972..f45e118da0 100755
 --- a/build/scripts/build-pipeline.js
 +++ b/build/scripts/build-pipeline.js
-@@ -233,7 +233,10 @@ async function phase(title, taskSpecs) {
+@@ -223,7 +223,10 @@ async function phase(title, taskSpecs) {
  // ---- pipeline ---------------------------------------------------------------
  
  const node = process.execPath; // same node version as the parent
@@ -36,7 +35,7 @@ index 98da5bec8a..a7fe27ad47 100755
  
  const WEBPACK_CONFIGS = [
      'webpack.documenteditor.mjs',
-@@ -280,13 +283,21 @@ async function main() {
+@@ -270,13 +273,21 @@ async function main() {
  
      for (const cfg of WEBPACK_CONFIGS) {
          const name = cfg.replace('webpack.', '').replace('.mjs', '');
@@ -62,5 +61,5 @@ index 98da5bec8a..a7fe27ad47 100755
      )).promise;
      if (install.code !== 0) {
 -- 
-2.55.0.windows.3
+2.55.0
 

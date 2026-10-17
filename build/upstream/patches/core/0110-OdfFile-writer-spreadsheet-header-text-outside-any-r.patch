@@ -1,7 +1,7 @@
-From 4c4846ff4d0ff77e24dc49f72ed0167ca712e8a6 Mon Sep 17 00:00:00 2001
+From 92732e4e4f9c425df9e43e9e26f507e9dc3c4fc2 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Tue, 22 Sep 2026 21:25:25 +0200
-Subject: [PATCH 110/142] OdfFile writer: spreadsheet header text outside any
+Subject: [PATCH 24/82] OdfFile writer: spreadsheet header text outside any
  region goes centre
 
 XlsxConverter only opened a style:region-left/-center/-right when the

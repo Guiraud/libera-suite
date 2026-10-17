@@ -1,7 +1,7 @@
-From 2ead10e1ae533649b20b2102469d53842228518e Mon Sep 17 00:00:00 2001
+From cada49976a0d0e9386618c37fa136e2051e806bc Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Thu, 24 Sep 2026 19:24:46 +0200
-Subject: [PATCH 120/142] OdfFile writer: chart:treat-empty-cells from
+Subject: [PATCH 34/82] OdfFile writer: chart:treat-empty-cells from
  c:dispBlanksAs, not true
 
 The writer set chart:treat-empty-cells to true on every plot area and

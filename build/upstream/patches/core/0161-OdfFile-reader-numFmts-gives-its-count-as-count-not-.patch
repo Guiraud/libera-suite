@@ -1,7 +1,7 @@
-From 03db8020c0a6e3c3195c7a19bc6376f78c95766c Mon Sep 17 00:00:00 2001
+From a08db6770833c98a79240c5531062d22e0d16afc Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 21:54:40 +0200
-Subject: [PATCH 161/168] OdfFile reader: numFmts gives its count as count, not
+Subject: [PATCH 75/82] OdfFile reader: numFmts gives its count as count, not
  formatCode
 
 xl/styles.xml wrote <numFmts formatCode="N">, where the attribute is
@@ -15,10 +15,10 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/OdfFile/Reader/Converter/xlsx_numFmts.cpp b/OdfFile/Reader/Converter/xlsx_numFmts.cpp
-index f02b79496b..888135f0ec 100644
+index 0a7c7686f8..9e80938347 100644
 --- a/OdfFile/Reader/Converter/xlsx_numFmts.cpp
 +++ b/OdfFile/Reader/Converter/xlsx_numFmts.cpp
-@@ -170,7 +170,10 @@ void xlsx_num_fmts::Impl::serialize(std::wostream & strm) const
+@@ -169,7 +169,10 @@ void xlsx_num_fmts::Impl::serialize(std::wostream & strm) const
      {
          CP_XML_NODE (L"numFmts")
          {

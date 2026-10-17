@@ -1,7 +1,7 @@
-From cb162ad5d47171b1748f36618c7d1d2a36a61356 Mon Sep 17 00:00:00 2001
+From cfd4136c391a8e107d168805a259feee790283f9 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 08:54:40 +0200
-Subject: [PATCH 136/142] OdfFile writer: each piece of a tracked change is a
+Subject: [PATCH 50/82] OdfFile writer: each piece of a tracked change is a
  region with its own id
 
 A DOCX change split into pieces, one w:ins or w:del per run or

@@ -1,7 +1,7 @@
-From 0aa79cbb9bb27776ee7f6e5a31f111fd87a2b5c3 Mon Sep 17 00:00:00 2001
+From 5fb624722586b5af19d694ec99076faa33743ca1 Mon Sep 17 00:00:00 2001
 From: Libera build <build@libera.invalid>
 Date: Fri, 11 Sep 2026 13:36:04 +0200
-Subject: [PATCH] fix(ui): stop unsized language icons rendering at 300x150
+Subject: [PATCH 3/8] fix(ui): stop unsized language icons rendering at 300x150
 
 The v2 icon migration turned <i class="icon"> into <svg class="icon"> in the
 language picker -- the Set document language dialog and the statusbar menu --

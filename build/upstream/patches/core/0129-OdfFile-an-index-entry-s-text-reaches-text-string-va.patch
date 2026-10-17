@@ -1,7 +1,7 @@
-From 8e34a00e3ed831e1544b05127a2033d1773506d7 Mon Sep 17 00:00:00 2001
+From 90f4eca0ac02443eb101daf9a9b6b76004683e7c Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 06:29:14 +0200
-Subject: [PATCH 129/142] OdfFile: an index entry's text reaches
+Subject: [PATCH 43/82] OdfFile: an index entry's text reaches
  text:string-value, and its levels its keys
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

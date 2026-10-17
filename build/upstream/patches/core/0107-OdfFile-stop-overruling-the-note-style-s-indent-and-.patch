@@ -1,7 +1,7 @@
-From 12e20ebcf3f90c9e971830f892a531a1033e7307 Mon Sep 17 00:00:00 2001
+From 2fa58c6140eff058bf6c71ee37ba601a84242e41 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Tue, 22 Sep 2026 09:55:52 +0200
-Subject: [PATCH 107/142] OdfFile: stop overruling the note style's indent and
+Subject: [PATCH 21/82] OdfFile: stop overruling the note style's indent and
  line spacing
 
 Writing ODT, the converter stamps a 0.2cm hanging indent and a 100% line

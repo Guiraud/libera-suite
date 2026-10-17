@@ -1,7 +1,7 @@
-From fbc5bb53c049899a75f3db97c33fccc7bf796698 Mon Sep 17 00:00:00 2001
+From fd7bf174d9851aa60ee4af4bc9c8182c80aa40dd Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sfermigier@gmail.com>
 Date: Tue, 15 Sep 2026 09:48:46 +0200
-Subject: [PATCH] brand: drop the ONLYOFFICE favicon
+Subject: [PATCH 6/8] brand: drop the ONLYOFFICE favicon
 
 favicon.ico is ONLYOFFICE's stacked-sheets device -- the trademark itself,
 not a wordmark -- and the same file five times over. It is the last piece of
@@ -68,7 +68,7 @@ index abe2f499a0..53d249926d 100644
      <!-- splash -->
  
 diff --git a/apps/documenteditor/main/index.html.deploy b/apps/documenteditor/main/index.html.deploy
-index 7fa1eb3115..7279f0ee05 100644
+index 02eb7b2575..4c1f7a98a3 100644
 --- a/apps/documenteditor/main/index.html.deploy
 +++ b/apps/documenteditor/main/index.html.deploy
 @@ -7,7 +7,6 @@
@@ -92,7 +92,7 @@ index 34026fb33f..b73cf43a7f 100644
      <!-- splash -->
  
 diff --git a/apps/documenteditor/main/index_loader.html.deploy b/apps/documenteditor/main/index_loader.html.deploy
-index 91963c88ea..62f6a7d31a 100644
+index a76d20572f..e90b10cc53 100644
 --- a/apps/documenteditor/main/index_loader.html.deploy
 +++ b/apps/documenteditor/main/index_loader.html.deploy
 @@ -7,7 +7,6 @@
@@ -149,7 +149,7 @@ index a25021cee9..91496d9d13 100644
      <!-- splash -->
  
 diff --git a/apps/pdfeditor/main/index.html.deploy b/apps/pdfeditor/main/index.html.deploy
-index f69986079c..7578e0d59f 100644
+index c4772d1187..473a85e426 100644
 --- a/apps/pdfeditor/main/index.html.deploy
 +++ b/apps/pdfeditor/main/index.html.deploy
 @@ -6,7 +6,6 @@
@@ -173,7 +173,7 @@ index fbf5e2ae42..56c258891a 100644
      <!-- splash -->
  
 diff --git a/apps/pdfeditor/main/index_loader.html.deploy b/apps/pdfeditor/main/index_loader.html.deploy
-index 340c1702db..245868305c 100644
+index c09c854839..cf2b9caa27 100644
 --- a/apps/pdfeditor/main/index_loader.html.deploy
 +++ b/apps/pdfeditor/main/index_loader.html.deploy
 @@ -6,7 +6,6 @@
@@ -230,7 +230,7 @@ index 8729e998c8..6cf41b6f3d 100644
      <!-- splash -->
      <style type="text/css">
 diff --git a/apps/presentationeditor/main/index.html.deploy b/apps/presentationeditor/main/index.html.deploy
-index 7d5d3a612f..92653b9c1c 100644
+index 3ed8e15378..ed0f40c433 100644
 --- a/apps/presentationeditor/main/index.html.deploy
 +++ b/apps/presentationeditor/main/index.html.deploy
 @@ -6,7 +6,6 @@
@@ -254,7 +254,7 @@ index 8e405cc822..fce694e647 100644
      <!-- splash -->        
  
 diff --git a/apps/presentationeditor/main/index.reporter.html.deploy b/apps/presentationeditor/main/index.reporter.html.deploy
-index 4c892b758f..25c61f03d2 100644
+index a29f564f9c..028b8b3b12 100644
 --- a/apps/presentationeditor/main/index.reporter.html.deploy
 +++ b/apps/presentationeditor/main/index.reporter.html.deploy
 @@ -6,7 +6,6 @@
@@ -278,7 +278,7 @@ index ba00e89b16..e9eb8c7e00 100644
      <!-- splash -->
      <style type="text/css">
 diff --git a/apps/presentationeditor/main/index_loader.html.deploy b/apps/presentationeditor/main/index_loader.html.deploy
-index 79757f32d1..b267f0dc39 100644
+index 874efc8f5a..58fc3062d4 100644
 --- a/apps/presentationeditor/main/index_loader.html.deploy
 +++ b/apps/presentationeditor/main/index_loader.html.deploy
 @@ -6,7 +6,6 @@
@@ -323,7 +323,7 @@ zp8rQ$yALk3ARFhvcVj?0sI$RxxnVBf10GX|i_ri#_)Zx^=jxG;Ab8f9JXfvcD`7WO
 f5a-~oKT|yqBpx6)V|fe(`#v4~-|ISEuh;$!sVj;D
 
 diff --git a/apps/spreadsheeteditor/main/index.html.deploy b/apps/spreadsheeteditor/main/index.html.deploy
-index f3dc13b998..d7d2dd5f9a 100644
+index cf1f99901b..a46ec48caa 100644
 --- a/apps/spreadsheeteditor/main/index.html.deploy
 +++ b/apps/spreadsheeteditor/main/index.html.deploy
 @@ -7,7 +7,6 @@
@@ -335,7 +335,7 @@ index f3dc13b998..d7d2dd5f9a 100644
      <!-- splash -->
      <style type="text/css">
 diff --git a/apps/spreadsheeteditor/main/index_internal.html.deploy b/apps/spreadsheeteditor/main/index_internal.html.deploy
-index 3b20ae69f6..47b081622e 100644
+index 88e01a3b44..374a8fd87b 100644
 --- a/apps/spreadsheeteditor/main/index_internal.html.deploy
 +++ b/apps/spreadsheeteditor/main/index_internal.html.deploy
 @@ -7,7 +7,6 @@
@@ -347,7 +347,7 @@ index 3b20ae69f6..47b081622e 100644
      <!-- splash -->
      <style type="text/css">
 diff --git a/apps/spreadsheeteditor/main/index_loader.html.deploy b/apps/spreadsheeteditor/main/index_loader.html.deploy
-index 67fd54dfc2..adfd3b32e4 100644
+index cb2c570854..9cc8a39710 100644
 --- a/apps/spreadsheeteditor/main/index_loader.html.deploy
 +++ b/apps/spreadsheeteditor/main/index_loader.html.deploy
 @@ -7,7 +7,6 @@
@@ -404,7 +404,7 @@ index eb6afc94da..d26edbd26a 100644
      <!-- splash -->
      <style type="text/css">
 diff --git a/apps/visioeditor/main/index.html.deploy b/apps/visioeditor/main/index.html.deploy
-index 7d55f62704..be207818a7 100644
+index 80610b3c1e..544783ce3e 100644
 --- a/apps/visioeditor/main/index.html.deploy
 +++ b/apps/visioeditor/main/index.html.deploy
 @@ -6,7 +6,6 @@
@@ -428,7 +428,7 @@ index 577f1f4712..6905bce839 100644
      <!-- splash -->
      <style type="text/css">
 diff --git a/apps/visioeditor/main/index_loader.html.deploy b/apps/visioeditor/main/index_loader.html.deploy
-index fdd717c211..30cb3fdf12 100644
+index ff30f0ca2e..b0fea82cc2 100644
 --- a/apps/visioeditor/main/index_loader.html.deploy
 +++ b/apps/visioeditor/main/index_loader.html.deploy
 @@ -6,7 +6,6 @@

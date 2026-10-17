@@ -1,8 +1,8 @@
-From 592b50a314a23880a529db43363927623a3d53df Mon Sep 17 00:00:00 2001
+From 50e16b0e9efffd34eb5e02202ca39cadba0fbe0d Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sfermigier@gmail.com>
 Date: Fri, 2 Oct 2026 17:27:49 +0200
-Subject: [PATCH] csv: do not skip the character after each 500000-character
- block
+Subject: [PATCH 10/82] csv: do not skip the character after each
+ 500000-character block
 
 CSVReader drops the text it has read once it passes 500000 characters, and
 sets nIndex to 0 before the loop's ++nIndex. The first character kept was

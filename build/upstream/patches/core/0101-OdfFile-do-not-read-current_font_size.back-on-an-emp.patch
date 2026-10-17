@@ -1,7 +1,7 @@
-From b8564c33caeaf0c2ac3fed29dcfff47c13e7512c Mon Sep 17 00:00:00 2001
+From 0a4e6e071c92192023400be119e4f36c3cd769a8 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Tue, 22 Sep 2026 09:51:14 +0200
-Subject: [PATCH 101/142] OdfFile: do not read current_font_size.back() on an
+Subject: [PATCH 15/82] OdfFile: do not read current_font_size.back() on an
  empty vector
 
 Converting a docx that holds a form content control crashes the ODF

@@ -1,8 +1,8 @@
-From 249be1cf013cd5f10e14cc3e286eb5bde631cd17 Mon Sep 17 00:00:00 2001
+From 6da6e62c108cbf060bf2131ad606eb2c4139c175 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Mon, 21 Sep 2026 10:35:08 +0200
-Subject: [PATCH] boost: build the Boost.Build engine with a named toolset on
- Windows
+Subject: [PATCH 04/82] boost: build the Boost.Build engine with a named
+ toolset on Windows
 
 bootstrap.bat calls build.bat with no arguments, and build.bat then guesses
 the toolset from the Visual Studio *installation* it finds with vswhere. On
@@ -25,10 +25,10 @@ anyway.
  1 file changed, 33 insertions(+), 3 deletions(-)
 
 diff --git a/Common/3dParty/boost/nc-build.py b/Common/3dParty/boost/nc-build.py
-index 91e0f90ff2..229ec0678d 100644
+index 52b9948874..9cd7e27d28 100644
 --- a/Common/3dParty/boost/nc-build.py
 +++ b/Common/3dParty/boost/nc-build.py
-@@ -84,11 +84,41 @@ def build_and_install():
+@@ -85,11 +85,41 @@ def build_and_install():
      elif nc.is_windows():
          boost_arch, host_subdir = boost_msvc_arch()
  
@@ -58,7 +58,7 @@ index 91e0f90ff2..229ec0678d 100644
 +            stale.unlink( missing_ok = True )
 +
          nc.run_command(
--            [ "cmd.exe", "/c" "bootstrap.bat", f"--prefix={ nc.install_dir }" ],
+-            [ "cmd.exe", "/c", "bootstrap.bat", f"--prefix={ nc.install_dir }" ],
 -            "Running bootstrap",
 -            nc.work_dir
 +            [ "cmd.exe", "/c", str( engine / "build.bat" ), "msvc" ],

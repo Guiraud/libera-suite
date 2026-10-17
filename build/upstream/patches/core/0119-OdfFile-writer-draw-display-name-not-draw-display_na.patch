@@ -1,7 +1,7 @@
-From ef8ead073b28ca3ecd952aff234d36ca88949e90 Mon Sep 17 00:00:00 2001
+From 876ef92fe9ab0fb84be64f2f73930938219b14b4 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Thu, 24 Sep 2026 16:17:01 +0200
-Subject: [PATCH 119/142] OdfFile writer: draw:display-name, not
+Subject: [PATCH 33/82] OdfFile writer: draw:display-name, not
  draw:display_name
 
 Five drawing styles (fill image, marker, gradient, hatch, opacity)

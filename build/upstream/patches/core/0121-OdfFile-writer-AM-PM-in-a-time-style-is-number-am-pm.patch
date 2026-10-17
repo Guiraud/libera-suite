@@ -1,8 +1,8 @@
-From fbe3e890f7e017f331824a21aa39a2753cb29c4f Mon Sep 17 00:00:00 2001
+From 295647d649be817c7ebe4d9d1d18b897b5d381db Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Thu, 24 Sep 2026 19:26:45 +0200
-Subject: [PATCH 121/142] OdfFile writer: AM/PM in a time style is
- number:am-pm, not three texts
+Subject: [PATCH 35/82] OdfFile writer: AM/PM in a time style is number:am-pm,
+ not three texts
 
 create_time_style lowercased the format code with XmlUtils::GetLower(s),
 which returns the lowered string and leaves its argument alone. Its
@@ -22,10 +22,10 @@ Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
  1 file changed, 25 insertions(+), 6 deletions(-)
 
 diff --git a/OdfFile/Writer/Format/odf_number_styles_context.cpp b/OdfFile/Writer/Format/odf_number_styles_context.cpp
-index 62b598ca62..bcd22f1ff2 100644
+index cd76cd748b..4e895323fb 100644
 --- a/OdfFile/Writer/Format/odf_number_styles_context.cpp
 +++ b/OdfFile/Writer/Format/odf_number_styles_context.cpp
-@@ -848,20 +848,24 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+@@ -852,20 +852,24 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
  	
  	// state.language_code == L"F400")//System time format
  	std::wstring s = state.format_code[0];
@@ -52,7 +52,7 @@ index 62b598ca62..bcd22f1ff2 100644
  		{
  			create_element(L"number", L"hours", elm, odf_context_);
  			number_hours* number_hours_ = dynamic_cast<number_hours*>(elm.get());		
-@@ -871,11 +875,19 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+@@ -875,11 +879,19 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
  				if (sz == 2) number_hours_->number_style_ = L"long";
  			}
  		}
@@ -74,7 +74,7 @@ index 62b598ca62..bcd22f1ff2 100644
  		{
  			create_element(L"number", L"minutes", elm, odf_context_);
  			number_minutes* number_minutes_ = dynamic_cast<number_minutes*>(elm.get());
-@@ -885,7 +897,7 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+@@ -889,7 +901,7 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
  				if (sz == 2)number_minutes_->number_style_ = L"long";
  			}
  		}
@@ -83,7 +83,7 @@ index 62b598ca62..bcd22f1ff2 100644
  		{
  			create_element(L"number", L"seconds", elm, odf_context_);
  			number_seconds* number_seconds_ = dynamic_cast<number_seconds*>(elm.get());
-@@ -896,7 +908,7 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+@@ -900,7 +912,7 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
  				//number_decimal_places_
  			}
  		}
@@ -92,7 +92,7 @@ index 62b598ca62..bcd22f1ff2 100644
  		{
  		//////////////////// divider ////////////////////
  			if(sz > 1) 
-@@ -904,6 +916,11 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+@@ -908,6 +920,11 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
  				//Remove the "extra" slashes
  				XmlUtils::replace_all( s, L"\\", L"");
  			}
@@ -104,7 +104,7 @@ index 62b598ca62..bcd22f1ff2 100644
  			create_element(L"number", L"text", elm, odf_context_);
  			number_text* number_text_ = dynamic_cast<number_text*>(elm.get());
  			if (number_text_)number_text_->add_text(s); 
-@@ -912,6 +929,8 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
+@@ -916,6 +933,8 @@ void odf_number_styles_context::create_time_style(number_format_state & state, o
  		{
  			root_elm->add_child_element(elm);
  			styles_elments.push_back(elm);

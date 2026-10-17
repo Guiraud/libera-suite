@@ -1,7 +1,7 @@
-From 545edffaddb59b2b638d3eff723e2393b2f32af1 Mon Sep 17 00:00:00 2001
+From 02a1d0196445d1a35a475932f93712e90b651be8 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 18:32:43 +0200
-Subject: [PATCH 156/156] OdfFile reader: a standard connector comes back bent,
+Subject: [PATCH 70/82] OdfFile reader: a standard connector comes back bent,
  not straight
 
 The reader compared draw:type with "standart", so ODF's "standard"

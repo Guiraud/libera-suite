@@ -1,7 +1,7 @@
-From e4b01bbe09bd975406049e9852f41f30c0676c8b Mon Sep 17 00:00:00 2001
+From eda5af5217104349f52db65d52d716fe6e5566dd Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Tue, 22 Sep 2026 09:55:15 +0200
-Subject: [PATCH 103/142] OdfFile: w:outlineLvl is zero-based, and text:level
+Subject: [PATCH 17/82] OdfFile: w:outlineLvl is zero-based, and text:level
  must not wipe it
 
 Converting ODT to DOCX, every heading lands one level too deep. ODF

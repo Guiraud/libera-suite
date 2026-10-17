@@ -1,7 +1,7 @@
-From 06fb851146c95b2b3adb933be8e4382a5be76525 Mon Sep 17 00:00:00 2001
+From a749ef8202de3c11a7c30d224b509189e021d3c9 Mon Sep 17 00:00:00 2001
 From: SF on Windows <sf+windows@abilian.com>
 Date: Tue, 29 Sep 2026 05:30:10 +0000
-Subject: [PATCH] cmake: build every Windows module against the DLL CRT
+Subject: [PATCH 09/82] cmake: build every Windows module against the DLL CRT
 
 common.cmake sets CMAKE_MSVC_RUNTIME_LIBRARY to MultiThreadedDLL and
 then rewrites /MD to /MT in the flag strings. The rewrite wins: the
@@ -32,10 +32,10 @@ non-component desktop build, and a /MT v8_monolith.lib cannot link into
  create mode 100644 Common/3dParty/v8/tools/8.9/x64-windows/dynamic_crt.patch
 
 diff --git a/Common/3dParty/v8/nc-build.py b/Common/3dParty/v8/nc-build.py
-index d1276799c3..b95d167c6d 100644
+index c7d24ba0bb..438454f2c6 100644
 --- a/Common/3dParty/v8/nc-build.py
 +++ b/Common/3dParty/v8/nc-build.py
-@@ -56,7 +56,9 @@ def apply_patches():
+@@ -101,7 +101,9 @@ def apply_patches():
              print( f"[WARNING] cannot apply patch ({ patch[ 'name' ] }) because dir doesn't exist!" )
  
      if nc.is_windows():
@@ -70,10 +70,10 @@ index 0000000000..548bcf1760
 +   }
 + }
 diff --git a/common.cmake b/common.cmake
-index 8b3b47f14c..06314438ab 100644
+index c0415c9b55..4dcb7d08ea 100644
 --- a/common.cmake
 +++ b/common.cmake
-@@ -126,10 +126,16 @@ else()
+@@ -132,10 +132,16 @@ else()
      endif()
  
      if(MSVC)
@@ -94,5 +94,5 @@ index 8b3b47f14c..06314438ab 100644
  
      if(BUILD_DESKTOP)
 -- 
-2.55.0.windows.3
+2.55.0
 

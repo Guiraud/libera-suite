@@ -1,7 +1,7 @@
-From 11a6bb24e82b9c43099b3e37a4b78cbd467d3968 Mon Sep 17 00:00:00 2001
+From be2bc9f04b17766543c9e126ec8b540976ba08f8 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 08:58:12 +0200
-Subject: [PATCH 140/142] OdfFile reader: a chapter field is STYLEREF, not
+Subject: [PATCH 54/82] OdfFile reader: a chapter field is STYLEREF, not
  BIBLIOGRAPHY
 
 chapter::docx_convert wrote every text:chapter as a BIBLIOGRAPHY field.

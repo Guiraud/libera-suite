@@ -1,7 +1,7 @@
-From d35a5994a6b063c5e55efdb3bb003dd6ab1aa927 Mon Sep 17 00:00:00 2001
+From c00fcb88bbc0e369840b9aa931fea7f5ae832831 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 06:57:15 +0200
-Subject: [PATCH 131/142] OdfFile writer: a chart's axes come before its series
+Subject: [PATCH 45/82] OdfFile writer: a chart's axes come before its series
 
 The plot area wrote its children in the order they were added, except
 wall and floor. A chart that has no axes in the OOXML, a pie or a

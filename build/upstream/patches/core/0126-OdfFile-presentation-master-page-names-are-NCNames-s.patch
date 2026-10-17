@@ -1,7 +1,7 @@
-From c62a34cad1efc1c79f8dac7908b57a6eea918f9e Mon Sep 17 00:00:00 2001
+From 5a86967ab290d6565f931e6934cd012dad287102 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 06:27:38 +0200
-Subject: [PATCH 126/142] OdfFile: presentation master page names are NCNames,
+Subject: [PATCH 40/82] OdfFile: presentation master page names are NCNames,
  shown as they were
 
 A presentation's master pages are named after the PowerPoint master and

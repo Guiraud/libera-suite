@@ -1,7 +1,7 @@
-From d18069b425ae1bc0aeced73e71982cd3094f176d Mon Sep 17 00:00:00 2001
+From d4479973e86393531972c11f942291d1af789894 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 16:55:47 +0200
-Subject: [PATCH 145/148] OdfFile writer: a slide with a draw:id has the xml:id
+Subject: [PATCH 59/82] OdfFile writer: a slide with a draw:id has the xml:id
  it needs
 
 A slide with a transition gets a draw:id, which its timing refers to.

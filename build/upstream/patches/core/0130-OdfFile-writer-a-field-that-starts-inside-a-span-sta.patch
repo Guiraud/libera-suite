@@ -1,7 +1,7 @@
-From c6c6d305ee0b9103babab26f8917c22be0e21374 Mon Sep 17 00:00:00 2001
+From 61b99c469b7173799745ab0120d4615cb5a92389 Mon Sep 17 00:00:00 2001
 From: Stefane Fermigier <sf@abilian.com>
 Date: Fri, 25 Sep 2026 06:56:16 +0200
-Subject: [PATCH 130/142] OdfFile writer: a field that starts inside a span
+Subject: [PATCH 44/82] OdfFile writer: a field that starts inside a span
  starts its own element
 
 A simple field inside a run was started with text_context()->start_field
