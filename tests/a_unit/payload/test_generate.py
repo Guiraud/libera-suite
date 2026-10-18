@@ -9,11 +9,13 @@ fonts, which an editor then shows as a box for every glyph.
 from __future__ import annotations
 
 import sys
+import threading
+import time
 from typing import TYPE_CHECKING
 
 import pytest
 
-from libera.payload import PayloadError, generate
+from libera.payload import PayloadError, generate, locate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -94,3 +96,28 @@ def test_a_run_that_stopped_partway_through_the_thumbnails_is_a_failure(tmp_path
 
     with pytest.raises(PayloadError, match="drew 1 of 10"):
         generate.generate(root)
+
+
+def test_a_quit_stops_the_allfontsgen_still_running(tmp_path):
+    """A font index builds on a daemon thread, which a quit ends, and its
+    allfontsgen ran on without it."""
+    root = make_payload_with_allfontsgen(tmp_path, "sleep 30")
+    failed: list[Exception] = []
+
+    def build():
+        try:
+            generate.run_allfontsgen(locate.Layout(root))
+        except PayloadError as e:
+            failed.append(e)
+
+    building = threading.Thread(target=build)
+    building.start()
+    deadline = time.monotonic() + 5
+    while not generate._running and time.monotonic() < deadline:
+        time.sleep(0.01)
+
+    generate.stop_allfontsgen()
+
+    building.join(5)
+    assert not building.is_alive(), "allfontsgen still running"
+    assert failed

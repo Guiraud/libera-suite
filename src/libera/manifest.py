@@ -30,15 +30,6 @@ from pathlib import Path
 # series that applies to it cleanly. Repositories are public; we do not host
 # tarballs.
 #
-# One host, because one host answers. notes/05-packaging.md wants two, so that
-# the AGPL obligation outlives our interest in any particular forge -- but the
-# only other place this code lives is git.sr.ht/~sfermigier/muchado, which is
-# *private*. A corresponding-source pointer that 404s for the reader reads as
-# compliance without being it. Add the second host when there is a public one.
-#
-# `libera_commit` has the same gap from the other side: it is a sourcehut SHA,
-# which a stranger cannot resolve, because the GitHub mirror is a filtered push
-# whose SHAs differ. See "Where this lives" in CLAUDE.md.
 REPOSITORIES = ("https://github.com/abilian/libera-suite",)
 UPSTREAM = "https://github.com/Euro-Office"
 

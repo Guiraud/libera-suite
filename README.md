@@ -124,7 +124,6 @@ The test suite enforces one house rule: **assert on content, never on exit codes
 | `docs/` | The documentation site, published at <https://docs.liberasuite.eu/>. Start at [Developers](https://docs.liberasuite.eu/en/develop/). |
 | `notes/` | Where the reasoning lives: vision, specs, architecture, packaging, our relationship with upstream, the bugs that escaped to a user, a survey of how Euro-Office is put together. It stays in the development repository. |
 | [`build/`](build/README.md) | Building the editors and the native binaries from pinned source plus our patches. |
-| [`CLAUDE.md`](CLAUDE.md) | The orientation an agent gets, which happens to be the fastest one for a human too. |
 
 The package and the command are `libera`. The repository directory is `local-office`.
 

@@ -63,7 +63,7 @@ from libera.host.window import (
     show_session_edited,
     take_dropped,
 )
-from libera.payload import fonts, locate
+from libera.payload import fonts, generate, locate
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -223,8 +223,9 @@ def run(
 def _let_go_of_everything() -> None:
     """On the way out, however the windows went: a quit need not close each one
     first, yet no lock of ours may outlive the process, nor the announcement a
-    second launch would hand its documents to."""
+    second launch would hand its documents to, nor a font index's build."""
     instance.withdraw()
+    generate.stop_allfontsgen()
     for left in list(SESSIONS.values()):
         locking.let_go(left)
 

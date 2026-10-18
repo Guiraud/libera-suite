@@ -142,6 +142,10 @@ done
 # runs in has it, and so does x2t's V8: measured, every conversion test passes
 # without them. About 10 MB.
 find "$STAGE/sdkjs" -name "*_ie.js" -delete
+# The macro editor's code editor has an Internet Explorer build of its own,
+# chosen only for an msie or trident user agent (vendor/monaco/monaco.js).
+# 8 MB.
+rm -rf "$STAGE/web-apps/vendor/monaco/monaco-for-ie"
 # The theme .pptx sources are the input to payload.sh's theme generation, not
 # something the editor reads: it loads themeN/theme.bin. 2.1 MB of duplicates.
 rm -rf "$STAGE/sdkjs/slide/themes/src"

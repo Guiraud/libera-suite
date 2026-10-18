@@ -23,6 +23,9 @@ if TYPE_CHECKING:
 FONT_SUFFIXES = {".ttf", ".otf", ".ttc", ".otc"}
 THUMBNAILS = 10
 
+# The allfontsgen running now, for stop_allfontsgen.
+_running: set[subprocess.Popen[str]] = set()
+
 
 def generate(root: Path) -> int:
     """Produce the files that cannot be shipped, because they hold local paths.
@@ -109,10 +112,10 @@ def run_allfontsgen(layout: locate.Layout, *args: str) -> None:
     """
     allfontsgen = layout.allfontsgen
     try:
-        run = subprocess.run(
+        process = subprocess.Popen(
             [str(allfontsgen), *args],
-            check=False,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
             env=locate.make_tool_env(layout.bin),
             creationflags=locate.NO_WINDOW,
@@ -120,7 +123,24 @@ def run_allfontsgen(layout: locate.Layout, *args: str) -> None:
     except OSError as e:
         msg = f"could not run {allfontsgen}: {e}"
         raise PayloadError(msg) from e
-    if run.returncode != 0:
-        said = (run.stderr or run.stdout).strip() or "nothing"
-        msg = f"allfontsgen failed (exit {run.returncode}) and said: {said}"
+    _running.add(process)
+    try:
+        stdout, stderr = process.communicate()
+    finally:
+        _running.discard(process)
+    if process.returncode != 0:
+        said = (stderr or stdout).strip() or "nothing"
+        msg = f"allfontsgen failed (exit {process.returncode}) and said: {said}"
         raise PayloadError(msg)
+
+
+def stop_allfontsgen() -> None:
+    """End the allfontsgen still running, as the application quits.
+
+    A font index builds on a daemon thread, which a quit ends; allfontsgen,
+    its child, ran on, one per launch that quit before it finished: 42 were
+    found at once after a benchmark. What it built was lost anyway, since
+    only the thread renames it into place.
+    """
+    for process in list(_running):
+        process.kill()
