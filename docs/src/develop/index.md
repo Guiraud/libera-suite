@@ -5,6 +5,7 @@ Libera Suite is a Python host around upstream editors. Most of the work is in th
 - [Architecture](architecture.md): the pieces and how they talk.
 - [Build the payload](build.md): building the editors and the native binaries.
 - [The patch queue](patches.md): how our changes to upstream are kept.
+- [How this is tested](testing.md): the pyramid, and what each level is allowed to trust.
 - [Cutting a release](release.md): which machine makes what, and in what order.
 - [Roadmap](roadmap.md): what is next and what we have decided against.
 
@@ -75,21 +76,12 @@ uv run pytest                 # everything
 uv run pytest -m unit         # fast and isolated
 uv run pytest -m integration  # the host, against a real payload
 uv run pytest -m e2e          # the editor, in a real browser
+uv run playwright install chromium   # once, for the keyboard tests
 ```
 
-The suite is a pyramid, one directory per level. Markers are applied by directory:
+The suite is a pyramid, one directory per level, and the marker comes from the directory. The two upper levels skip themselves when they have nothing to run against: no payload, or no Chromium (set `CHROMIUM=/path/to/browser` if yours is somewhere unusual). A skip and a pass look the same in pytest's summary line, so the run names the payload it found before anything executes.
 
-- `tests/a_unit/` runs against nothing: no payload, server or browser.
-- `tests/b_integration/` starts the host's HTTP server on a loopback port and talks to it the way the bridge does, and runs x2t out of the payload. It checks, among other things, that every format the Save As dialog offers is one the converter actually writes, because x2t refuses several ids that look perfectly plausible next to the ones it accepts.
-- `tests/c_e2e/` runs the shipped command line. `libera --serve` in a subprocess, headless Chromium pointed at the URL it prints, and then assertions on what came back. It also drives the keyboard through Playwright, which needs its own browser once:
-
-```sh
-uv run playwright install chromium
-```
-
-The last one is the important one. It holds the project's one hard-won lesson: **assert on content, never on exit codes.** A converter that writes an empty file exits zero. A browser that quits early exits zero. A PDF with no glyphs in it is the right size. So the e2e run photographs the editor's own canvas from inside the page, measures ink on it, and fails if the rows of text are closer together than a line of text can be. That is what a real regression looked like while every cheaper check reported success.
-
-Both levels below `a_unit` skip themselves when they have nothing to run against: no installed payload, or no Chromium. Set `CHROMIUM=/path/to/browser` if yours is somewhere unusual.
+[How this is tested](testing.md) is the whole picture: what each level may trust, why the e2e tier measures pixels, and which checks only exist on the builders.
 
 To look at the editor by hand, with devtools, a real browser and no window toolkit in the way, run `libera --serve`, which prints the URL it is listening on:
 

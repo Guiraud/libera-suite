@@ -51,6 +51,38 @@ for path, member in ((sys.argv[1], "content.xml"), (sys.argv[2], "word/document.
     print(f"    {path.rsplit('/', 1)[-1]}: text preserved")
 PY
 
+echo "==> x2t csv in Windows-1251 and Shift_JIS -> xlsx (ICU's converters)"
+# ICU's data is filtered down to the converters (icu-data-filter.json), and a
+# converter missing from it is another exit 0: x2t writes the workbook with
+# the text gone. The ids are sdkjs's c_oAscEncodings, the ones x2t reads.
+py - "$W" <<'PY'
+import sys
+w = sys.argv[1]
+for idx, codec, text in ((14, "cp1251", "Привет мир"), (27, "shift_jis", "こんにちは世界")):
+    open(f"{w}/{codec}.csv", "wb").write(f"{text},x\n".encode(codec))
+    open(f"{w}/{codec}.expected", "w", encoding="utf-8").write(text)
+    open(f"{w}/{codec}.xml", "w", encoding="utf-8").write(
+        '<?xml version="1.0" encoding="utf-8"?><TaskQueueDataConvert>'
+        f"<m_sFileFrom>{w}/{codec}.csv</m_sFileFrom><m_sFileTo>{w}/{codec}.xlsx</m_sFileTo>"
+        f"<m_nFormatTo>257</m_nFormatTo><m_nCsvTxtEncoding>{idx}</m_nCsvTxtEncoding>"
+        "<m_nCsvDelimiter>4</m_nCsvDelimiter></TaskQueueDataConvert>")
+PY
+for codec in cp1251 shift_jis; do
+    built x2t "$W/$codec.xml" >>"$W/x2t.log" 2>&1 || fail "csv ($codec) -> xlsx failed; see $W/x2t.log"
+done
+py - "$W" <<'PY' || fail "a CSV lost its text on the way through its code page"
+import re, sys, zipfile
+w = sys.argv[1]
+for codec in ("cp1251", "shift_jis"):
+    text = open(f"{w}/{codec}.expected", encoding="utf-8").read()
+    package = zipfile.ZipFile(f"{w}/{codec}.xlsx")
+    found = "".join(package.read(n).decode() for n in package.namelist() if n.startswith("xl/"))
+    if text not in re.sub(r"<[^>]+>", "", found):
+        print(f"  {codec}.xlsx does not contain {text!r}", file=sys.stderr)
+        raise SystemExit(1)
+    print(f"    {codec}: text preserved")
+PY
+
 if [ ! -f "$PAYLOAD/AllFonts.js" ]; then
     echo "==> pdf: SKIPPED (no payload at $PAYLOAD -- run payload.sh)"
     echo "PASS (core only)"

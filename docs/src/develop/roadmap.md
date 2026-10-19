@@ -34,7 +34,7 @@ The beta has been public since October 2026. 0.5 is about what its testers meet 
 
 ## Next: parity with Euro-Office Desktop
 
-Euro-Office publishes a desktop application of its own, built on the same editors as Libera Suite. Someone comparing the two should find nothing in it that is missing here. Every feature on this list exists upstream already, in the editors we ship or beside them, so the work is wiring each one to the host and testing it, not writing it. This is the order we do them in.
+Euro-Office publishes a desktop application of its own, built on the same editors as Libera Suite. Someone comparing the two should find nothing in it that is missing here, macros apart (see below). Every feature on this list exists upstream already, in the editors we ship or beside them, so the work is wiring each one to the host and testing it, not writing it. This is the order we do them in.
 
 **Tabs.** One window per document today. Several documents in one window needs real support: `newWindowForTab:` on macOS, its equivalent on Linux and Windows, and moving a document from one window to another.
 
@@ -63,6 +63,8 @@ One feature at a time, each measured before it is promised. Most exist in the ed
 **Editing diagrams.** Diagrams opens `.vsdx` and shows it. The converter writes no Visio format, so this needs converter work first. Euro-Office Desktop does not edit diagrams either.
 
 **Mail merge.** An upstream feature, not reachable today.
+
+**Macros, in VBA, JavaScript and Python.** Macros are off today. The editor's own are JavaScript against its API, and run none of the VBA that an organisation's workbooks and documents carry, which is what someone coming from Microsoft Office means by macros. They come back in three languages: Excel's VBA, so the macros already in those files run; JavaScript, the editor's own; and Python. Euro-Office Desktop has the JavaScript macros, so until then this is the one feature it has that Libera Suite leaves out.
 
 **In-application help.** Upstream's manual documents ONLYOFFICE and weighs 84 MB, so Libera Suite does not ship it. Help comes back when there is documentation of our own to point at; these pages are the substitute.
 

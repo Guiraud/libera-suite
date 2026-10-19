@@ -242,6 +242,34 @@ require_git_identity() {
     exit 1
 }
 
+# ICU's data, cut down to what core reads: the character-set converters and the
+# SASLprep profile, both for UnicodeConverter.cpp, the one file that calls ICU.
+# 6.5 MB of the 31 on macOS; notes/21-startup-and-size.md has the measurement.
+# ICU's configure reads the filter from ICU_DATA_FILTER_FILE, so it reaches
+# upstream's builder on every platform with no patch. Its ok_marker knows
+# nothing of the filter, so cmd_configure removes an ICU built under another
+# one, or none, and has build_3rdparty.py build it again.
+ICU_INSTALL="$OUT/core/third_party/install/icu"
+ICU_FILTER="$HERE/icu-data-filter.json"
+
+# A filter that never reached ICU's configure is silent: a full data library,
+# a build that passes, and 25 MB more in the payload. Collation is the first
+# thing the filter takes out, so its absence is the proof.
+icu_data_filter_check() {
+    set -- -type f \( -name 'libicudata*' -o -name 'icudt[0-9]*.dll' \)
+    [ -n "$(find "$ICU_INSTALL" "$@")" ] || {
+        echo "FATAL: no ICU data library under $ICU_INSTALL" >&2
+        exit 1
+    }
+    full="$(find "$ICU_INSTALL" "$@" -exec grep -aq 'icudt[0-9]*l/coll/' {} \; -print)"
+    [ -z "$full" ] || {
+        echo "FATAL: ICU's collation data is still in $full:" >&2
+        echo "       the data filter never reached ICU's configure (ICU_DATA_FILTER_FILE)." >&2
+        exit 1
+    }
+    cp "$ICU_FILTER" "$ICU_INSTALL/libera-data-filter.json"
+}
+
 cmd_fetch() {
     require_case_sensitive
     require_git_identity
@@ -314,6 +342,14 @@ cmd_configure() {
         echo "==> link jobs: $link_jobs (link.exe peaks near 3 GB)"
     fi
 
+    ICU_DATA_FILTER_FILE="$(winpath "$ICU_FILTER")"
+    export ICU_DATA_FILTER_FILE
+    if ! cmp -s "$ICU_FILTER" "$ICU_INSTALL/libera-data-filter.json"; then
+        echo "==> ICU: not built with this data filter, so built again"
+        rm -rf "$ICU_INSTALL" "$OUT/core/third_party/work/icu"
+        # Upstream runs its third-party builder only while this is unset.
+        set -- "$@" -UTHIRD_PARTY_PREPARED
+    fi
     echo "==> cmake configure (no vcpkg toolchain: surface the plain-CMake gaps first)"
     cd "$OUT/core"
     # Teed rather than redirected: a configure that prints nothing for minutes
@@ -342,6 +378,7 @@ cmd_configure() {
         named_logs "$cmake_log"
         exit 1
     }
+    icu_data_filter_check
 }
 
 # What the failing component's source tree actually contains.

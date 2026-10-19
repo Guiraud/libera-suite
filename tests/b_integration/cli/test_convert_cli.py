@@ -1,7 +1,7 @@
 """`libera --convert`, through x2t, on the payload's own blanks.
 
 Each result is checked by its bytes: x2t exits 0 having written the wrong
-thing often enough here (see CLAUDE.md).
+thing often enough here.
 """
 
 from __future__ import annotations

@@ -101,7 +101,7 @@ def test_the_container_mounts_the_payload_and_artifacts_only_when_there(tmp_path
 
 
 def test_every_action_that_runs_the_suite_prepares_first():
-    for action in ("test", "gui", "dialog"):
+    for action in ("test", "gui", "gui-test", "dialog"):
         script = linux.script_for(linux.LinuxOptions(action))
         assert script.startswith(linux.PREPARE), action
     lint = linux.script_for(linux.LinuxOptions("lint"))
@@ -111,6 +111,11 @@ def test_every_action_that_runs_the_suite_prepares_first():
         linux.LinuxOptions("test", pytest_args=("-k", "x"))
     )
     assert not linux.script_for(linux.LinuxOptions("versions")).startswith("set -e")
+    # The gui tier runs nowhere without a display and without `-m gui`: the
+    # root conftest skips it twice over, so both have to be in the script.
+    gui_test = linux.script_for(linux.LinuxOptions("gui-test"))
+    assert "xvfb-run" in gui_test
+    assert "-m gui" in gui_test
 
 
 def odt(path, text):

@@ -54,6 +54,7 @@ nav = [
         { "Architecture" = "develop/architecture.md" },
         { "Build the payload" = "develop/build.md" },
         { "The patch queue" = "develop/patches.md" },
+        { "How this is tested" = "develop/testing.md" },
         { "Cutting a release" = "develop/release.md" },
         { "Roadmap" = "develop/roadmap.md" },
     ]},

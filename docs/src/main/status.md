@@ -55,6 +55,7 @@ If you hit something that is *not* on this list, [tell us about it](../feedback.
 - **Digital signatures.**
 - **Mail merge.**
 - **Plugins.** Disabled upstream in this fork, so the panel never appears.
+- **Macros.** Turned off. The editor's own macros are JavaScript, and run none of the VBA in documents from Microsoft Office, so a document's macros are not run. They are kept: saving a `.docm`, `.xlsm` or `.pptm` leaves its VBA as it was. [The roadmap](../develop/roadmap.md) says what comes instead.
 
 ### In the application
 

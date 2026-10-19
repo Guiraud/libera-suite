@@ -287,6 +287,13 @@ def create_session(document: pathlib.Path | None = None) -> Session:
         fonts=fonts.choose(layout),
         document=document,
     )
+    if template.shot is not None:
+        # One name per window, under the name `--shot` gave: two windows
+        # posting to one path would leave whichever painted last, and the
+        # window that never painted is the one worth catching.
+        made.shot = template.shot.with_name(
+            f"{template.shot.stem}-{made.id}{template.shot.suffix}"
+        )
     configure(made)
     return made
 

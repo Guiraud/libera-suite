@@ -123,7 +123,12 @@ def _open_start_window(port: int, title: str | None = None):
 
 
 def run(
-    payload_root: Path, work: Path, documents: list[Path], *, title: str | None = None
+    payload_root: Path,
+    work: Path,
+    documents: list[Path],
+    *,
+    title: str | None = None,
+    shot: Path | None = None,
 ) -> None:
     """Open documents, one window each, and block until the last one closes
     (on macOS, until Quit).
@@ -142,6 +147,10 @@ def run(
         work=new_work(work),
         document=first,
         fonts=fonts.choose(layout),
+        # `libera --shot FILE`: every window's page posts its own render, each
+        # to a name of its own (session.create_session). What the real web
+        # engine drew is otherwise unmeasurable -- see tests/d_gui/.
+        shot=shot,
     )
     logger.info("fonts: %s", first_session.fonts or "the payload's own")
     configure(first_session)

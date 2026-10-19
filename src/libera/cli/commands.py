@@ -496,10 +496,12 @@ def open_documents(args: argparse.Namespace) -> int:
     p = _resolve_payload_or_offer()
     if p is None:
         return 1
-    return _run(p, documents)
+    return _run(p, documents, Path(args.shot).expanduser() if args.shot else None)
 
 
-def _run(p: payload_mod.Payload, documents: list[Path]) -> int:
+def _run(
+    p: payload_mod.Payload, documents: list[Path], shot: Path | None = None
+) -> int:
     """The application, as the one instance; or the documents handed to the
     instance another launch has just become."""
     # The one place the GUI is imported: pywebview and, on a Mac, AppKit cost
@@ -511,7 +513,7 @@ def _run(p: payload_mod.Payload, documents: list[Path]) -> int:
         if held is None:
             return 0
         with held:
-            app.run(p.root, payload_mod.get_sessions_dir(), documents)
+            app.run(p.root, payload_mod.get_sessions_dir(), documents, shot=shot)
     except (NotReadyError, instance.BusyError) as e:
         _refuse(CANNOT_START, [str(e)])
         return 1

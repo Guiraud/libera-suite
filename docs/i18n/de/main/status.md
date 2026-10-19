@@ -57,6 +57,7 @@ Wenn Sie auf etwas stoßen, das *nicht* auf dieser Liste steht, [melden Sie es u
 - **Digitale Signaturen.**
 - **Serienbriefe.**
 - **Plugins.** In diesem Fork vom Upstream-Projekt abgeschaltet, daher erscheint das Panel nie.
+- **Makros.** Abgeschaltet. Die Makros des Editors sind JavaScript und führen kein VBA aus Microsoft-Office-Dokumenten aus, daher werden die Makros eines Dokuments nicht ausgeführt. Sie bleiben erhalten: Beim Speichern einer `.docm`-, `.xlsm`- oder `.pptm`-Datei bleibt ihr VBA unverändert. [Die Roadmap](/en/develop/roadmap/), auf Englisch, beschreibt, was stattdessen kommt.
 
 ### In der Anwendung
 

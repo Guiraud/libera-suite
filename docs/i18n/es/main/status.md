@@ -57,6 +57,7 @@ Si te encuentras con algo que *no* está en esta lista, [cuéntanoslo](../feedba
 - **Firmas digitales.**
 - **Combinar correspondencia.**
 - **Complementos.** Desactivados en el proyecto original de este fork, así que el panel nunca aparece.
+- **Macros.** Desactivadas. Las macros del editor son JavaScript y no ejecutan el VBA de los documentos de Microsoft Office, así que las macros de un documento no se ejecutan. Se conservan: al guardar un `.docm`, `.xlsm` o `.pptm`, su VBA queda intacto. [La hoja de ruta](/en/develop/roadmap/), en inglés, describe qué llegará en su lugar.
 
 ### En la aplicación
 

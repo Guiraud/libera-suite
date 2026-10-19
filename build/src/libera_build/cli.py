@@ -734,6 +734,7 @@ def add_linux(groups: Groups) -> None:
         ("test", "the suite; anything after it goes to pytest"),
         ("lint", "the type checkers, where the Linux branches are live"),
         ("gui", "a real GTK window under Xvfb, screenshotted"),
+        ("gui-test", "the same window, as the suite's gui tier (tests/d_gui)"),
         ("dialog", "the GTK question the host asks, answered"),
         ("versions", "what the test image is pinned to"),
         ("shell", "a shell in the test container"),

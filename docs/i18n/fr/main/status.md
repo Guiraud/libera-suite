@@ -57,6 +57,7 @@ Si vous rencontrez un problème qui ne figure *pas* dans cette liste, [signalez-
 - **Les signatures numériques.**
 - **Le publipostage.**
 - **Les modules complémentaires.** Ils sont désactivés en amont dans ce fork : le panneau n'apparaît jamais.
+- **Les macros.** Désactivées. Les macros de l'éditeur sont écrites en JavaScript et n'exécutent pas le VBA des documents de Microsoft Office : les macros d'un document ne sont donc pas exécutées. Elles sont conservées : l'enregistrement d'un `.docm`, d'un `.xlsm` ou d'un `.pptm` laisse son VBA intact. [La feuille de route](/en/develop/roadmap/), en anglais, décrit la suite.
 
 ### Dans l'application
 

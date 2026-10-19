@@ -140,6 +140,22 @@ NEEDS_PAYLOAD = pytest.mark.skip(
     )
 )
 
+NOT_ASKED_FOR = pytest.mark.skip(
+    reason="opens real windows: `make test-gui`, `-m gui`, or name tests/d_gui"
+)
+
+
+def _asked_for_a_window(config) -> bool:
+    """Did this run ask for the gui tier, by marker or by name?
+
+    `-m gui` is one way to ask. Naming the directory is the other, and keying
+    on the marker alone made `pytest tests/d_gui/` report three skips: the run
+    said exactly which tests it wanted and got none of them.
+    """
+    if "gui" in config.option.markexpr:
+        return True
+    return any("d_gui" in Path(arg.split("::")[0]).parts for arg in config.args)
+
 
 # Nowhere: a directory no test and no application ever creates.
 NO_INSTANCE = Path(tempfile.gettempdir()) / "libera-tests-no-instance" / "instance.json"
@@ -189,12 +205,23 @@ def pytest_collection_modifyitems(config, items):
     mark themselves; only the ones under this directory are touched here.
     """
     here = Path(__file__).parent
+    asked_for_a_window = _asked_for_a_window(config)
     for item in items:
         if here not in Path(item.fspath).parents:
             continue
         parts = Path(item.fspath).parts
         if "a_unit" in parts:
             item.add_marker(pytest.mark.unit)
+            continue
+        if "d_gui" in parts:
+            item.add_marker(pytest.mark.gui)
+            # These open real windows on the machine running them, which takes
+            # the focus and types into whatever is in front. So they run when
+            # a run says `-m gui` and never as part of the default suite.
+            if not asked_for_a_window:
+                item.add_marker(NOT_ASKED_FOR)
+            if PAYLOAD is None:
+                item.add_marker(NEEDS_PAYLOAD)
             continue
         item.add_marker(
             pytest.mark.integration if "b_integration" in parts else pytest.mark.e2e

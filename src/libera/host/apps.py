@@ -18,6 +18,11 @@ binary format (doc 66, xls 258, ppt 130), the flat-XML ones (xlsx-flat 267,
 odp-flat 137, odt-flat 78), Apple's (numbers 269, key 141), and odg (140).
 This is what it writes, not what OfficeFileFormats.h declares.
 
+The macro-enabled ids (docm 75, dotm 77, xlsm 261, xltm 263, pptm 133,
+ppsm 134) are here for a plain Save, not for Save As: a document's VBA
+goes through x2t byte for byte, and without its id a plain Save asked for
+a new file in a format that has nowhere to keep it.
+
 Diagrams is a viewer. x2t refuses every DRAW id -- 16385 and its siblings all
 come back rc=88 -- and `document-templates` ships no blank for one, so there
 is nothing to save and nothing to create. It opens .vsdx and shows it.
@@ -75,7 +80,9 @@ WORDS = App(
     noun="Document",
     doctype="word",
     ext="docx",
-    opens=_split_exts("docx doc odt rtf txt html htm epub fb2 dotx dot ott md mht xml"),
+    opens=_split_exts(
+        "docx doc odt rtf txt html htm epub fb2 dotx dot ott md mht xml docm dotm"
+    ),
     recent_id=65,
     blank="new.docx",
     formats={
@@ -87,7 +94,9 @@ WORDS = App(
         70: ("html", 70),
         72: ("epub", 72),
         73: ("fb2", 73),
+        75: ("docm", 75),
         76: ("dotx", 76),
+        77: ("dotm", 77),
         79: ("ott", 79),
         92: ("md", 92),
         513: ("pdf", 513),
@@ -154,6 +163,7 @@ SLIDES = App(
         131: ("odp", 131),
         132: ("ppsx", 132),
         133: ("pptm", 133),
+        134: ("ppsm", 134),
         135: ("potx", 135),
         136: ("potm", 136),
         138: ("otp", 138),

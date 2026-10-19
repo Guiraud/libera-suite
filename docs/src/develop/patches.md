@@ -29,7 +29,7 @@ It also makes the AGPL obligation concrete: the corresponding source for a relea
 - *The converter.* A large CSV read whole (`0029`), characters outside the BMP (`0030`), no empty row after a UTF-8 CSV (`0031`), and the last section of an RTF written (`0033`).
 - *OpenDocument* (`0101` onwards). Fixes to reading and writing `.odt`, `.ods` and `.odp`, each found against LibreOffice's own test documents.
 
-**`web-apps`: 8 patches, and `sdkjs`: 1.** Four are build fixes. Theme tokens were not substituted when deploying HTML. Two cap how many tasks a build phase runs at once. The fourth runs `npm` and webpack through `node`, since on Windows both exist only as `.cmd` files that Node will not spawn without a shell. One is a rendering fix, for unsized SVG icons in the language picker rendering at 300×150, the CSS default for a replaced element with no intrinsic size. Two are configuration changes that are ours alone. Two are branding. One drops upstream's favicon. The other keeps *About* reachable in the desktop build, where upstream hides it: that dialog shows the licence and the attribution.
+**`web-apps`: 9 patches, and `sdkjs`: 1.** Four are build fixes. Theme tokens were not substituted when deploying HTML. Two cap how many tasks a build phase runs at once. The fourth runs `npm` and webpack through `node`, since on Windows both exist only as `.cmd` files that Node will not spawn without a shell. One is a rendering fix, for unsized SVG icons in the language picker rendering at 300×150, the CSS default for a replaced element with no intrinsic size. Three are configuration changes that are ours alone. Two are branding. One drops upstream's favicon. The other keeps *About* reachable in the desktop build, where upstream hides it: that dialog shows the licence and the attribution.
 
 ## One idea per patch
 
@@ -47,4 +47,4 @@ Most of these are upstream's own bugs and should go back.
 
 The `web-apps` fixes are small and self-contained, so they can go as soon as the mirrors exist. The `core` patches are the valuable contribution and have to wait: two of them change platform defines globally, so the Linux build has to confirm they are inert there before we offer a series that could break somebody else's build.
 
-Two patches never leave our tree. `0002` turns off upstream's feature tips and removes their helpdesk links; `0004` retitles the wrapper page. They are configuration for a different product.
+Three patches never leave our tree. `0002` turns off upstream's feature tips and removes their helpdesk links; `0004` retitles the wrapper page; `0008` turns macros off, until there is a macro language worth offering (see [the roadmap](roadmap.md)). They are configuration for a different product.

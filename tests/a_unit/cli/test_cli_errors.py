@@ -36,8 +36,9 @@ def no_window(monkeypatch):
     """Stop before the GUI loop, and record what it would have opened."""
     opened = {}
 
-    def fake_run(_root, _work, documents, **_kw):
+    def fake_run(_root, _work, documents, **kw):
         opened["documents"] = documents
+        opened["shot"] = kw.get("shot")
 
     # main() asks whether a window is possible before it does anything else,
     # and on Linux the honest answer depends on what is installed: without the
@@ -50,6 +51,22 @@ def no_window(monkeypatch):
     monkeypatch.setattr(cli.commands, "_resolve_payload_or_offer", FakePayload)
     monkeypatch.setattr(app, "run", fake_run)
     return opened
+
+
+def test_the_shot_option_arms_a_windowed_run_too(tmp_path, capsys, no_window):
+    """`libera --shot FILE DOC` was refused as an option belonging to --serve.
+
+    A window arms it as well, and that is the only way to measure what the
+    engine that ships actually drew: Chromium, which --serve and the e2e tier
+    use, is not WKWebView, WebKitGTK or WebView2. See tests/d_gui.
+    """
+    document = tmp_path / "a.docx"
+    document.write_bytes(b"x")
+
+    code, out = run([str(document), "--shot", str(tmp_path / "shot.png")], capsys)
+
+    assert code == 0, out.err
+    assert no_window["shot"] == tmp_path / "shot.png"
 
 
 def test_several_documents_each_get_a_window(tmp_path, capsys, no_window):

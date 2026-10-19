@@ -71,3 +71,35 @@ def test_file_new_picks_the_blank_of_the_window_that_asked(two_sessions):
     """The bug: New in a Tables window made an Untitled.docx."""
     assert lookup("0").blank.name == apps.WORDS.blank
     assert lookup("1").blank.name == apps.TABLES.blank
+
+
+def test_a_second_window_photographs_itself_under_a_name_of_its_own(tmp_path):
+    """`libera --shot FILE` arms every window, not only the first.
+
+    Two windows posting to one path would leave whichever painted last, and
+    the window that never painted is the one worth catching. The gui tier
+    counts the files: see tests/d_gui.
+    """
+    SESSIONS.clear()
+    first = Session(
+        payload=tmp_path,
+        work=tmp_path / "0",
+        document=Path("a.docx"),
+        shot=tmp_path / "shots" / "window.png",
+    )
+    configure(first)
+
+    second = create_session(Path("b.pptx"))
+
+    assert second.shot is not None
+    assert second.shot.parent == first.shot.parent
+    assert second.shot.name == f"window-{second.id}.png"
+    SESSIONS.clear()
+
+
+def test_a_second_window_photographs_nothing_when_the_first_was_not_asked_to(tmp_path):
+    SESSIONS.clear()
+    configure(Session(payload=tmp_path, work=tmp_path / "0", document=Path("a.docx")))
+
+    assert create_session(Path("b.pptx")).shot is None
+    SESSIONS.clear()

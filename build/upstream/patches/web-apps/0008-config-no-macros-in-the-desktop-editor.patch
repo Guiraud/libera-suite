@@ -1,0 +1,34 @@
+From 0eae76be695d2eee4c7b470da46a458af5e135fc Mon Sep 17 00:00:00 2001
+From: Libera build <build@libera.invalid>
+Date: Sun, 18 Oct 2026 14:52:26 +0200
+Subject: [PATCH] config: no macros in the desktop editor
+
+The editor's macros are JavaScript against its own API, written in a Monaco
+dialog. They run none of the VBA that a document from Microsoft Office
+carries, which is what a user who asks for macros expects, and the dialog
+loads 14 MB of code editor. customization.macros = false removes the
+buttons, the setting and the macro group of the toolbar, and stops sdkjs
+running any macro a document holds.
+---
+ apps/api/documents/index.html.desktop | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/apps/api/documents/index.html.desktop b/apps/api/documents/index.html.desktop
+index fdcad30103..9bd3817ea6 100644
+--- a/apps/api/documents/index.html.desktop
++++ b/apps/api/documents/index.html.desktop
+@@ -111,6 +111,11 @@
+                         // a folder a desktop app does not have.
+                         features: { featuresTips: false }
+                         , feedback: false
++                        // Macros here are JavaScript against the editor's own
++                        // API: they run none of the VBA a document from
++                        // Microsoft Office carries. Off until there is a
++                        // macro language worth offering.
++                        , macros: false
+                         , uiTheme: urlParams["uitheme"]
+                     },
+                     mode            : urlParams["mode"] || 'edit',
+-- 
+2.55.0
+

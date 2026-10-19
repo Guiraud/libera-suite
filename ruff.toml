@@ -324,6 +324,12 @@ lint.extend-ignore = [
     "S404", # subprocess import
     "S603", # subprocess call
 ]
+# tests/d_gui starts the shipped CLI and lets it open real windows: the same
+# argv-form subprocess call, for the one thing a browser cannot stand in for.
+"tests/d_gui/**/*.py" = [
+    "S404", # subprocess import
+    "S603", # subprocess call
+]
 # test_gui_prereq.py runs this interpreter against a script gui.py generated,
 # to check that the probe and the in-process check ask the same question. That
 # is the comparison that was missing when the two disagreed, and it can only be

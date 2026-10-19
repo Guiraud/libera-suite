@@ -57,6 +57,7 @@ Se incontri qualcosa che *non* è in questo elenco, [segnalacelo](../feedback.md
 - **Firme digitali.**
 - **Stampa unione.**
 - **Plugin.** Disattivati nel progetto originale di questo fork, quindi il pannello non compare mai.
+- **Macro.** Disattivate. Le macro dell'editor sono in JavaScript e non eseguono il VBA dei documenti di Microsoft Office, quindi le macro di un documento non vengono eseguite. Vengono però conservate: salvando un `.docm`, un `.xlsm` o un `.pptm` il suo VBA resta intatto. [La roadmap](/en/develop/roadmap/), in inglese, descrive cosa arriverà al loro posto.
 
 ### Nell'applicazione
 

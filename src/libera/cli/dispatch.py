@@ -167,7 +167,16 @@ def _add_serve_options(parser: argparse.ArgumentParser) -> None:
     )
     group.add_argument("--port", type=int, help=f"default: {commands.SERVE_PORT}")
     group.add_argument("--work", help="session state directory")
-    group.add_argument("--shot", help="where the page posts its own render")
+
+    # Not part of that group: a window arms it too. The page photographs its
+    # own canvas either way (host/server/bridge-page.js), which is the only
+    # way to measure what the *shipped* web engine drew -- Chromium, which
+    # --serve and the e2e tier use, is not WKWebView, WebKitGTK or WebView2.
+    group = parser.add_argument_group("checking what was drawn")
+    group.add_argument(
+        "--shot",
+        help="where each window's page posts its own render (--serve: the one page's)",
+    )
 
 
 def _choose_command(
@@ -193,7 +202,6 @@ def _choose_command(
         ("--trust-manifest", "--payload-install", args.trust_manifest),
         ("--port", "--serve", args.port is not None),
         ("--work", "--serve", args.work is not None),
-        ("--shot", "--serve", args.shot is not None),
         ("--to", "--convert", args.to is not None),
         ("--output", "--convert", args.output is not None),
         ("--outdir", "--convert", args.outdir is not None),

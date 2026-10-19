@@ -154,6 +154,39 @@ def test_plain_save_overwrites_the_document_that_is_open(opened: Session):
     assert not opened.unsaved_marker.is_file()
 
 
+@pytest.mark.parametrize(
+    ("name", "app"),
+    [
+        ("SimpleMacro.docm", apps.WORDS),
+        ("SimpleMacro.xlsm", apps.TABLES),
+        ("SimpleMacro.pptm", apps.SLIDES),
+    ],
+)
+def test_a_plain_save_keeps_the_documents_vba(
+    name: str, app: apps.App, tmp_path: pathlib.Path
+):
+    """Libera runs no VBA, and a save must not take it out of the file.
+
+    A .docm had no format id here, so a plain Save asked for a new file in a
+    format with nowhere to keep the macros, and the document's own was left as
+    it was."""
+    document = tmp_path / name
+    shutil.copy(repo_root() / "tests/b_integration/host/data" / name, document)
+    vba = _read_vba(document)
+    opened = open_in(app, document, tmp_path / "session")
+
+    result = save_document(opened, SaveRequest())
+
+    assert result == {"error": 0, "path": str(document)}
+    assert _read_vba(document) == vba
+
+
+def _read_vba(document: pathlib.Path) -> bytes:
+    with zipfile.ZipFile(document) as package:
+        (name,) = (n for n in package.namelist() if n.endswith("/vbaProject.bin"))
+        return package.read(name)
+
+
 def test_save_as_follows_the_extension_the_user_typed(
     opened: Session, tmp_path: pathlib.Path, monkeypatch
 ):

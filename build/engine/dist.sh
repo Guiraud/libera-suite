@@ -93,6 +93,12 @@ mkdir -p "$STAGE/bin/tools"
 cp -R "$OUT/core/bin/." "$STAGE/bin/"
 rm -f "$STAGE/bin/DoctRenderer.config"
 cp "$OUT/core/tools/allfontsgen$EXE" "$STAGE/bin/tools/"
+# ICU's i18n, io, test and tool-utility libraries, which no core binary names,
+# dynamically or as a string (measured on 0.5, all three platforms): only
+# icuuc and icudata are used. 4.4 MB on macOS, 8.9 on Linux, 3.7 on Windows.
+find "$STAGE/bin" \( -name 'libicui18n*' -o -name 'libicuio*' -o -name 'libicutest*' \
+    -o -name 'libicutu*' -o -name 'icuin[0-9]*.dll' -o -name 'icuio[0-9]*.dll' \
+    -o -name 'icutest[0-9]*.dll' -o -name 'icutu[0-9]*.dll' \) -exec rm -f {} +
 # Local symbols, which nothing reads at run time: 28 MB of the 187 on macOS
 # (libx2tlib alone 83 to 65 MB), measured with every integration and e2e test
 # passing on the result. There is no debug information left to take. A file
@@ -142,10 +148,10 @@ done
 # runs in has it, and so does x2t's V8: measured, every conversion test passes
 # without them. About 10 MB.
 find "$STAGE/sdkjs" -name "*_ie.js" -delete
-# The macro editor's code editor has an Internet Explorer build of its own,
-# chosen only for an msie or trident user agent (vendor/monaco/monaco.js).
-# 8 MB.
-rm -rf "$STAGE/web-apps/vendor/monaco/monaco-for-ie"
+# Monaco, the macro dialogs' code editor and nothing else's, 22 MB with its
+# Internet Explorer build: the web-apps patch that turns macros off leaves
+# nothing to load it.
+rm -rf "$STAGE/web-apps/vendor/monaco"
 # The theme .pptx sources are the input to payload.sh's theme generation, not
 # something the editor reads: it loads themeN/theme.bin. 2.1 MB of duplicates.
 rm -rf "$STAGE/sdkjs/slide/themes/src"

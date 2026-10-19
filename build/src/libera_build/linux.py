@@ -122,6 +122,16 @@ xvfb-run -a --server-args='-screen 0 1600x1000x24' \\
         /tmp/sample.docx /tmp/sample.pptx /repo/build/out/gui-linux.png"""
 
 
+# tests/d_gui: the application in a real GTK window, as pytest rather than as
+# a script. Same display and same software rendering as GUI above, and for the
+# same reasons; `-m gui` is what the root conftest wants before it will let
+# them run at all.
+GUI_TEST = """set -e
+export WEBKIT_DISABLE_COMPOSITING_MODE=1 LIBGL_ALWAYS_SOFTWARE=1
+xvfb-run -a --server-args='-screen 0 1600x1000x24' \\
+    uv run --no-sync pytest -p no:cacheprovider -m gui"""
+
+
 @dataclass(frozen=True)
 class LinuxOptions:
     action: str
@@ -224,6 +234,7 @@ def script_for(options: LinuxOptions) -> str:
         "test": f"{PREPARE}\n{test}",
         "dialog": f"{PREPARE}\n{DIALOG}",
         "gui": f"{PREPARE}\n{GUI}",
+        "gui-test": f"{PREPARE}\n{GUI_TEST}",
     }[options.action]
 
 
