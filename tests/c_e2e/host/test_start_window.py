@@ -21,7 +21,7 @@ from playwright.sync_api import Error, expect, sync_playwright
 from support import find_free_port, keyed
 
 from libera import payload as payload_mod
-from libera.host import recents, server, session as sessions
+from libera.host import language, recents, server, session as sessions
 from libera.host.session import Session
 
 # How long to watch for a request that must not come, after a sync point.
@@ -89,6 +89,22 @@ def test_it_offers_a_new_document_of_each_kind_that_can_be_made(start_window):
         "Spreadsheet",
         "Presentation",
     ]
+
+
+def test_it_speaks_the_interface_language(start_window, monkeypatch):
+    """Its own text, the kinds the host names, and what its script writes."""
+    monkeypatch.setattr(language, "get_language", lambda: "fr-FR")
+    start_window.reload()
+    start_window.wait_for_selector("#new button")
+    french = language.read_catalogue("fr")
+
+    assert start_window.locator("html").get_attribute("lang") == "fr"
+    assert "{{" not in start_window.content()
+    headings = start_window.locator("h2").all_inner_texts()
+    assert headings == [french["New"], french["Open"], french["Recent"]]
+    kinds = start_window.locator("#new .kind").all_inner_texts()
+    assert french["Spreadsheet"] in kinds
+    expect(start_window.locator("#payload dt").first).to_have_text(french["Payload"])
 
 
 def test_new_asks_the_host_for_that_kind(start_window):

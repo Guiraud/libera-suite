@@ -11,19 +11,19 @@ L'interface de Libera Suite est en anglais : les noms des menus et des boutons s
 | **Quatre éditeurs** | Windows 10 et 11 sur x64, Linux sur x86_64 et arm64, macOS sur Apple Silicon. Words, Tables et Slides modifient les documents ; Diagrams lit les fichiers Visio. |
 | **Ouvrir et enregistrer** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
 | **Exporter** | Save As propose une liste de formats pour chaque éditeur, PDF compris. Chaque format proposé est vérifié par une conversion réelle, dont le texte est relu. |
-| **Images** | Conservées à l'ouverture et à l'enregistrement ; Insert ▸ Image fonctionne. |
+| **Images** | Conservées à l'ouverture et à l'enregistrement ; Insertion ▸ Image fonctionne. |
 | **Imprimer** | Produit un PDF, demande où le conserver et l'ouvre dans votre lecteur de PDF. |
 | **Correction orthographique** | Cinq langues, avec suggestions. Voir plus bas. |
 | **Dans votre langue** | Les éditeurs suivent la langue de votre système, et un nouveau document part du modèle vierge de votre région : papier A4 partout sauf aux États-Unis, et correction orthographique dans votre langue. La barre de menus, la fenêtre d'accueil et les boîtes de dialogue restent en anglais. |
-| **Documents récents** | File ▸ Open Recent retient les 20 derniers. |
-| **Plusieurs documents à la fois** | De tous types, une fenêtre chacun : par File ▸ New ou File ▸ Open, d'un double-clic dans le gestionnaire de fichiers, ou avec `libera *.docx`. Le type du fichier choisit l'éditeur. |
+| **Documents récents** | Fichier ▸ Ouvrir un fichier récent retient les 20 derniers. |
+| **Plusieurs documents à la fois** | De tous types, une fenêtre chacun : par Fichier ▸ Nouveau ou Fichier ▸ Ouvrir, d'un double-clic dans le gestionnaire de fichiers, ou avec `libera *.docx`. Le type du fichier choisit l'éditeur. |
 | **Dans le menu Démarrer et le menu des applications** | Sous Windows, l'installateur ajoute Libera Suite au menu Démarrer, sur le bureau et dans *Ouvrir avec* de l'Explorateur. Sous Linux, le Flatpak l'ajoute au menu des applications avec son icône et ses associations de fichiers ; `libera --launcher-install` fait de même pour toute autre installation. |
 | **Une fenêtre de démarrage** | `libera` seul : nouveau document, ouvrir, documents récents et provenance des éditeurs. |
 | **Récupération après plantage** | Les modifications non enregistrées vous sont proposées à la prochaine ouverture du document. |
 | **Un document ouvert ailleurs** | Ouvert alors que LibreOffice ou une autre instance de Libera Suite l'a déjà, il est marqué *verrouillé pour la modification* : vous pouvez le lire et le modifier, et l'enregistrement demande où, si bien que le fichier de l'autre instance n'est jamais écrasé. Ouvrir un document déjà affiché dans une fenêtre fait passer cette fenêtre au premier plan. Microsoft Office et Libera Suite ne voient pas les verrous l'un de l'autre : un document ouvert dans Word n'est pas protégé. |
-| **La fermeture demande confirmation** | Une fenêtre qui contient des modifications non enregistrées propose Save, Don't Save ou Cancel. |
+| **La fermeture demande confirmation** | Une fenêtre qui contient des modifications non enregistrées propose Enregistrer, Ne pas enregistrer ou Annuler. |
 | **Une barre de menus** | File, Edit, View et Help sur toutes les plateformes. macOS y ajoute Window ainsi que les raccourcis habituels. |
-| **À propos** | Qui a écrit les éditeurs et sous quelle licence : `File ▸ About` dans l'éditeur, `Help ▸ About Libera Suite` sous Linux et Windows. macOS le place dans le menu de l'application. |
+| **À propos** | Qui a écrit les éditeurs et sous quelle licence : `Fichier ▸ À propos` dans l'éditeur, `Aide ▸ À propos de Libera Suite` sous Linux et Windows. macOS le place dans le menu de l'application. |
 | **Les réglages sont conservés** | Le thème, les unités, la langue de correction et les réglages de ce genre sont toujours là après un redémarrage. |
 | **Installation des éditeurs** | Depuis le serveur, ou depuis un dossier local d'artefacts construits. Dans les deux cas, chaque artefact est vérifié par rapport aux empreintes livrées dans l'application. |
 
@@ -45,7 +45,7 @@ Si vous rencontrez un problème qui ne figure *pas* dans cette liste, [signalez-
 
 ## En chantier
 
-**La barre de menus sous Linux et Windows.** Elle est dessinée dans la fenêtre, avec File, Edit, View et Help ; chaque élément fonctionne. Aucun n'affiche de raccourci clavier, mais les touches habituelles fonctionnent : Ctrl-N crée un nouveau document du même type, Ctrl-O en ouvre un, Ctrl-W ferme la fenêtre (en demandant d'abord quoi faire des modifications non enregistrées), et les raccourcis propres à l'éditeur, Ctrl-S, Ctrl-Maj-S (Save As), Ctrl-P et Ctrl-Z, fonctionnent aussi. Sous Windows, Ctrl-N, Ctrl-O et Ctrl-W n'ont pas encore été vérifiés sur une vraie machine. File ▸ New ▸ Document, Spreadsheet ou Presentation fonctionne, tout comme les tuiles New de la fenêtre de démarrage et l'onglet File de l'éditeur.
+**La barre de menus sous Linux et Windows.** Elle est dessinée dans la fenêtre, avec Fichier, Édition, Affichage et Aide ; chaque élément fonctionne. Aucun n'affiche de raccourci clavier, mais les touches habituelles fonctionnent : Ctrl-N crée un nouveau document du même type, Ctrl-O en ouvre un, Ctrl-W ferme la fenêtre (en demandant d'abord quoi faire des modifications non enregistrées), et les raccourcis propres à l'éditeur, Ctrl-S, Ctrl-Maj-S (Enregistrer sous), Ctrl-P et Ctrl-Z, fonctionnent aussi. Sous Windows, Ctrl-N, Ctrl-O et Ctrl-W n'ont pas encore été vérifiés sur une vraie machine. Fichier ▸ Nouveau ▸ Document, Feuille de calcul ou Présentation fonctionne, tout comme les tuiles Nouveau de la fenêtre de démarrage et l'onglet Fichier de l'éditeur.
 
 **`Libera.app` sous macOS.** `build/macos/macos-app.sh` le construit. Il ouvre un document d'un double-clic ou déposé sur son icône du Dock, apparaît dans *Ouvrir avec* et affiche la marque Libera dans le Dock. Mais c'est un lanceur autour de l'interpréteur avec lequel il a été construit (rien n'y est intégré, signé ni notarié) : ce n'est pas encore quelque chose que l'on peut donner à quelqu'un d'autre.
 
@@ -76,7 +76,7 @@ Si vous rencontrez un problème qui ne figure *pas* dans cette liste, [signalez-
 
 ### Aide
 
-Il existe un menu **Help**, sur toutes les plateformes, qui ouvre ce site dans votre navigateur. Aucune aide n'est intégrée *dans* l'application, où elle serait lisible avec la machine hors ligne. L'amont fournit un manuel complet. Libera Suite ne l'inclut pas : il documente ONLYOFFICE et pèse 84 Mo en huit langues. L'aide hors ligne reviendra quand notre propre documentation sera assez fournie pour être livrée.
+Il existe un menu **Aide**, sur toutes les plateformes, qui ouvre ce site dans votre navigateur. Aucune aide n'est intégrée *dans* l'application, où elle serait lisible avec la machine hors ligne. L'amont fournit un manuel complet. Libera Suite ne l'inclut pas : il documente ONLYOFFICE et pèse 84 Mo en huit langues. L'aide hors ligne reviendra quand notre propre documentation sera assez fournie pour être livrée.
 
 ### Correction orthographique
 

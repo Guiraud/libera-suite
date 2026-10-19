@@ -23,41 +23,41 @@ Libera Suite öffnet **ein Dokument pro Fenster**, daher tut ein Platzhalter der
 libera ~/Documents/*.docx     # jedes in seinem Fenster
 ```
 
-Sie können ein Dokument auch aus dem Editor heraus öffnen, über **File ▸ Open** oder **File ▸ Open Recent**. Beides öffnet ein neues Fenster und lässt das bereits geöffnete Dokument unberührt.
+Sie können ein Dokument auch aus dem Editor heraus öffnen, über **Datei ▸ Öffnen** oder **Datei ▸ Zuletzt benutztes Dokument öffnen**. Beides öffnet ein neues Fenster und lässt das bereits geöffnete Dokument unberührt.
 
 **Ein Dokument, das Sie** auf ein Fenster von Libera Suite ziehen, das Startfenster eingeschlossen, öffnet sich in einem eigenen Fenster. Ein Bild, das Sie auf ein Dokument ziehen, wird darin eingefügt.
 
-**File ▸ New** bietet aus jedem Fenster ein Dokument (Document), eine Tabelle (Spreadsheet) oder eine Präsentation (Presentation) an, jeweils in einem eigenen Fenster. Unter macOS erzeugt `⌘N` eines von der Art des vorderen Fensters. Im Editor selbst fragt **File ▸ Create New**, welches der drei Sie anlegen möchten.
+**Datei ▸ Neu** bietet aus jedem Fenster ein Dokument, eine Tabelle oder eine Präsentation an, jeweils in einem eigenen Fenster. Unter macOS erzeugt `⌘N` eines von der Art des vorderen Fensters. Im Editor selbst fragt **Datei ▸ Neues Dokument erstellen**, welches der drei Sie anlegen möchten.
 
 ## Speichern
 
-**File ▸ Save** schreibt in das Dokument zurück, das Sie geöffnet haben. **File ▸ Save As** fragt, wohin es soll. Von da an bearbeiten Sie dieses Dokument.
+**Datei ▸ Speichern** schreibt in das Dokument zurück, das Sie geöffnet haben. **Datei ▸ Speichern unter** fragt, wohin es soll. Von da an bearbeiten Sie dieses Dokument.
 
 Beim Speichern wird das Arbeitsformat des Editors wieder in ein echtes Dokument umgewandelt, was etwa eine Sekunde dauert.
 
 ## Exportieren
 
-Save As dient auch zum Exportieren: Sein Dialog hat eine Liste **File Format**.
+Speichern unter dient auch zum Exportieren: Sein Dialog hat eine Liste **Dateiformat**.
 
 | | |
 | :--- | :--- |
-| Word Document | `.docx` |
-| Word Template | `.dotx` |
-| OpenDocument Text | `.odt` |
-| OpenDocument Template | `.ott` |
+| Word-Dokument | `.docx` |
+| Word-Vorlage | `.dotx` |
+| OpenDocument-Text | `.odt` |
+| OpenDocument-Vorlage | `.ott` |
 | PDF | `.pdf` |
 | Rich Text Format | `.rtf` |
 | HTML | `.html` |
 | Markdown | `.md` |
 | EPUB | `.epub` |
 | FictionBook | `.fb2` |
-| Plain Text | `.txt` |
+| Nur-Text | `.txt` |
 
 Die Wahl eines Formats benennt die Datei im Dialog um. Der Dialog lässt nicht zu, dass beides auseinanderläuft: Sie können keine ODT-Datei mit der Endung `.docx` erhalten.
 
 Nicht jedes Format, das der Konverter lesen kann, kann er auch schreiben. Insbesondere `.doc` lässt sich öffnen, aber nicht speichern; verwenden Sie `.docx` oder `.rtf` für etwas, das zurück an ein altes Word gehen muss.
 
-Falls Sie im Menü File einen Eintrag **Download As** suchen: Es gibt keinen. Die Editoren blenden ihn aus, wenn sie als Offline-Desktop-Anwendung laufen, und setzen Save As an seine Stelle: dieselbe Aufgabe, einen Menüeintrag weiter oben.
+Falls Sie im Menü Datei einen Eintrag **Herunterladen als** suchen: Es gibt keinen. Die Editoren blenden ihn aus, wenn sie als Offline-Desktop-Anwendung laufen, und setzen Speichern unter an seine Stelle: dieselbe Aufgabe, einen Menüeintrag weiter oben.
 
 ### Auf der Kommandozeile {#from-the-command-line}
 
@@ -74,9 +74,9 @@ Eine Datei, die schon unter dem neuen Namen existiert, wird ersetzt. Das umgewan
 
 ## Die Menüleiste
 
-Unter Linux und Windows sitzt die Leiste im Fenster: **File**, **Edit**, **View** und **Help**, Letzteres mit *Libera Help* und *About Libera Suite*. Aus dem, was das Menü dort bietet, ergeben sich drei Unterschiede. Kein Eintrag zeigt ein Tastenkürzel an, aber Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Umschalt-S, Ctrl-P und Ctrl-Z tun dort, was die ⌘-Tasten unten auf einem Mac tun. **Open Recent** wird beim Start der Anwendung aufgebaut; ein Dokument, das Sie heute öffnen, erscheint dort also morgen. Nichts wird ausgegraut: Save ohne etwas zu speichern tut nichts.
+Unter Linux und Windows sitzt die Leiste im Fenster: **Datei**, **Bearbeiten**, **Ansicht** und **Hilfe**, Letzteres mit *Libera-Hilfe* und *Über Libera Suite*. Aus dem, was das Menü dort bietet, ergeben sich drei Unterschiede. Kein Eintrag zeigt ein Tastenkürzel an, aber Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Umschalt-S, Ctrl-P und Ctrl-Z tun dort, was die ⌘-Tasten unten auf einem Mac tun. **Zuletzt verwendet** wird beim Start der Anwendung aufgebaut; ein Dokument, das Sie heute öffnen, erscheint dort also morgen. Nichts wird ausgegraut: Speichern ohne etwas zu speichern tut nichts.
 
-Unter macOS ist es eine echte Mac-Menüleiste, mit denselben Einträgen plus **Window**. Die üblichen Tastenkürzel funktionieren dort, ob der Editor den Fokus hat oder nicht:
+Unter macOS ist es eine echte Mac-Menüleiste, mit denselben Einträgen plus **Fenster**. Die üblichen Tastenkürzel funktionieren dort, ob der Editor den Fokus hat oder nicht:
 
 | | |
 | :--- | :--- |
@@ -90,25 +90,25 @@ Unter macOS ist es eine echte Mac-Menüleiste, mit denselben Einträgen plus **W
 | `⌘+` `⌘-` `⌘0` | Vergrößern, verkleinern, Seite einpassen |
 | `⌘8` | Formatierungszeichen |
 
-**File ▸ Open Recent** wird bei jedem Öffnen neu aufgebaut. Das Menü **Window** listet alle geöffneten Dokumente auf.
+**Datei ▸ Zuletzt verwendet** wird bei jedem Öffnen neu aufgebaut. Das Menü **Fenster** listet alle geöffneten Dokumente auf.
 
-Save, Undo und Redo sind ausgegraut, wenn es nichts zu speichern oder rückgängig zu machen gibt. Der Editor lehnt diese Befehle stillschweigend ab; ein Menüeintrag, der verfügbar bliebe, sähe kaputt aus.
+Speichern, Rückgängig und Wiederholen sind ausgegraut, wenn es nichts zu speichern oder rückgängig zu machen gibt. Der Editor lehnt diese Befehle stillschweigend ab; ein Menüeintrag, der verfügbar bliebe, sähe kaputt aus.
 
 ## Schließen
 
-Beim Schließen eines Fensters mit nicht gespeicherten Änderungen wird zuerst gefragt: **Save**, **Don't Save** oder **Cancel**.
+Beim Schließen eines Fensters mit nicht gespeicherten Änderungen wird zuerst gefragt: **Speichern**, **Nicht speichern** oder **Abbrechen**.
 
-Don't Save ist nicht endgültig. Libera Suite bewahrt auf, was Sie geschrieben haben, und bietet es beim nächsten Öffnen dieses Dokuments wieder an.
+Nicht speichern ist nicht endgültig. Libera Suite bewahrt auf, was Sie geschrieben haben, und bietet es beim nächsten Öffnen dieses Dokuments wieder an.
 
 ## Drucken
 
-**File ▸ Print** oder die Drucker-Schaltfläche erzeugt ein PDF des Dokuments, fragt, wo es aufbewahrt werden soll (im Ordner des Dokuments, sofern Sie keinen anderen wählen), und öffnet es im PDF-Betrachter Ihres Systems, in dem sich der Druckdialog befindet.
+**Datei ▸ Drucken** oder die Drucker-Schaltfläche erzeugt ein PDF des Dokuments, fragt, wo es aufbewahrt werden soll (im Ordner des Dokuments, sofern Sie keinen anderen wählen), und öffnet es im PDF-Betrachter Ihres Systems, in dem sich der Druckdialog befindet.
 
 Das ist vorerst die Wahl: Der Betrachter, den Sie schon haben, bietet Seitenbereiche, Papierformat, Skalierung und eine Vorschau, und nichts davon würden wir in einer ersten Version besser bauen.
 
 ## Bilder
 
-In ein Dokument eingebettete Bilder bleiben beim Öffnen und Speichern erhalten. **Insert ▸ Image** fügt ein Bild von der Festplatte ein.
+In ein Dokument eingebettete Bilder bleiben beim Öffnen und Speichern erhalten. **Einfügen ▸ Bild** fügt ein Bild von der Festplatte ein.
 
 ## Rechtschreibprüfung {#spell-checking}
 

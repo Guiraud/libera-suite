@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import argparse
 import os
+import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from libera import logs, timeline
 from libera.cli import commands
-from libera.host import about
+from libera.host import about, apps
 from libera.payload import locate
 
 if TYPE_CHECKING:
@@ -27,6 +28,9 @@ if TYPE_CHECKING:
 
 def main(argv: list[str] | None = None) -> int:
     timeline.mark("python")
+    if _asks_for_convert_help(argv):
+        _make_convert_help().print_help()
+        return 0
     parser = _make_parser()
     args = parser.parse_args(argv)
     if args.config is not None:
@@ -49,6 +53,7 @@ def _make_parser() -> argparse.ArgumentParser:
             "libera FILE...    open documents, one window each\n"
             "libera            the start window: new, open, recent\n"
             "libera --convert *.docx -t pdf    convert, with no window\n"
+            "libera --convert --help           what converting takes\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -60,6 +65,75 @@ def _make_parser() -> argparse.ArgumentParser:
         version=about.format_version(),
         help="print the version and exit",
     )
+    _add_common_options(parser)
+    _add_payload_options(parser)
+    _add_launcher_options(parser)
+    parser.add_argument(
+        "--diagnose",
+        action="store_true",
+        help="print what a bug report needs: versions, payload, platform",
+    )
+    _add_convert_options(parser, shown=False)
+    _add_serve_options(parser)
+    return parser
+
+
+def _asks_for_convert_help(argv: list[str] | None) -> bool:
+    """`libera --convert --help`, in either order and however abbreviated.
+
+    The converter's options are parsed by the one parser, so that `-t pdf`
+    without `--convert` is still refused by name, but they are listed on a
+    page of their own: in the general help they buried everything else.
+    """
+    probe = argparse.ArgumentParser(add_help=False)
+    probe.add_argument("--convert", action="store_true")
+    probe.add_argument("-h", "--help", action="store_true")
+    known, _ = probe.parse_known_args(argv)
+    return known.convert and known.help
+
+
+def _make_convert_help() -> argparse.ArgumentParser:
+    """Only ever printed, never parsed with: see `_asks_for_convert_help`."""
+    parser = argparse.ArgumentParser(
+        prog="libera --convert",
+        description="Write each document in another format, with no window.",
+        epilog=(
+            "libera --convert *.docx -t pdf              a.pdf beside a.docx, ...\n"
+            "libera --convert a.docx -o out/report.pdf   the format from -o\n"
+            "libera --convert a.xlsx -t csv -o -         to standard output\n"
+            "libera --convert *.odt -t docx --outdir converted\n"
+            f"\n{_list_formats()}"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("file", nargs="+", metavar="FILE", help="documents to convert")
+    _add_convert_options(parser, shown=True)
+    _add_common_options(parser)
+    return parser
+
+
+def _list_formats() -> str:
+    """What each editor reads and writes, from the tables `--convert` checks
+    against, so the page cannot offer a format the converter refuses."""
+    lines = ["formats, by editor; the extension of each FILE picks the editor:"]
+    for app in apps.ALL:
+        writes = " ".join(sorted(app.ids_by_ext)) or "nothing: it only shows documents"
+        for label, exts in (
+            (f"{app.title:15} reads ", " ".join(sorted(app.opens))),
+            (f"{'':15} writes", writes),
+        ):
+            lines.append(
+                textwrap.fill(
+                    exts,
+                    width=79,
+                    initial_indent=f"  {label} ",
+                    subsequent_indent=" " * 25,
+                )
+            )
+    return "\n".join(lines) + "\n"
+
+
+def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "-v",
         "--verbose",
@@ -77,38 +151,45 @@ def _make_parser() -> argparse.ArgumentParser:
             " documents are then not handed to a Libera Suite already running"
         ),
     )
-    _add_payload_options(parser)
-    _add_launcher_options(parser)
-    parser.add_argument(
-        "--diagnose",
-        action="store_true",
-        help="print what a bug report needs: versions, payload, platform",
-    )
-    _add_convert_options(parser)
-    _add_serve_options(parser)
-    return parser
 
 
-def _add_convert_options(parser: argparse.ArgumentParser) -> None:
+def _add_convert_options(parser: argparse.ArgumentParser, *, shown: bool) -> None:
     """Pandoc's spellings where pandoc has one: `-t` the format written, `-o`
     the file. No `-f`, which is pandoc's input format: here the extension
-    decides that, as it decides the editor."""
-    group = parser.add_argument_group("converting without a window")
-    group.add_argument(
-        "--convert",
-        action="store_true",
-        help="write each FILE in another format, beside it unless told otherwise",
+    decides that, as it decides the editor.
+
+    Not `shown` in the general help, which names `--convert` and points here.
+    """
+
+    def help_(text: str) -> str:
+        return text if shown else argparse.SUPPRESS
+
+    group = (
+        parser if shown else parser.add_argument_group("converting without a window")
     )
+    if not shown:
+        group.add_argument(
+            "--convert",
+            action="store_true",
+            help="write each FILE in another format; see libera --convert --help",
+        )
     group.add_argument(
-        "-t", "--to", metavar="FORMAT", help="the format, by extension: pdf, odt, ..."
+        "-t",
+        "--to",
+        metavar="FORMAT",
+        help=help_("the format, by extension: pdf, odt, docx, xlsx, csv, ..."),
     )
     group.add_argument(
         "-o",
         "--output",
         metavar="FILE",
-        help="for one document: where to write it, - for standard output",
+        help=help_("for one document: where to write it, - for standard output"),
     )
-    group.add_argument("--outdir", metavar="DIR", help="write into DIR")
+    group.add_argument(
+        "--outdir",
+        metavar="DIR",
+        help=help_("write into DIR rather than beside each document"),
+    )
 
 
 def _add_payload_options(parser: argparse.ArgumentParser) -> None:

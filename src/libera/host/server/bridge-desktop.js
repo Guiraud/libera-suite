@@ -28,6 +28,8 @@
     sendReport,
   } = M;
   const { addPersonalWord, captureLater, spellChecker } = M.page;
+  // Our strings in the interface language, from the prelude (server/editor.py).
+  const tr = (english) => (w.LIBERA_STRINGS || {})[english] || english;
 
   // -- File > Create New -------------------------------------------------------
   //
@@ -47,7 +49,7 @@
       // `libera --serve` has one window, and a new document of another kind
       // cannot take the place of this one. The host says so, in the body: the
       // status line is Latin-1 only, so no explanation goes there.
-      w.alert(made.responseText || "Libera Suite could not create the document.");
+      w.alert(made.responseText || tr("Libera Suite could not create the document."));
       return;
     }
     if (openedHere(made)) w.top.location.reload();
@@ -181,12 +183,12 @@
     const dialog = doc.createElement("div");
     dialog.setAttribute("role", "dialog");
     dialog.setAttribute("aria-modal", "true");
-    dialog.setAttribute("aria-label", "Create New");
+    dialog.setAttribute("aria-label", tr("Create New"));
     dialog.style.cssText =
       `background:${card};color:${text};border-radius:10px;` +
       "padding:18px 22px 22px;box-shadow:0 12px 40px rgba(0,0,0,.3);";
     const title = doc.createElement("div");
-    title.textContent = "Create New";
+    title.textContent = tr("Create New");
     title.style.cssText = "font-weight:600;font-size:15px;margin-bottom:14px;";
     const row = doc.createElement("div");
     row.style.cssText = "display:flex;gap:12px;";
@@ -630,7 +632,7 @@
           // one without an error code, is a failure, as LocalFileSave reads it.
           const error = answer(xhr).error;
           if (error !== 0 && error !== 1) {
-            w.alert("Libera Suite could not print this document.");
+            w.alert(tr("Libera Suite could not print this document."));
           }
         },
       );

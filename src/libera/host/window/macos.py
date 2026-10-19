@@ -27,7 +27,7 @@ import objc
 import webview
 from PyObjCTools import AppHelper
 
-from libera.host import about, hooks
+from libera.host import about, hooks, language
 from libera.host.window.portable import Answer, Question
 from libera.payload import locate
 
@@ -165,7 +165,7 @@ def show_edited(window: Window, edited: bool) -> None:
 
     def apply() -> None:
         native.setDocumentEdited_(edited)
-        native.setSubtitle_("Edited" if edited else "")
+        native.setSubtitle_(language.translate("Edited") if edited else "")
 
     # The news arrives on a server thread; AppKit belongs to the GUI one.
     AppHelper.callAfter(apply)
@@ -304,7 +304,7 @@ def build_save_panel(
     label = AppKit.NSTextField.alloc().initWithFrame_(
         Foundation.NSMakeRect(0, 6, 88, 20)
     )
-    label.setStringValue_("File Format:")
+    label.setStringValue_(language.translate("File Format:"))
     label.setBezeled_(False)
     label.setDrawsBackground_(False)
     label.setEditable_(False)

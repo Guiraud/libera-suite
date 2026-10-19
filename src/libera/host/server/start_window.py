@@ -4,10 +4,12 @@ came from.
 
 from __future__ import annotations
 
+import html
 import json
 import pathlib
+import re
 
-from libera.host import apps
+from libera.host import apps, language
 from libera.host.server.api import Request, Response, answer_json, endpoint
 
 
@@ -20,8 +22,24 @@ def serve_start(_r: Request) -> Response:
     /__host__/ endpoints the editor does. It loads none of the bridge, sdkjs
     or the theme.
     """
-    page = pathlib.Path(__file__).with_name("start-window.html").read_bytes()
-    return Response(body=page, content_type="text/html; charset=utf-8")
+    page = pathlib.Path(__file__).with_name("start-window.html")
+    filled = fill_in(page.read_text(encoding="utf-8"))
+    return Response(body=filled.encode(), content_type="text/html; charset=utf-8")
+
+
+# The page's text, as `{{English}}`, and where its script finds the rest.
+MARKED = re.compile(r"\{\{(.+?)\}\}")
+STRINGS = "/* LIBERA_STRINGS */ {}"
+
+
+def fill_in(page: str) -> str:
+    """The start window in the interface language: its marked text translated,
+    and the catalogue handed to its script, whose `tr` looks the rest up."""
+    page = MARKED.sub(lambda m: html.escape(language.translate(m[1])), page)
+    page = page.replace(
+        '<html lang="en">', f'<html lang="{language.get_interface_language()}">'
+    )
+    return page.replace(STRINGS, json.dumps(language.get_catalogue()))
 
 
 @endpoint("GET", "apps")
@@ -30,7 +48,7 @@ def serve_apps(_r: Request) -> Response:
     body = [
         {
             "name": app.name,
-            "kind": app.noun,
+            "kind": language.translate(app.noun),
             "doctype": app.doctype,
             "ext": app.ext,
             "creates": app.blank is not None,
@@ -62,7 +80,7 @@ def serve_payload(r: Request) -> Response:
         # installed copy -- which is not in payload.json because it is not a
         # property of the payload.
         "origin": payload_mod.resolve().origin,
-        "version": info.get("payload_version") or "local build",
+        "version": info.get("payload_version") or language.translate("local build"),
         "platform": info.get("platform"),
         "built": info.get("built"),
     }

@@ -17,7 +17,7 @@ import logging
 import threading
 from pathlib import Path
 
-from libera.host import about, apps, desktop, hooks, recents, session, window
+from libera.host import about, apps, desktop, hooks, language, recents, session, window
 
 logger = logging.getLogger(__name__)
 
@@ -241,13 +241,20 @@ def _open_help() -> None:
     Reporting the URL is the fallback and all we can do: opening a link is
     the desktop's business, more so inside a sandbox.
     """
-    if desktop.open_url(HELP_URL):
+    url = find_help_url()
+    if desktop.open_url(url):
         return
 
     window.dialogs.say(
-        "Nothing here could open a browser",
-        f"The documentation is at:\n\n{HELP_URL}",
+        language.translate("Nothing here could open a browser"),
+        language.translate("The documentation is at:\n\n{url}", url=url),
     )
+
+
+def find_help_url() -> str:
+    """The documentation's edition in the interface language: each of
+    language.TRANSLATED has one, and English is the rest."""
+    return f"{HELP_URL}{language.get_interface_language()}/"
 
 
 def show_about() -> None:

@@ -21,6 +21,6 @@ Manches fehlt bekanntermaßen und muss nicht gemeldet werden. Siehe [Was heute f
 
 ## Wohin damit
 
-Schicken Sie es an [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), wohin auch Help ▸ Suggest a feature aus der Anwendung führt. Schreiben Sie gern auf Englisch oder Französisch.
+Schicken Sie es an [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), wohin auch Datei ▸ Eine Funktion vorschlagen aus der Anwendung führt. Schreiben Sie gern auf Englisch oder Französisch.
 
 Dieses Repository ist der öffentliche Spiegel: Es enthält den Quellcode, ohne die internen Notizen. Wenn Sie es lieber nicht verwenden, erreichen Sie uns über [abilian.com](https://abilian.com/).

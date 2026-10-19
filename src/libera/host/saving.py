@@ -18,7 +18,7 @@ from dataclasses import dataclass, replace
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
-from libera.host import apps, convert, desktop, hooks, locking
+from libera.host import apps, convert, desktop, hooks, language, locking
 from libera.host.session import is_inside
 
 if TYPE_CHECKING:
@@ -168,7 +168,10 @@ def _ask_where(
     # it started wherever the last save went. Not for an untitled document,
     # whose folder is our state directory: there the toolkit chooses.
     start_in = open_file.parent if open_file is not None and not untitled else None
-    formats = PRINT_FORMATS if printing else app.save_formats
+    formats = tuple(
+        (language.translate(label), ext)
+        for label, ext in (PRINT_FORMATS if printing else app.save_formats)
+    )
     chosen = hooks.shell.choose_save_path(suggested, formats, start_in)
     if not chosen:
         logger.info("save cancelled")
@@ -181,9 +184,13 @@ def _ask_where(
     if holder is not None and not holder.is_us():
         # Overwriting a file someone has open loses their work, or ours.
         hooks.shell.tell(
-            f"\u201c{target.name}\u201d is open somewhere else",
-            f"{holder.name} has had it open since {holder.since}. "
-            "Save under another name, or once they have closed it.",
+            language.translate("“{name}” is open somewhere else", name=target.name),
+            language.translate(
+                "{holder} has had it open since {since}. "
+                "Save under another name, or once they have closed it.",
+                holder=holder.name,
+                since=holder.since,
+            ),
         )
         return None
     return target

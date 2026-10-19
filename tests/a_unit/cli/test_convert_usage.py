@@ -74,3 +74,30 @@ def test_the_plan_names_each_result_beside_or_in_outdir(docs):
     assert commands.plan_conversions(into) == [(Path("a.docx"), Path("o/a.odt"), "odt")]
     out = argparse.Namespace(file=["a.docx"], to="pdf", output="-", outdir=None)
     assert commands.plan_conversions(out) == [(Path("a.docx"), None, "pdf")]
+
+
+@pytest.mark.parametrize("argv", [["--convert", "--help"], ["-h", "--conv"]])
+def test_the_converter_has_a_help_page_of_its_own(capsys, argv):
+    """Its options buried the rest of the general help, which now only points
+    here."""
+    assert cli.main(argv) == 0
+    page = capsys.readouterr().out
+    assert page.startswith("usage: libera --convert")
+    assert "--outdir" in page
+    assert "--serve" not in page
+
+    with pytest.raises(SystemExit):
+        cli.main(["--help"])
+    general = capsys.readouterr().out
+    assert "libera --convert --help" in general
+    assert "--outdir" not in general
+
+
+def test_the_help_page_lists_what_each_editor_reads_and_writes(capsys):
+    """Read off the same tables the converter checks, so a format it lists is
+    one it accepts."""
+    cli.main(["--convert", "--help"])
+    page = " ".join(capsys.readouterr().out.split())
+    assert "Libera Tables reads csv fods numbers" in page
+    assert "writes csv ods ots pdf tsv xlsm xlsx" in page
+    assert "Libera Diagrams reads vsdm" in page

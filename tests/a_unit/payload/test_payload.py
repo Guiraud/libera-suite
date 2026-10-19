@@ -8,6 +8,7 @@ and a tar member that escapes the destination.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import io
 import json
@@ -185,6 +186,29 @@ def test_install_refuses_a_bad_hash(tmp_path: Path, monkeypatch) -> None:
     with pytest.raises(PayloadError, match="failed verification"):
         payload.install(source=dist, dest=dest, say=lambda *_: None)
     assert not dest.exists()
+
+
+def test_a_local_build_the_wheel_does_not_describe_names_both_manifests(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The copy a release left in src/libera/ refused every later build as a
+    core that "failed verification", naming neither manifest."""
+    dist = _fake_dist(tmp_path, corrupt=False)
+    ours = payload.installer.Manifest.read(dist / "manifest.json")
+    (core,) = ours.artifacts
+    stale = dataclasses.replace(
+        ours,
+        artifacts=(dataclasses.replace(core, sha256="0" * 64),),
+        built="2026-10-15T20:32:59Z",
+    )
+    monkeypatch.setattr(payload.installer, "read_bundled_manifest", lambda: stale)
+
+    with pytest.raises(PayloadError, match=r"another build(.|\n)*2026-10-15T20:32:59Z"):
+        payload.install(source=dist, dest=tmp_path / "dest", say=lambda *_: None)
+
+    monkeypatch.setattr(payload.installer, "read_bundled_manifest", lambda: ours)
+    monkeypatch.setattr(payload.installer, "_finish", lambda _d, _say: None)
+    payload.install(source=dist, dest=tmp_path / "dest", say=lambda *_: None)
 
 
 def test_install_refuses_a_mismatched_payload_version(

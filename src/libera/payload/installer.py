@@ -23,6 +23,7 @@ from libera.payload.locate import Payload, PayloadError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from importlib.resources.abc import Traversable
 
     from libera.manifest import Artifact
 
@@ -44,10 +45,14 @@ def read_bundled_manifest() -> Manifest | None:
     without ever asking here. It surfaced the first time the origin existed and
     a container with no payload was pointed at it.
     """
-    f = resources.files("libera") / "manifest.json"
+    f = _bundled_file()
     if not f.is_file():
         return None
     return Manifest.from_dict(json.loads(f.read_text(encoding="utf-8")))
+
+
+def _bundled_file() -> Traversable:
+    return resources.files("libera") / "manifest.json"
 
 
 def can_fetch() -> bool:
@@ -122,6 +127,32 @@ def safe_extract(tar: tarfile.TarFile, dest: Path) -> None:
         raise PayloadError(msg) from e
 
 
+def _refuse_another_build(bundled: Manifest, local: Path) -> None:
+    """Refuse a directory the wheel's manifest does not describe, naming both.
+
+    The wheel's manifest decides, for a local directory too. In a checkout it
+    is the copy the last release left in src/libera/, gitignored, so every
+    build after that release was refused as a core that "failed verification",
+    with two hashes and nothing to say where the expected one came from.
+    """
+    f = local / "manifest.json"
+    if not f.is_file():
+        return
+    found = Manifest.read(f)
+    theirs = {a.name: a for a in found.artifacts}
+    wanted = bundled.select(locate.get_current_platform())
+    if all(theirs.get(a.name) == a for a in wanted):
+        return
+    msg = (
+        f"{local} holds another build than the one this libera verifies against:\n"
+        f"  {f}: built {found.built}, from {found.commit[:9]}\n"
+        f"  {_bundled_file()}: built {bundled.built}, from {bundled.commit[:9]}\n"
+        "  In a checkout, the second is the manifest a release left behind;\n"
+        "  remove it to install a local build."
+    )
+    raise PayloadError(msg)
+
+
 def _read_manifest(
     base_url: str, local: Path | None, *, trust_manifest: bool
 ) -> Manifest:
@@ -133,6 +164,8 @@ def _read_manifest(
     """
     bundled = read_bundled_manifest()
     if bundled is not None:
+        if local is not None:
+            _refuse_another_build(bundled, local)
         return bundled
     if local is not None:
         f = local / "manifest.json"

@@ -23,7 +23,7 @@ from pathlib import Path
 
 import AppKit
 
-from libera.host import apps, window
+from libera.host import apps, language, window
 from libera.host.menu import actions
 from libera.host.shortcuts import CLOSE, COMMAND, NEW, OPEN, SHIFT
 
@@ -100,7 +100,7 @@ class LiberaRecentMenu(AppKit.NSObject):
         paths = actions.read_recent_documents()
         if not paths:
             empty = menu.addItemWithTitle_action_keyEquivalent_(
-                "No Recent Documents", None, ""
+                language.translate("No Recent Documents"), None, ""
             )
             empty.setEnabled_(False)
             return
@@ -172,48 +172,60 @@ def install() -> None:
     before that.
     """
     main = AppKit.NSApp.mainMenu()
-    if main is None or _has_item(main, "File"):
+    if main is None or _has_item(main, language.translate("File")):
         return
 
-    file_menu = AppKit.NSMenu.alloc().initWithTitle_("File")
+    file_menu = AppKit.NSMenu.alloc().initWithTitle_(language.translate("File"))
     # New > Document, Spreadsheet, Presentation: any kind from any window. ⌘N
     # sits on the front window's kind, where its delegate moves it each time
     # the menu is consulted; this puts it somewhere before that happens.
-    new_menu = AppKit.NSMenu.alloc().initWithTitle_("New")
+    new_menu = AppKit.NSMenu.alloc().initWithTitle_(language.translate("New"))
     new_menu.setDelegate_(NEW_DELEGATE)
     for app in actions.list_creatable():
-        kind = _item(app.noun, "newDocumentOfKind:")
+        kind = _item(language.translate(app.noun), "newDocumentOfKind:")
         kind.setRepresentedObject_(app.name)
         new_menu.addItem_(kind)
     give_new_its_key(new_menu, actions.choose_new_kind())
-    new_item = file_menu.addItemWithTitle_action_keyEquivalent_("New", None, "")
+    new_item = file_menu.addItemWithTitle_action_keyEquivalent_(
+        language.translate("New"), None, ""
+    )
     new_item.setSubmenu_(new_menu)
-    file_menu.addItem_(_item("Open…", "openDocument:", OPEN.key, OPEN.mask))
+    file_menu.addItem_(
+        _item(language.translate("Open…"), "openDocument:", OPEN.key, OPEN.mask)
+    )
 
-    recent = AppKit.NSMenu.alloc().initWithTitle_("Open Recent")
+    recent = AppKit.NSMenu.alloc().initWithTitle_(language.translate("Open Recent"))
     recent.setDelegate_(RECENT_DELEGATE)
     recent_item = file_menu.addItemWithTitle_action_keyEquivalent_(
-        "Open Recent", None, ""
+        language.translate("Open Recent"), None, ""
     )
     recent_item.setSubmenu_(recent)
 
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
     # No key equivalent. Reloading is rare; a shortcut here would be one more
     # key the page also handles -- see PAGE_YIELDS.
-    file_menu.addItem_(_item("Reload", "reloadDocument:"))
+    file_menu.addItem_(_item(language.translate("Reload"), "reloadDocument:"))
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
     # performClose: is the standard one: it goes through the window's delegate,
     # which is where Libera Suite asks about unsaved changes.
     file_menu.addItem_(
-        _item("Close", "performClose:", CLOSE.key, CLOSE.mask, target=None)
+        _item(
+            language.translate("Close"),
+            "performClose:",
+            CLOSE.key,
+            CLOSE.mask,
+            target=None,
+        )
     )
-    file_menu.addItem_(_item("Save", "saveDocument:", "s"))
-    file_menu.addItem_(_item("Save As…", "saveDocumentAs:", "s", COMMAND | SHIFT))
+    file_menu.addItem_(_item(language.translate("Save"), "saveDocument:", "s"))
+    file_menu.addItem_(
+        _item(language.translate("Save As…"), "saveDocumentAs:", "s", COMMAND | SHIFT)
+    )
     file_menu.addItem_(AppKit.NSMenuItem.separatorItem())
-    file_menu.addItem_(_item("Print…", "printDocument:", "p"))
+    file_menu.addItem_(_item(language.translate("Print…"), "printDocument:", "p"))
 
     file_item = AppKit.NSMenuItem.alloc().init()
-    file_item.setTitle_("File")
+    file_item.setTitle_(language.translate("File"))
     file_item.setSubmenu_(file_menu)
     # After the application menu, before Edit, which is where a Mac user looks.
     main.insertItem_atIndex_(file_item, 1)
@@ -269,15 +281,17 @@ def _extend_edit(main) -> None:
     Not the standard undo: and redo: selectors -- those drive NSUndoManager,
     which knows nothing about the editor's own history.
     """
-    edit = _find_submenu(main, "Edit")
+    edit = _find_submenu(main, language.translate("Edit"))
     if edit is None:
         return
-    edit.insertItem_atIndex_(_item("Undo", "undo:", "z"), 0)
-    edit.insertItem_atIndex_(_item("Redo", "redo:", "z", COMMAND | SHIFT), 1)
+    edit.insertItem_atIndex_(_item(language.translate("Undo"), "undo:", "z"), 0)
+    edit.insertItem_atIndex_(
+        _item(language.translate("Redo"), "redo:", "z", COMMAND | SHIFT), 1
+    )
     edit.insertItem_atIndex_(AppKit.NSMenuItem.separatorItem(), 2)
 
     edit.addItem_(AppKit.NSMenuItem.separatorItem())
-    edit.addItem_(_item("Find…", "find:", "f"))
+    edit.addItem_(_item(language.translate("Find…"), "find:", "f"))
 
 
 def _fill_view(main) -> None:
@@ -287,18 +301,23 @@ def _fill_view(main) -> None:
     duplicate of the one it manages itself -- leaving a menu that opens onto
     nothing, which is worse than not having the menu at all.
     """
-    view = _find_submenu(main, "View")
+    view = _find_submenu(main, language.translate("View"))
     if view is None:
         return
     # Insert above whatever is there, so the system's full-screen item stays
     # at the bottom where macOS puts it.
     items = [
-        ("Zoom In", "zoomIn:", "+", COMMAND),
-        ("Zoom Out", "zoomOut:", "-", COMMAND),
-        ("Fit Page", "zoomFitPage:", "0", COMMAND),
-        ("Fit Width", "zoomFitWidth:", "0", COMMAND | SHIFT),
+        (language.translate("Zoom In"), "zoomIn:", "+", COMMAND),
+        (language.translate("Zoom Out"), "zoomOut:", "-", COMMAND),
+        (language.translate("Fit Page"), "zoomFitPage:", "0", COMMAND),
+        (language.translate("Fit Width"), "zoomFitWidth:", "0", COMMAND | SHIFT),
         (None, None, None, None),
-        ("Formatting Marks", "toggleFormattingMarks:", "8", COMMAND),
+        (
+            language.translate("Formatting Marks"),
+            "toggleFormattingMarks:",
+            "8",
+            COMMAND,
+        ),
         # No trailing separator: the only thing below is the full-screen item,
         # which macOS hides; a menu that ends in a divider looks broken.
     ]
@@ -311,14 +330,18 @@ def _fill_view(main) -> None:
 
 def _add_window_menu(main) -> None:
     """A Window menu, which macOS then keeps the window list in itself."""
-    window_menu = AppKit.NSMenu.alloc().initWithTitle_("Window")
-    window_menu.addItem_(_item("Minimize", "performMiniaturize:", "m", target=None))
-    window_menu.addItem_(_item("Zoom", "performZoom:", target=None))
+    window_menu = AppKit.NSMenu.alloc().initWithTitle_(language.translate("Window"))
+    window_menu.addItem_(
+        _item(language.translate("Minimize"), "performMiniaturize:", "m", target=None)
+    )
+    window_menu.addItem_(_item(language.translate("Zoom"), "performZoom:", target=None))
     window_menu.addItem_(AppKit.NSMenuItem.separatorItem())
-    window_menu.addItem_(_item("Bring All to Front", "arrangeInFront:", target=None))
+    window_menu.addItem_(
+        _item(language.translate("Bring All to Front"), "arrangeInFront:", target=None)
+    )
 
     item = AppKit.NSMenuItem.alloc().init()
-    item.setTitle_("Window")
+    item.setTitle_(language.translate("Window"))
     item.setSubmenu_(window_menu)
     main.addItem_(item)
     # Handing it to the application is what makes the open windows appear in it
@@ -327,11 +350,11 @@ def _add_window_menu(main) -> None:
 
 
 def _add_help_menu(main) -> None:
-    help_menu = AppKit.NSMenu.alloc().initWithTitle_("Help")
-    help_menu.addItem_(_item("Libera Help", "showHelp:", "?"))
+    help_menu = AppKit.NSMenu.alloc().initWithTitle_(language.translate("Help"))
+    help_menu.addItem_(_item(language.translate("Libera Help"), "showHelp:", "?"))
 
     item = AppKit.NSMenuItem.alloc().init()
-    item.setTitle_("Help")
+    item.setTitle_(language.translate("Help"))
     item.setSubmenu_(help_menu)
     main.addItem_(item)
     AppKit.NSApp.setHelpMenu_(help_menu)

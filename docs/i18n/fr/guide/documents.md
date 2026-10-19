@@ -23,41 +23,41 @@ Libera Suite ouvre **un document par fenêtre**, si bien qu'un motif du shell se
 libera ~/Documents/*.docx     # une fenêtre chacun
 ```
 
-Vous pouvez aussi ouvrir un document depuis l'éditeur, par **File ▸ Open** ou **File ▸ Open Recent**. L'un et l'autre ouvrent une nouvelle fenêtre et laissent en place le document déjà ouvert.
+Vous pouvez aussi ouvrir un document depuis l'éditeur, par **Fichier ▸ Ouvrir** ou **Fichier ▸ Ouvrir récent**. L'un et l'autre ouvrent une nouvelle fenêtre et laissent en place le document déjà ouvert.
 
 **Un document déposé** sur une fenêtre de Libera Suite, fenêtre de démarrage comprise, s'ouvre dans sa propre fenêtre. Une image déposée sur un document y est insérée.
 
-**File ▸ New** propose un document (Document), une feuille de calcul (Spreadsheet) ou une présentation (Presentation) depuis n'importe quelle fenêtre, chacun dans sa propre fenêtre. Sous macOS, `⌘N` en crée un du même type que la fenêtre au premier plan. Dans l'éditeur, **File ▸ Create New** vous demande lequel des trois créer.
+**Fichier ▸ Nouveau** propose un document, une feuille de calcul ou une présentation depuis n'importe quelle fenêtre, chacun dans sa propre fenêtre. Sous macOS, `⌘N` en crée un du même type que la fenêtre au premier plan. Dans l'éditeur, **Fichier ▸ Nouveau document** vous demande lequel des trois créer.
 
 ## Enregistrer
 
-**File ▸ Save** réécrit le document que vous avez ouvert. **File ▸ Save As** demande où le placer. À partir de là, c'est ce document-là que vous modifiez.
+**Fichier ▸ Enregistrer** réécrit le document que vous avez ouvert. **Fichier ▸ Enregistrer sous** demande où le placer. À partir de là, c'est ce document-là que vous modifiez.
 
 L'enregistrement reconvertit le format de travail de l'éditeur en un vrai document, en une seconde environ.
 
 ## Exporter
 
-Save As sert aussi à exporter : sa boîte de dialogue comporte une liste **File Format**.
+Enregistrer sous sert aussi à exporter : sa boîte de dialogue comporte une liste **Format de fichier**.
 
 | | |
 | :--- | :--- |
-| Word Document | `.docx` |
-| Word Template | `.dotx` |
-| OpenDocument Text | `.odt` |
-| OpenDocument Template | `.ott` |
+| Document Word | `.docx` |
+| Modèle Word | `.dotx` |
+| Texte OpenDocument | `.odt` |
+| Modèle OpenDocument | `.ott` |
 | PDF | `.pdf` |
-| Rich Text Format | `.rtf` |
+| Texte mis en forme | `.rtf` |
 | HTML | `.html` |
 | Markdown | `.md` |
 | EPUB | `.epub` |
 | FictionBook | `.fb2` |
-| Plain Text | `.txt` |
+| Texte brut | `.txt` |
 
 Choisir un format renomme le fichier dans la boîte de dialogue. Les deux ne peuvent pas diverger : vous ne pouvez pas obtenir un fichier ODT nommé `.docx`.
 
 Le convertisseur ne sait pas écrire tous les formats qu'il sait lire. Le `.doc`, en particulier, s'ouvre mais ne s'enregistre pas ; utilisez `.docx` ou `.rtf` pour un document qui doit repartir vers une ancienne version de Word.
 
-Si vous cherchez une entrée **Download As** dans le menu File, il n'y en a pas. Les éditeurs la masquent quand ils fonctionnent comme une application de bureau hors ligne ; ils mettent Save As à sa place : la même fonction, une entrée plus haut dans le menu.
+Si vous cherchez une entrée **Télécharger comme** dans le menu Fichier, il n'y en a pas. Les éditeurs la masquent quand ils fonctionnent comme une application de bureau hors ligne ; ils mettent Enregistrer sous à sa place : la même fonction, une entrée plus haut dans le menu.
 
 ### En ligne de commande {#from-the-command-line}
 
@@ -74,9 +74,9 @@ Un fichier qui porte déjà le nouveau nom est remplacé. Le document converti n
 
 ## La barre de menus
 
-Sous Linux et Windows, la barre se trouve dans la fenêtre : **File**, **Edit**, **View** et **Help**, ce dernier contenant *Libera Help* et *About Libera Suite*. Le menu y impose trois différences. Aucun élément n'affiche de raccourci clavier, mais Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Maj-S, Ctrl-P et Ctrl-Z font sur ces systèmes l'équivalent des touches ⌘ ci-dessous sur un Mac. **Open Recent** est construit au lancement de l'application : un document ouvert aujourd'hui y apparaît demain. Rien n'est grisé : Save sans rien à enregistrer ne fait rien.
+Sous Linux et Windows, la barre se trouve dans la fenêtre : **Fichier**, **Édition**, **Affichage** et **Aide**, ce dernier contenant *Aide de Libera* et *À propos de Libera Suite*. Le menu y impose trois différences. Aucun élément n'affiche de raccourci clavier, mais Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Maj-S, Ctrl-P et Ctrl-Z font sur ces systèmes l'équivalent des touches ⌘ ci-dessous sur un Mac. **Ouvrir un fichier récent** est construit au lancement de l'application : un document ouvert aujourd'hui y apparaît demain. Rien n'est grisé : Enregistrer sans rien à enregistrer ne fait rien.
 
-Sous macOS, c'est une vraie barre de menus Mac, avec les mêmes éléments plus **Window**. Les raccourcis habituels y fonctionnent, que l'éditeur ait le focus ou non :
+Sous macOS, c'est une vraie barre de menus Mac, avec les mêmes éléments plus **Fenêtre**. Les raccourcis habituels y fonctionnent, que l'éditeur ait le focus ou non :
 
 | | |
 | :--- | :--- |
@@ -90,25 +90,25 @@ Sous macOS, c'est une vraie barre de menus Mac, avec les mêmes éléments plus 
 | `⌘+` `⌘-` `⌘0` | Zoom avant, arrière, ajuster la page |
 | `⌘8` | Marques de mise en forme |
 
-**File ▸ Open Recent** est reconstruit à chaque ouverture du menu. Le menu **Window** liste tous les documents ouverts.
+**Fichier ▸ Ouvrir un fichier récent** est reconstruit à chaque ouverture du menu. Le menu **Fenêtre** liste tous les documents ouverts.
 
-Save, Undo et Redo sont grisés quand il n'y a rien à enregistrer ou à annuler. L'éditeur refuse ces commandes sans rien dire : un élément de menu resté actif aurait l'air cassé.
+Enregistrer, Annuler et Rétablir sont grisés quand il n'y a rien à enregistrer ou à annuler. L'éditeur refuse ces commandes sans rien dire : un élément de menu resté actif aurait l'air cassé.
 
 ## Fermer
 
-Fermer une fenêtre qui contient des modifications non enregistrées demande d'abord quoi faire : **Save**, **Don't Save** ou **Cancel**.
+Fermer une fenêtre qui contient des modifications non enregistrées demande d'abord quoi faire : **Enregistrer**, **Ne pas enregistrer** ou **Annuler**.
 
-Choisir Don't Save n'est pas définitif. Libera Suite conserve votre travail et vous le propose à la prochaine ouverture de ce document.
+Choisir Ne pas enregistrer n'est pas définitif. Libera Suite conserve votre travail et vous le propose à la prochaine ouverture de ce document.
 
 ## Imprimer
 
-**File ▸ Print**, ou le bouton de l'imprimante, produit un PDF du document, demande où le conserver (dans le dossier du document, sauf si vous en choisissez un autre), puis l'ouvre dans le lecteur de PDF de votre système, où se trouve la boîte de dialogue d'impression.
+**Fichier ▸ Imprimer**, ou le bouton de l'imprimante, produit un PDF du document, demande où le conserver (dans le dossier du document, sauf si vous en choisissez un autre), puis l'ouvre dans le lecteur de PDF de votre système, où se trouve la boîte de dialogue d'impression.
 
 C'est le choix fait pour l'instant : le lecteur que vous avez déjà vous donne les plages de pages, le format du papier, la mise à l'échelle et un aperçu, que nous ne ferions pas mieux dans une première version.
 
 ## Images
 
-Les images intégrées à un document sont conservées à l'ouverture et à l'enregistrement. **Insert ▸ Image** ajoute une image depuis le disque.
+Les images intégrées à un document sont conservées à l'ouverture et à l'enregistrement. **Insertion ▸ Image** ajoute une image depuis le disque.
 
 ## Correction orthographique {#spell-checking}
 

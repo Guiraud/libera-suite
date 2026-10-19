@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from libera.host import desktop
+from libera.host import desktop, language
 from libera.host.menu import actions
 from libera.host.window import dialogs
 
@@ -47,10 +47,10 @@ def test_no_browser_gets_the_url_on_screen(monkeypatch, messages):
 
     actions._open_help()
 
-    assert opened == [actions.HELP_URL], "it did not try to open anything"
+    assert opened == [actions.find_help_url()], "it did not try to open anything"
     assert messages, "nothing told the user, so Help did nothing visible"
     heading, detail = messages[0]
-    assert actions.HELP_URL in detail, (
+    assert actions.find_help_url() in detail, (
         f"the message has to carry the URL, or it is no better than silence: {detail!r}"
     )
     assert heading, "an alert with no heading"
@@ -65,3 +65,11 @@ def test_a_working_browser_says_nothing(monkeypatch, messages):
         "it reported a failure after the browser opened, which would fire on "
         "every machine where Help works"
     )
+
+
+@pytest.mark.parametrize(
+    ("tag", "edition"), [("fr-CA", "fr"), ("en-FR", "en"), ("pt-BR", "en")]
+)
+def test_help_opens_the_edition_in_the_interface_language(monkeypatch, tag, edition):
+    monkeypatch.setattr(language, "get_language", lambda: tag)
+    assert actions.find_help_url() == f"{actions.HELP_URL}{edition}/"

@@ -21,6 +21,6 @@ Alcune mancanze sono note e non serve segnalarle. Vedi [Cosa funziona oggi](main
 
 ## Dove mandarlo
 
-Mandalo a [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), dove porta anche Help ▸ Suggest a feature dall'interno dell'applicazione. Puoi scrivere in inglese o in francese.
+Mandalo a [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), dove porta anche File ▸ Suggerisci una funzione dall'interno dell'applicazione. Puoi scrivere in inglese o in francese.
 
 Quel repository è il mirror pubblico: contiene il codice sorgente, senza le note interne. Se preferisci non usarlo, raggiungici tramite [abilian.com](https://abilian.com/).

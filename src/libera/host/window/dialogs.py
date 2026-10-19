@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import webview
 
-from libera.host import saving
+from libera.host import language, saving
 from libera.host.convert import ConversionError
 from libera.host.session import SESSIONS, NotReadyError, Session
 from libera.host.window.portable import Answer, Question, pick_path
@@ -70,11 +70,15 @@ def ask_to_recover(document: Path) -> bool:
     """
     answer = ask(
         Question(
-            f"Recover unsaved changes to “{document.name}”?",
-            "Libera Suite has changes to this document that were never saved. "
-            "Recover them, or open the document as it is on disk?",
-            yes="Recover",
-            no="Open Saved Version",
+            language.translate(
+                "Recover unsaved changes to “{name}”?", name=document.name
+            ),
+            language.translate(
+                "Libera Suite has changes to this document that were never saved. "
+                "Recover them, or open the document as it is on disk?"
+            ),
+            yes=language.translate("Recover"),
+            no=language.translate("Open Saved Version"),
         )
     )
     return answer is Answer.YES
@@ -106,11 +110,13 @@ def _confirm_close(session: Session, document: Path) -> bool:
     """
     answer = ask(
         Question(
-            f"Save changes to “{document.name}” before closing?",
-            "Your changes will be lost if you don't save them.",
-            yes="Save",
-            no="Don't Save",
-            cancel="Cancel",
+            language.translate(
+                "Save changes to “{name}” before closing?", name=document.name
+            ),
+            language.translate("Your changes will be lost if you don't save them."),
+            yes=language.translate("Save"),
+            no=language.translate("Don't Save"),
+            cancel=language.translate("Cancel"),
         )
     )
     if answer is Answer.YES:
@@ -131,9 +137,13 @@ def _save_or_say_why(session: Session, document: Path) -> bool:
     if saved["error"] == saving.SaveOutcome.SAVED:
         return True
     say(
-        "Libera Suite could not save the document",
-        f"“{document.name}” was not written, so the window has been left open. "
-        "Try File ▸ Save As somewhere else.",
+        language.translate("Libera Suite could not save the document"),
+        language.translate(
+            "“{name}” was not written, so the window has been left open. "
+            "Try {save_as} somewhere else.",
+            name=document.name,
+            save_as=f"{language.translate('File')} ▸ {language.translate('Save As…')}",
+        ),
     )
     return False
 
@@ -150,12 +160,15 @@ def offer_reload(session: Session, message: str, port: int) -> None:
     first_line = message.partition("\n")[0][:200]
     answer = ask(
         Question(
-            "Libera Suite ran into a problem",
-            "The editor stopped working properly and may not respond.\n\n"
-            "Reloading keeps your edits. It loses the undo history and where "
-            f"the cursor was.\n\n{first_line}",
-            yes="Reload",
-            no="Leave It",
+            language.translate("Libera Suite ran into a problem"),
+            language.translate(
+                "The editor stopped working properly and may not respond.\n\n"
+                "Reloading keeps your edits. It loses the undo history and where "
+                "the cursor was.\n\n{error}",
+                error=first_line,
+            ),
+            yes=language.translate("Reload"),
+            no=language.translate("Leave It"),
         )
     )
     if answer is not Answer.YES:
@@ -176,9 +189,12 @@ def reload(session: Session, port: int) -> None:
         reload_session(session, port)
     except (ConversionError, NotReadyError):
         say(
-            "Libera Suite could not reload the document",
-            "Your edits are still in the window. Save them with File ▸ Save, "
-            "then reload.",
+            language.translate("Libera Suite could not reload the document"),
+            language.translate(
+                "Your edits are still in the window. Save them with {save}, "
+                "then reload.",
+                save=f"{language.translate('File')} ▸ {language.translate('Save')}",
+            ),
         )
 
 

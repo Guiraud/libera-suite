@@ -48,6 +48,7 @@ from pathlib import Path
 
 from webview.menu import Menu, MenuAction, MenuSeparator
 
+from libera.host import language
 from libera.host.menu import actions
 
 
@@ -68,7 +69,7 @@ def make_menubar() -> list:
     recent: list = (
         [
             Menu(
-                "Open Recent",
+                language.translate("Open Recent"),
                 [
                     MenuAction(Path(path).name, partial(actions.open_recent, path))
                     for path in remembered
@@ -81,55 +82,63 @@ def make_menubar() -> list:
 
     return [
         Menu(
-            "File",
+            language.translate("File"),
             [
                 Menu(
-                    "New",
+                    language.translate("New"),
                     [
-                        MenuAction(app.noun, partial(actions.open_new_document, app))
+                        MenuAction(
+                            language.translate(app.noun),
+                            partial(actions.open_new_document, app),
+                        )
                         for app in actions.list_creatable()
                     ],
                 ),
-                MenuAction("Open…", actions.open_document),
+                MenuAction(language.translate("Open…"), actions.open_document),
                 *recent,
                 MenuSeparator(),
-                MenuAction("Save", actions.save),
-                MenuAction("Save As…", actions.save_as),
-                MenuAction("Print…", actions.print_document),
+                MenuAction(language.translate("Save"), actions.save),
+                MenuAction(language.translate("Save As…"), actions.save_as),
+                MenuAction(language.translate("Print…"), actions.print_document),
                 MenuSeparator(),
-                MenuAction("Reload", actions.reload_document),
-                MenuAction("Close", actions.close_window),
+                MenuAction(language.translate("Reload"), actions.reload_document),
+                MenuAction(language.translate("Close"), actions.close_window),
             ],
         ),
         Menu(
-            "Edit",
+            language.translate("Edit"),
             [
-                MenuAction("Undo", actions.undo),
-                MenuAction("Redo", actions.redo),
+                MenuAction(language.translate("Undo"), actions.undo),
+                MenuAction(language.translate("Redo"), actions.redo),
                 MenuSeparator(),
-                MenuAction("Find…", actions.find),
+                MenuAction(language.translate("Find…"), actions.find),
             ],
         ),
         Menu(
-            "View",
+            language.translate("View"),
             [
-                MenuAction("Zoom In", actions.zoom_in),
-                MenuAction("Zoom Out", actions.zoom_out),
-                MenuAction("Fit Page", actions.fit_page),
-                MenuAction("Fit Width", actions.fit_width),
+                MenuAction(language.translate("Zoom In"), actions.zoom_in),
+                MenuAction(language.translate("Zoom Out"), actions.zoom_out),
+                MenuAction(language.translate("Fit Page"), actions.fit_page),
+                MenuAction(language.translate("Fit Width"), actions.fit_width),
                 MenuSeparator(),
-                MenuAction("Formatting Marks", actions.toggle_formatting_marks),
+                MenuAction(
+                    language.translate("Formatting Marks"),
+                    actions.toggle_formatting_marks,
+                ),
             ],
         ),
         Menu(
-            "Help",
+            language.translate("Help"),
             [
-                MenuAction("Libera Help", actions.show_help),
+                MenuAction(language.translate("Libera Help"), actions.show_help),
                 MenuSeparator(),
                 # macOS gets this from the application menu, which reads
                 # NSHumanReadableCopyright out of the bundle. GTK has no
                 # equivalent, so the item is explicit here.
-                MenuAction("About Libera Suite", actions.show_about),
+                MenuAction(
+                    language.translate("About Libera Suite"), actions.show_about
+                ),
             ],
         ),
     ]

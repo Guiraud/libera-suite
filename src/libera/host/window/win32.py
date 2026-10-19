@@ -19,6 +19,7 @@ import ctypes
 import sys
 from typing import TYPE_CHECKING
 
+from libera.host import language
 from libera.host.window.portable import (
     Answer,
     Question,
@@ -62,13 +63,22 @@ IDOK, IDCANCEL, IDYES, IDNO = 1, 2, 6, 7
 
 
 def ask(question: Question, parent: Window | None) -> Answer:
-    """MessageBoxW: Yes, No and, when there is one, Cancel, each explained."""
+    """MessageBoxW: Yes, No and, when there is one, Cancel, each explained.
+
+    Windows names its stock buttons in its interface language, the first of
+    the ones `language` asks for, so the legend names them in ours.
+    """
     choices = [
-        ("Yes", question.yes, IDYES, Answer.YES),
-        ("No", question.no, IDNO, Answer.NO),
+        (language.translate("Yes"), question.yes, IDYES, Answer.YES),
+        (language.translate("No"), question.no, IDNO, Answer.NO),
     ]
     if question.cancel is not None:
-        choices.append(("Cancel", question.cancel, IDCANCEL, Answer.CANCEL))
+        choices.append((
+            language.translate("Cancel"),
+            question.cancel,
+            IDCANCEL,
+            Answer.CANCEL,
+        ))
     legend = "    ".join(f"{button}: {label}" for button, label, _, _ in choices)
     style = (
         MB_YESNOCANCEL | MB_ICONWARNING

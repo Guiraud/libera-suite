@@ -11,19 +11,19 @@ Die Oberfläche von Libera Suite ist englisch: Menüs und Schaltflächen werden 
 | **Vier Editoren** | Windows 10 und 11 auf x64, Linux auf x86_64 und arm64, macOS auf Apple Silicon. Words, Tables und Slides bearbeiten; Diagrams liest Visio-Dateien. |
 | **Öffnen und speichern** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
 | **Exportieren** | Save As bietet für jeden Editor eine Formatliste an, PDF eingeschlossen. Jedes angebotene Format wird durch eine echte Konvertierung geprüft, deren Text danach wieder gelesen wird. |
-| **Bilder** | Bleiben beim Öffnen und Speichern erhalten; Insert ▸ Image funktioniert. |
+| **Bilder** | Bleiben beim Öffnen und Speichern erhalten; Einfügen ▸ Bild funktioniert. |
 | **Drucken** | Erzeugt ein PDF, fragt, wo es aufbewahrt werden soll, und öffnet es in Ihrem PDF-Betrachter. |
 | **Rechtschreibprüfung** | Fünf Sprachen, mit Vorschlägen. Siehe unten. |
 | **In Ihrer Sprache** | Die Editoren folgen der Sprache Ihres Systems, und ein neues Dokument beginnt mit der leeren Vorlage Ihrer Region: A4-Papier überall außer in den USA, und Rechtschreibprüfung in Ihrer Sprache. Menüleiste, Startfenster und Dialoge sind noch auf Englisch. |
-| **Zuletzt verwendete Dokumente** | File ▸ Open Recent merkt sich die letzten 20. |
-| **Mehrere Dokumente gleichzeitig** | Auch verschiedener Art, jedes in seinem Fenster: über File ▸ New oder File ▸ Open, per Doppelklick im Dateimanager oder mit `libera *.docx`. Der Dateityp bestimmt den Editor. |
+| **Zuletzt verwendete Dokumente** | Datei ▸ Zuletzt verwendet merkt sich die letzten 20. |
+| **Mehrere Dokumente gleichzeitig** | Auch verschiedener Art, jedes in seinem Fenster: über Datei ▸ Neu oder Datei ▸ Öffnen, per Doppelklick im Dateimanager oder mit `libera *.docx`. Der Dateityp bestimmt den Editor. |
 | **Im Startmenü und im Anwendungsmenü** | Unter Windows legt das Installationsprogramm Libera Suite im Startmenü und auf dem Desktop ab und trägt sie im Explorer unter *Öffnen mit* ein. Unter Linux trägt das Flatpak sie mit Symbol und Dateizuordnungen in das Anwendungsmenü ein; `libera --launcher-install` tut dasselbe für jede andere Installation. |
 | **Ein Startfenster** | `libera` ohne Argument: neues Dokument, öffnen, zuletzt verwendete Dokumente und die Herkunft der Editoren. |
 | **Wiederherstellung nach Abstürzen** | Nicht gespeicherte Änderungen werden beim nächsten Öffnen des Dokuments wieder angeboten. |
 | **Ein anderswo geöffnetes Dokument** | Ist es bereits in LibreOffice oder einer anderen Instanz von Libera Suite geöffnet, wird es als *zur Bearbeitung gesperrt* markiert: Sie können es lesen und ändern, und beim Speichern wird nach dem Ort gefragt, sodass die Datei der anderen Instanz nie überschrieben wird. Ein Dokument, das bereits in einem Fenster angezeigt wird, holt beim erneuten Öffnen dieses Fenster nach vorn. Microsoft Office und Libera Suite sehen die Sperren des jeweils anderen nicht: Ein in Word geöffnetes Dokument ist nicht geschützt. |
-| **Schließen fragt nach** | Ein Fenster mit nicht gespeicherten Änderungen bietet Save, Don't Save oder Cancel an. |
+| **Schließen fragt nach** | Ein Fenster mit nicht gespeicherten Änderungen bietet Speichern, Nicht speichern oder Abbrechen an. |
 | **Eine Menüleiste** | File, Edit, View und Help auf allen Plattformen. macOS ergänzt Window sowie die üblichen Tastenkürzel. |
-| **Über** | Wer die Editoren geschrieben hat und unter welcher Lizenz: `File ▸ About` im Editor, `Help ▸ About Libera Suite` unter Linux und Windows. macOS legt es in das Anwendungsmenü. |
+| **Über** | Wer die Editoren geschrieben hat und unter welcher Lizenz: `Datei ▸ Über das Produkt` im Editor, `Hilfe ▸ Über Libera Suite` unter Linux und Windows. macOS legt es in das Anwendungsmenü. |
 | **Einstellungen bleiben erhalten** | Design, Maßeinheiten, Sprache der Rechtschreibprüfung und Ähnliches sind nach einem Neustart noch gesetzt. |
 | **Installation der Editoren** | Vom Server oder aus einem lokalen Ordner mit gebauten Artefakten. In beiden Fällen wird jedes Artefakt anhand der Prüfsummen geprüft, die mit der Anwendung geliefert werden. |
 
@@ -45,7 +45,7 @@ Wenn Sie auf etwas stoßen, das *nicht* auf dieser Liste steht, [melden Sie es u
 
 ## Halb fertig
 
-**Die Menüleiste unter Linux und Windows.** Sie ist im Fenster gezeichnet, mit File, Edit, View und Help; jeder Eintrag funktioniert. Keiner zeigt ein Tastenkürzel an, aber die üblichen Tasten funktionieren: Ctrl-N legt ein neues Dokument derselben Art an, Ctrl-O öffnet eines, Ctrl-W schließt das Fenster (und fragt vorher nach ungespeicherten Änderungen), und die eigenen Kürzel des Editors, Ctrl-S, Ctrl-Umschalt-S (Save As), Ctrl-P und Ctrl-Z, funktionieren ebenfalls. Unter Windows wurden Ctrl-N, Ctrl-O und Ctrl-W noch nicht auf einem echten Rechner geprüft. File ▸ New ▸ Document, Spreadsheet oder Presentation funktioniert, ebenso die Kacheln New im Startfenster und der Reiter File des Editors.
+**Die Menüleiste unter Linux und Windows.** Sie ist im Fenster gezeichnet, mit Datei, Bearbeiten, Ansicht und Hilfe; jeder Eintrag funktioniert. Keiner zeigt ein Tastenkürzel an, aber die üblichen Tasten funktionieren: Ctrl-N legt ein neues Dokument derselben Art an, Ctrl-O öffnet eines, Ctrl-W schließt das Fenster (und fragt vorher nach ungespeicherten Änderungen), und die eigenen Kürzel des Editors, Ctrl-S, Ctrl-Umschalt-S (Speichern unter), Ctrl-P und Ctrl-Z, funktionieren ebenfalls. Unter Windows wurden Ctrl-N, Ctrl-O und Ctrl-W noch nicht auf einem echten Rechner geprüft. Datei ▸ Neu ▸ Dokument, Tabelle oder Präsentation funktioniert, ebenso die Kacheln Neu im Startfenster und der Reiter Datei des Editors.
 
 **`Libera.app` unter macOS.** `build/macos/macos-app.sh` baut sie. Sie öffnet ein Dokument per Doppelklick oder wenn es auf ihr Dock-Symbol gezogen wird, erscheint unter *Öffnen mit* und zeigt das Libera-Zeichen im Dock. Sie ist aber ein Starter um den Interpreter, mit dem sie gebaut wurde (nichts ist eingebettet, signiert oder notarisiert), und damit noch nichts, was man jemand anderem geben kann.
 
@@ -76,7 +76,7 @@ Wenn Sie auf etwas stoßen, das *nicht* auf dieser Liste steht, [melden Sie es u
 
 ### Hilfe
 
-Es gibt ein Menü **Help**, auf allen Plattformen, und es öffnet diese Website in Ihrem Browser. *In* der Anwendung gibt es keine Hilfe, die ohne Netz lesbar wäre. Das Upstream-Projekt liefert ein vollständiges Handbuch. Libera Suite lässt es weg: Es beschreibt ONLYOFFICE und ist in acht Sprachen 84 MB groß. Eine Offline-Hilfe kommt, sobald unsere eigene Dokumentation umfangreich genug ist, um sie mitzuliefern.
+Es gibt ein Menü **Hilfe**, auf allen Plattformen, und es öffnet diese Website in Ihrem Browser. *In* der Anwendung gibt es keine Hilfe, die ohne Netz lesbar wäre. Das Upstream-Projekt liefert ein vollständiges Handbuch. Libera Suite lässt es weg: Es beschreibt ONLYOFFICE und ist in acht Sprachen 84 MB groß. Eine Offline-Hilfe kommt, sobald unsere eigene Dokumentation umfangreich genug ist, um sie mitzuliefern.
 
 ### Rechtschreibprüfung
 

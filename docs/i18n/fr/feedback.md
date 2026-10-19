@@ -21,6 +21,6 @@ Certains manques sont connus et n'ont pas besoin d'être signalés. Voyez l'[Ét
 
 ## Où l'envoyer
 
-Envoyez-le sur [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), là où mène aussi Help ▸ Suggest a feature depuis l'application. Vous pouvez écrire en français.
+Envoyez-le sur [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), là où mène aussi Fichier ▸ Proposer une fonctionnalité depuis l'application. Vous pouvez écrire en français.
 
 Ce dépôt est le miroir public : il contient le code source, sans les notes internes. Si vous préférez ne pas l'utiliser, joignez-nous par [abilian.com](https://abilian.com/).

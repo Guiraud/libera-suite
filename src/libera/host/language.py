@@ -17,17 +17,19 @@ on Windows, which answers `('English_United States', '1252')`.
 from __future__ import annotations
 
 import functools
+import json
 import os
 import re
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from libera.payload import locate
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
 ENGLISH = "en"
+# The languages our own strings are in, one catalogue each under locale/,
+# keyed by the English. They are the documentation's editions too.
+TRANSLATED = ("fr", "de", "it", "es")
+CATALOGUES = Path(__file__).with_name("locale")
 
 
 @functools.cache
@@ -38,6 +40,37 @@ def get_language() -> str:
     """
     chosen = (locate.read_config_string("ui_language") or "").strip()
     return chosen or _ask_system_language() or ENGLISH
+
+
+def get_interface_language() -> str:
+    """The language of our own strings and of the documentation we link to:
+    the editor's, when it is one of TRANSLATED, else English. `en-FR` is `en`."""
+    base = get_language().split("-")[0].lower()
+    return base if base in TRANSLATED else ENGLISH
+
+
+def translate(english: str, **values: object) -> str:
+    """One of our strings in the interface language, with its `{name}`s filled.
+
+    Keyed by the English, which is also the answer when a catalogue lacks it:
+    test_catalogues fails the build before that can ship.
+    """
+    text = get_catalogue().get(english, english)
+    return text.format(**values) if values else text
+
+
+def get_catalogue() -> dict[str, str]:
+    """Every string of ours, English to the interface language, for the pages
+    that look them up themselves: the start window and the bridge."""
+    return read_catalogue(get_interface_language())
+
+
+@functools.cache
+def read_catalogue(lang: str) -> dict[str, str]:
+    """The catalogue for `lang`, English to that language; empty for English."""
+    if lang == ENGLISH:
+        return {}
+    return json.loads((CATALOGUES / f"{lang}.json").read_text(encoding="utf-8"))
 
 
 @functools.cache

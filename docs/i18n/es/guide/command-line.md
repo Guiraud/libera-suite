@@ -47,4 +47,4 @@ El Flatpak lo hace por sí mismo.
 | `-v`, `-vv`, `-vvv` | decir qué está haciendo; cómo; cada petición del editor |
 | `-q` | solo errores |
 
-`libera --help` enumera todas las opciones.
+`libera --help` enumera todas las opciones, y `libera --convert --help` las del conversor.

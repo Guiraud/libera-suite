@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, TypedDict, cast
 import webview
 import webview.dom
 
-from libera.host import apps, convert, server
+from libera.host import apps, convert, language, server
 from libera.host.session import SESSIONS, NotReadyError, lookup
 
 if sys.platform == "darwin":
@@ -137,11 +137,11 @@ def copy_untitled(blank: Path, base: Path) -> Path:
     Named after the blank it came from, so File > New in Tables makes a
     spreadsheet and not an Untitled.docx that Tables cannot open.
     """
-    n = 1
-    candidate = base / f"Untitled{blank.suffix}"
+    n, untitled = 1, language.translate("Untitled")
+    candidate = base / f"{untitled}{blank.suffix}"
     while candidate.exists():
         n += 1
-        candidate = base / f"Untitled {n}{blank.suffix}"
+        candidate = base / f"{untitled} {n}{blank.suffix}"
     base.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(blank, candidate)
     return candidate

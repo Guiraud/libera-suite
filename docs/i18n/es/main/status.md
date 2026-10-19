@@ -11,19 +11,19 @@ La interfaz de Libera Suite está en inglés: los menús y botones se citan aqu�
 | **Cuatro editores** | Windows 10 y 11 en x64, Linux en x86_64 y arm64, macOS en Apple Silicon. Words, Tables y Slides editan; Diagrams lee archivos de Visio. |
 | **Abrir y guardar** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
 | **Exportar** | Save As ofrece una lista de formatos para cada editor, PDF incluido. Cada formato ofrecido se comprueba con una conversión real, cuyo texto se vuelve a leer. |
-| **Imágenes** | Se conservan al abrir y al guardar; Insert ▸ Image funciona. |
+| **Imágenes** | Se conservan al abrir y al guardar; Insertar ▸ Imagen funciona. |
 | **Imprimir** | Genera un PDF, pregunta dónde guardarlo y lo abre en tu visor de PDF. |
 | **Corrección ortográfica** | Cinco idiomas, con sugerencias. Más abajo, los detalles. |
 | **En tu idioma** | Los editores siguen el idioma de tu sistema, y un documento nuevo parte de la plantilla en blanco de tu región: papel A4 en todas partes salvo en Estados Unidos, y corrección ortográfica en tu idioma. La barra de menús, la ventana de inicio y los diálogos siguen en inglés. |
-| **Documentos recientes** | File ▸ Open Recent recuerda los últimos 20. |
-| **Varios documentos a la vez** | También de tipos distintos, una ventana para cada uno: desde File ▸ New o File ▸ Open, con doble clic en el gestor de archivos o con `libera *.docx`. El tipo de archivo elige el editor. |
+| **Documentos recientes** | Archivo ▸ Abrir reciente recuerda los últimos 20. |
+| **Varios documentos a la vez** | También de tipos distintos, una ventana para cada uno: desde Archivo ▸ Nuevo o Archivo ▸ Abrir, con doble clic en el gestor de archivos o con `libera *.docx`. El tipo de archivo elige el editor. |
 | **En el menú Inicio y en el menú de aplicaciones** | En Windows, el instalador añade Libera Suite al menú Inicio y al escritorio, y la incluye en *Abrir con* del Explorador de archivos. En Linux, el Flatpak la añade al menú de aplicaciones con su icono y sus asociaciones de archivos; `libera --launcher-install` hace lo mismo con cualquier otra instalación. |
 | **Una ventana de inicio** | `libera` sin argumentos: documento nuevo, abrir, documentos recientes y procedencia de los editores. |
 | **Recuperación tras un cierre inesperado** | Los cambios sin guardar se te ofrecen la próxima vez que abres el documento. |
 | **Un documento abierto en otro lugar** | Si LibreOffice u otra instancia de Libera Suite ya lo tiene abierto, se marca como *bloqueado para edición*: puedes leerlo y modificarlo, y al guardar se pregunta dónde, de modo que el archivo de la otra instancia nunca se sobrescribe. Abrir un documento que ya muestra una ventana trae esa ventana al frente. Microsoft Office y Libera Suite no ven los bloqueos del otro: un documento abierto en Word no está protegido. |
-| **Al cerrar, pregunta** | Una ventana con cambios sin guardar ofrece Save, Don't Save o Cancel. |
+| **Al cerrar, pregunta** | Una ventana con cambios sin guardar ofrece Guardar, No guardar o Cancelar. |
 | **Una barra de menús** | File, Edit, View y Help en todas las plataformas. macOS añade Window junto con los atajos habituales. |
-| **Acerca de** | Quién escribió los editores y con qué licencia: `File ▸ About` en el editor, `Help ▸ About Libera Suite` en Linux y Windows. macOS lo pone en el menú de la aplicación. |
+| **Acerca de** | Quién escribió los editores y con qué licencia: `Archivo ▸ Acerca de` en el editor, `Ayuda ▸ Acerca de Libera Suite` en Linux y Windows. macOS lo pone en el menú de la aplicación. |
 | **Los ajustes se conservan** | El tema, las unidades, el idioma de la corrección y ajustes similares siguen ahí tras reiniciar. |
 | **Instalación de los editores** | Desde el servidor, o desde una carpeta local de artefactos compilados. En ambos casos, cada artefacto se comprueba con las huellas incluidas en la aplicación. |
 
@@ -45,7 +45,7 @@ Si te encuentras con algo que *no* está en esta lista, [cuéntanoslo](../feedba
 
 ## Hecho en parte
 
-**La barra de menús en Linux y Windows.** Está dibujada en la ventana, con File, Edit, View y Help; cada elemento funciona. Ninguno muestra un atajo de teclado, pero las teclas habituales funcionan: Ctrl-N crea un documento nuevo del mismo tipo, Ctrl-O abre uno, Ctrl-W cierra la ventana (preguntando antes por los cambios sin guardar), y los atajos propios del editor, Ctrl-S, Ctrl-Mayús-S (Save As), Ctrl-P y Ctrl-Z, también funcionan. En Windows, Ctrl-N, Ctrl-O y Ctrl-W aún no se han comprobado en una máquina real. File ▸ New ▸ Document, Spreadsheet o Presentation funciona, igual que las tarjetas New de la ventana de inicio y la pestaña File del editor.
+**La barra de menús en Linux y Windows.** Está dibujada en la ventana, con Archivo, Edición, Ver y Ayuda; cada elemento funciona. Ninguno muestra un atajo de teclado, pero las teclas habituales funcionan: Ctrl-N crea un documento nuevo del mismo tipo, Ctrl-O abre uno, Ctrl-W cierra la ventana (preguntando antes por los cambios sin guardar), y los atajos propios del editor, Ctrl-S, Ctrl-Mayús-S (Guardar como), Ctrl-P y Ctrl-Z, también funcionan. En Windows, Ctrl-N, Ctrl-O y Ctrl-W aún no se han comprobado en una máquina real. Archivo ▸ Nuevo ▸ Documento, Hoja de cálculo o Presentación funciona, igual que las tarjetas Nuevo de la ventana de inicio y la pestaña Archivo del editor.
 
 **`Libera.app` en macOS.** `build/macos/macos-app.sh` la compila. Abre un documento con doble clic o soltado sobre su icono del Dock, aparece en *Abrir con* y muestra la marca de Libera en el Dock. Pero es un lanzador alrededor del intérprete con el que se compiló (no incluye, firma ni notariza nada): todavía no es algo que se pueda dar a otra persona.
 
@@ -76,7 +76,7 @@ Si te encuentras con algo que *no* está en esta lista, [cuéntanoslo](../feedba
 
 ### Ayuda
 
-Hay un menú **Help**, en todas las plataformas, que abre este sitio en tu navegador. No hay ayuda *dentro* de la aplicación, donde se podría leer sin conexión. El proyecto original incluye un manual completo. Libera Suite no lo incluye: documenta ONLYOFFICE y ocupa 84 MB en ocho idiomas. La ayuda sin conexión llegará cuando nuestra propia documentación sea lo bastante amplia como para distribuirla.
+Hay un menú **Ayuda**, en todas las plataformas, que abre este sitio en tu navegador. No hay ayuda *dentro* de la aplicación, donde se podría leer sin conexión. El proyecto original incluye un manual completo. Libera Suite no lo incluye: documenta ONLYOFFICE y ocupa 84 MB en ocho idiomas. La ayuda sin conexión llegará cuando nuestra propia documentación sea lo bastante amplia como para distribuirla.
 
 ### Corrección ortográfica
 

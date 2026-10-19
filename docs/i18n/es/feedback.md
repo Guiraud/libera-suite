@@ -21,6 +21,6 @@ Algunas carencias ya se conocen y no hace falta informar de ellas. Consulta [Qu�
 
 ## Dónde enviarlo
 
-Envíalo a [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), que es también adonde lleva Help ▸ Suggest a feature desde la aplicación. Puedes escribir en inglés o en francés.
+Envíalo a [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), que es también adonde lleva Archivo ▸ Sugerir una función desde la aplicación. Puedes escribir en inglés o en francés.
 
 Ese repositorio es la réplica pública: contiene el código fuente, sin las notas internas. Si prefieres no usarlo, contacta con nosotros a través de [abilian.com](https://abilian.com/).

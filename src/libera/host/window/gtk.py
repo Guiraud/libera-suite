@@ -14,6 +14,7 @@ from __future__ import annotations
 import threading
 from typing import TYPE_CHECKING, Any
 
+from libera.host import language
 from libera.host.window.portable import (
     Answer,
     Question,
@@ -77,7 +78,7 @@ def tell(title: str, message: str, parent: Window | None) -> None:
     _run_dialog(
         title,
         message,
-        [("OK", int(_import_gtk().ResponseType.OK))],
+        [(language.translate("OK"), int(_import_gtk().ResponseType.OK))],
         parent,
         asking=False,
     )

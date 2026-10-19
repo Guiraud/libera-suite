@@ -21,6 +21,6 @@ Some things are known to be missing and do not need reporting. See [What works t
 
 ## Where to send it
 
-Send it to [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), which is also where Help ▸ Suggest a feature goes from inside the application.
+Send it to [github.com/abilian/libera-suite/issues](https://github.com/abilian/libera-suite/issues), which is also where File ▸ Suggest a Feature goes from inside the application.
 
 That repository is the public mirror: it holds the source, without the internal notes. If you would rather not use it, reach us through [abilian.com](https://abilian.com/).

@@ -58,11 +58,14 @@ def serve_bridge(r: Request) -> Response:
     #   LIBERA_LOCKED_BY   who else has the document open, from their lock
     #                       file, or null: the editor opens it in its locked
     #                       mode (locking.hold, bridge-desktop LocalStartOpen).
+    #   LIBERA_STRINGS     our strings in the interface language, English to
+    #                       it, for the few the bridge shows (bridge-desktop tr).
     prelude = (
         f"var LIBERA_SHOT = {str(session.shot is not None).lower()};\n"
         f"var LIBERA_OWNED_KEYS = {json.dumps(list_owned_keys())};\n"
         f"var LIBERA_PAGE_KEYS = {json.dumps(list_page_keys())};\n"
         f"var LIBERA_LOCKED_BY = {json.dumps(session.locked_by)};\n"
+        f"var LIBERA_STRINGS = {json.dumps(language.get_catalogue())};\n"
     )
     return Response(body=prelude.encode() + source, content_type=JAVASCRIPT)
 

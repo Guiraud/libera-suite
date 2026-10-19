@@ -22,7 +22,7 @@ import pytest
 from support import build_roots, make_sample_docx
 
 from libera import logs, payload
-from libera.host import instance, session
+from libera.host import instance, language, session
 from libera.host.server import diagnostics
 from libera.payload import fonts
 
@@ -172,8 +172,14 @@ def pytest_runtest_setup(item):
 
     A hook rather than an autouse fixture, like the teardown below. Tests of
     the hand-off itself point it back at a directory of their own.
+
+    And in English, whatever this machine's language: our strings are looked
+    up in it, and a test that reads "Untitled.docx" failed on a French Mac.
+    Tests of another language say which.
     """
     instance.get_path = lambda: NO_INSTANCE
+    language._ask_system_language = lambda: language.ENGLISH
+    language.get_language.cache_clear()
 
 
 def pytest_runtest_teardown(item):

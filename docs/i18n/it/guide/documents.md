@@ -23,41 +23,41 @@ Libera Suite apre **un documento per finestra**, quindi un carattere jolly della
 libera ~/Documents/*.docx     # una finestra ciascuno
 ```
 
-Puoi anche aprire un documento dall'editor, con **File ▸ Open** o **File ▸ Open Recent**. Entrambi aprono una nuova finestra e lasciano stare il documento già aperto.
+Puoi anche aprire un documento dall'editor, con **File ▸ Apri** o **File ▸ Apri recenti**. Entrambi aprono una nuova finestra e lasciano stare il documento già aperto.
 
 **Un documento trascinato** su una finestra di Libera Suite, compresa la finestra iniziale, si apre in una finestra tutta sua. Un'immagine trascinata su un documento vi viene inserita.
 
-**File ▸ New** propone, da qualsiasi finestra, un documento (Document), un foglio di calcolo (Spreadsheet) o una presentazione (Presentation), ciascuno nella propria finestra. Su macOS, `⌘N` ne crea uno dello stesso tipo della finestra in primo piano. Nell'editor, **File ▸ Create New** ti chiede quale dei tre creare.
+**File ▸ Nuovo** propone, da qualsiasi finestra, un documento, un foglio di calcolo o una presentazione, ciascuno nella propria finestra. Su macOS, `⌘N` ne crea uno dello stesso tipo della finestra in primo piano. Nell'editor, **File ▸ Crea nuovo** ti chiede quale dei tre creare.
 
 ## Salvare
 
-**File ▸ Save** riscrive il documento che hai aperto. **File ▸ Save As** chiede dove metterlo. Da quel momento è quello il documento che stai modificando.
+**File ▸ Salva** riscrive il documento che hai aperto. **File ▸ Salva con nome** chiede dove metterlo. Da quel momento è quello il documento che stai modificando.
 
 Il salvataggio riconverte il formato di lavoro dell'editor in un vero documento, il che richiede circa un secondo.
 
 ## Esportare
 
-Save As serve anche a esportare: la sua finestra ha un elenco **File Format**.
+Salva con nome serve anche a esportare: la sua finestra ha un elenco **Formato file**.
 
 | | |
 | :--- | :--- |
-| Word Document | `.docx` |
-| Word Template | `.dotx` |
-| OpenDocument Text | `.odt` |
-| OpenDocument Template | `.ott` |
+| Documento di Word | `.docx` |
+| Modello di Word | `.dotx` |
+| Testo OpenDocument | `.odt` |
+| Modello OpenDocument | `.ott` |
 | PDF | `.pdf` |
 | Rich Text Format | `.rtf` |
 | HTML | `.html` |
 | Markdown | `.md` |
 | EPUB | `.epub` |
 | FictionBook | `.fb2` |
-| Plain Text | `.txt` |
+| Testo normale | `.txt` |
 
 Scegliere un formato rinomina il file nella finestra. Le due cose non possono divergere: non puoi ottenere un file ODT chiamato `.docx`.
 
 Il convertitore non sa scrivere tutti i formati che sa leggere. In particolare `.doc` si apre ma non si salva; usa `.docx` o `.rtf` per un documento che deve tornare a una vecchia versione di Word.
 
-Se cerchi una voce **Download As** nel menu File, non c'è. Gli editor la nascondono quando funzionano come applicazione desktop offline e mettono Save As al suo posto: la stessa funzione, una voce più in alto.
+Se cerchi una voce **Scarica come** nel menu File, non c'è. Gli editor la nascondono quando funzionano come applicazione desktop offline e mettono Salva con nome al suo posto: la stessa funzione, una voce più in alto.
 
 ### Dalla riga di comando {#from-the-command-line}
 
@@ -74,9 +74,9 @@ Un file che ha già il nuovo nome viene sostituito. Il documento convertito non 
 
 ## La barra dei menu
 
-Su Linux e Windows la barra sta nella finestra: **File**, **Edit**, **View** e **Help**, quest'ultimo con *Libera Help* e *About Libera Suite*. Da ciò che il menu offre lì derivano tre differenze. Nessuna voce mostra una scorciatoia da tastiera, ma Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Maiusc-S, Ctrl-P e Ctrl-Z fanno lì quello che i tasti ⌘ qui sotto fanno su un Mac. **Open Recent** viene costruito all'avvio dell'applicazione: un documento aperto oggi vi compare domani. Nulla viene disattivato: Save senza nulla da salvare non fa nulla.
+Su Linux e Windows la barra sta nella finestra: **File**, **Modifica**, **Visualizza** e **Aiuto**, quest'ultimo con *Guida di Libera* e *Informazioni su Libera Suite*. Da ciò che il menu offre lì derivano tre differenze. Nessuna voce mostra una scorciatoia da tastiera, ma Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Maiusc-S, Ctrl-P e Ctrl-Z fanno lì quello che i tasti ⌘ qui sotto fanno su un Mac. **Apri recenti** viene costruito all'avvio dell'applicazione: un documento aperto oggi vi compare domani. Nulla viene disattivato: Salva senza nulla da salvare non fa nulla.
 
-Su macOS è una vera barra dei menu del Mac, con le stesse voci più **Window**. Le solite scorciatoie vi funzionano, che l'editor abbia il focus o no:
+Su macOS è una vera barra dei menu del Mac, con le stesse voci più **Finestra**. Le solite scorciatoie vi funzionano, che l'editor abbia il focus o no:
 
 | | |
 | :--- | :--- |
@@ -90,25 +90,25 @@ Su macOS è una vera barra dei menu del Mac, con le stesse voci più **Window**.
 | `⌘+` `⌘-` `⌘0` | Ingrandisci, riduci, adatta la pagina |
 | `⌘8` | Segni di formattazione |
 
-**File ▸ Open Recent** viene ricostruito ogni volta che lo apri. Il menu **Window** elenca tutti i documenti aperti.
+**File ▸ Apri recenti** viene ricostruito ogni volta che lo apri. Il menu **Finestra** elenca tutti i documenti aperti.
 
-Save, Undo e Redo sono disattivati quando non c'è nulla da salvare o annullare. L'editor rifiuta questi comandi senza dire nulla: una voce di menu rimasta attiva sembrerebbe guasta.
+Salva, Annulla e Ripeti sono disattivati quando non c'è nulla da salvare o annullare. L'editor rifiuta questi comandi senza dire nulla: una voce di menu rimasta attiva sembrerebbe guasta.
 
 ## Chiudere
 
-Chiudere una finestra con modifiche non salvate chiede prima cosa fare: **Save**, **Don't Save** o **Cancel**.
+Chiudere una finestra con modifiche non salvate chiede prima cosa fare: **Salva**, **Non salvare** o **Annulla**.
 
-Scegliere Don't Save non è definitivo. Libera Suite conserva ciò che hai scritto e te lo ripropone alla successiva apertura di quel documento.
+Scegliere Non salvare non è definitivo. Libera Suite conserva ciò che hai scritto e te lo ripropone alla successiva apertura di quel documento.
 
 ## Stampare
 
-**File ▸ Print**, o il pulsante della stampante, genera un PDF del documento, chiede dove conservarlo (nella cartella del documento, se non ne scegli un'altra) e lo apre nel lettore di PDF del tuo sistema, dove si trova la finestra di stampa.
+**File ▸ Stampa**, o il pulsante della stampante, genera un PDF del documento, chiede dove conservarlo (nella cartella del documento, se non ne scegli un'altra) e lo apre nel lettore di PDF del tuo sistema, dove si trova la finestra di stampa.
 
 Per ora la scelta è questa: il lettore che hai già ti offre intervalli di pagine, formato della carta, ridimensionamento e un'anteprima, e nessuna di queste cose la faremmo meglio in una prima versione.
 
 ## Immagini
 
-Le immagini incorporate in un documento vengono conservate all'apertura e al salvataggio. **Insert ▸ Image** aggiunge un'immagine dal disco.
+Le immagini incorporate in un documento vengono conservate all'apertura e al salvataggio. **Inserisci ▸ Immagine** aggiunge un'immagine dal disco.
 
 ## Controllo ortografico {#spell-checking}
 

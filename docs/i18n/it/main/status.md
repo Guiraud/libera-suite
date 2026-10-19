@@ -11,19 +11,19 @@ L'interfaccia di Libera Suite è in inglese: menu e pulsanti sono citati qui com
 | **Quattro editor** | Windows 10 e 11 su x64, Linux su x86_64 e arm64, macOS su Apple Silicon. Words, Tables e Slides modificano; Diagrams legge i file Visio. |
 | **Aprire e salvare** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
 | **Esportare** | Save As propone un elenco di formati per ogni editor, PDF compreso. Ogni formato proposto è verificato con una conversione reale, di cui si rilegge il testo. |
-| **Immagini** | Conservate all'apertura e al salvataggio; Insert ▸ Image funziona. |
+| **Immagini** | Conservate all'apertura e al salvataggio; Inserisci ▸ Immagine funziona. |
 | **Stampare** | Genera un PDF, chiede dove conservarlo e lo apre nel tuo lettore di PDF. |
 | **Controllo ortografico** | Cinque lingue, con suggerimenti. Vedi sotto. |
 | **Nella tua lingua** | Gli editor seguono la lingua del tuo sistema, e un nuovo documento parte dal modello vuoto della tua regione: carta A4 ovunque tranne che negli Stati Uniti, e controllo ortografico nella tua lingua. La barra dei menu, la finestra iniziale e le finestre di dialogo sono ancora in inglese. |
-| **Documenti recenti** | File ▸ Open Recent ricorda gli ultimi 20. |
-| **Più documenti insieme** | Anche di tipi diversi, una finestra ciascuno: da File ▸ New o File ▸ Open, con un doppio clic nel gestore dei file o con `libera *.docx`. Il tipo di file sceglie l'editor. |
+| **Documenti recenti** | File ▸ Apri recenti ricorda gli ultimi 20. |
+| **Più documenti insieme** | Anche di tipi diversi, una finestra ciascuno: da File ▸ Nuovo o File ▸ Apri, con un doppio clic nel gestore dei file o con `libera *.docx`. Il tipo di file sceglie l'editor. |
 | **Nel menu Start e nel menu delle applicazioni** | Su Windows, il programma di installazione aggiunge Libera Suite al menu Start e al desktop, e la inserisce in *Apri con* di Esplora file. Su Linux, il Flatpak la aggiunge al menu delle applicazioni con la sua icona e le associazioni dei file; `libera --launcher-install` fa lo stesso per qualsiasi altra installazione. |
 | **Una finestra iniziale** | `libera` da solo: nuovo documento, apri, documenti recenti e provenienza degli editor. |
 | **Recupero dopo un crash** | Le modifiche non salvate ti vengono riproposte alla successiva apertura del documento. |
 | **Un documento aperto altrove** | Se LibreOffice o un'altra istanza di Libera Suite lo ha già aperto, viene segnato come *bloccato per la modifica*: puoi leggerlo e modificarlo, e il salvataggio chiede dove, così il file dell'altra istanza non viene mai sovrascritto. Aprire un documento già mostrato in una finestra porta quella finestra in primo piano. Microsoft Office e Libera Suite non vedono i blocchi l'uno dell'altro: un documento aperto in Word non è protetto. |
-| **La chiusura chiede conferma** | Una finestra con modifiche non salvate propone Save, Don't Save o Cancel. |
+| **La chiusura chiede conferma** | Una finestra con modifiche non salvate propone Salva, Non salvare o Annulla. |
 | **Una barra dei menu** | File, Edit, View e Help su tutte le piattaforme. macOS aggiunge Window insieme alle solite scorciatoie. |
-| **Informazioni** | Chi ha scritto gli editor e con quale licenza: `File ▸ About` nell'editor, `Help ▸ About Libera Suite` su Linux e Windows. macOS lo mette nel menu dell'applicazione. |
+| **Informazioni** | Chi ha scritto gli editor e con quale licenza: `File ▸ Informazioni su` nell'editor, `Aiuto ▸ Informazioni su Libera Suite` su Linux e Windows. macOS lo mette nel menu dell'applicazione. |
 | **Le impostazioni restano** | Tema, unità di misura, lingua del controllo ortografico e simili sono ancora impostati dopo un riavvio. |
 | **Installazione degli editor** | Dal server, oppure da una cartella locale di artefatti costruiti. In entrambi i casi ogni artefatto viene verificato con le impronte fornite nell'applicazione. |
 
@@ -45,7 +45,7 @@ Se incontri qualcosa che *non* è in questo elenco, [segnalacelo](../feedback.md
 
 ## In parte costruito
 
-**La barra dei menu su Linux e Windows.** È disegnata nella finestra, con File, Edit, View e Help; ogni voce funziona. Nessuna mostra una scorciatoia, ma i tasti consueti funzionano: Ctrl-N crea un nuovo documento dello stesso tipo, Ctrl-O ne apre uno, Ctrl-W chiude la finestra (chiedendo prima delle modifiche non salvate), e anche le scorciatoie proprie dell'editor, Ctrl-S, Ctrl-Maiusc-S (Save As), Ctrl-P e Ctrl-Z, funzionano. Su Windows, Ctrl-N, Ctrl-O e Ctrl-W non sono ancora stati verificati su una macchina reale. File ▸ New ▸ Document, Spreadsheet o Presentation funziona, così come i riquadri New della finestra iniziale e la scheda File dell'editor.
+**La barra dei menu su Linux e Windows.** È disegnata nella finestra, con File, Modifica, Visualizza e Aiuto; ogni voce funziona. Nessuna mostra una scorciatoia, ma i tasti consueti funzionano: Ctrl-N crea un nuovo documento dello stesso tipo, Ctrl-O ne apre uno, Ctrl-W chiude la finestra (chiedendo prima delle modifiche non salvate), e anche le scorciatoie proprie dell'editor, Ctrl-S, Ctrl-Maiusc-S (Salva con nome), Ctrl-P e Ctrl-Z, funzionano. Su Windows, Ctrl-N, Ctrl-O e Ctrl-W non sono ancora stati verificati su una macchina reale. File ▸ Nuovo ▸ Documento, Foglio di calcolo o Presentazione funziona, così come i riquadri Nuovo della finestra iniziale e la scheda File dell'editor.
 
 **`Libera.app` su macOS.** `build/macos/macos-app.sh` la costruisce. Apre un documento con un doppio clic o trascinato sulla sua icona del Dock, compare in *Apri con* e mostra il marchio Libera nel Dock. Ma è un avviatore attorno all'interprete con cui è stata costruita (nulla è incorporato, firmato o autenticato): non è ancora qualcosa da dare a qualcun altro.
 
@@ -76,7 +76,7 @@ Se incontri qualcosa che *non* è in questo elenco, [segnalacelo](../feedback.md
 
 ### Guida
 
-C'è un menu **Help**, su tutte le piattaforme, che apre questo sito nel tuo browser. Nessuna guida si trova *dentro* l'applicazione, dove sarebbe leggibile con la macchina offline. Il progetto originale fornisce un manuale completo. Libera Suite non lo include: descrive ONLYOFFICE e pesa 84 MB in otto lingue. La guida offline arriverà quando la nostra documentazione sarà abbastanza ampia da essere distribuita.
+C'è un menu **Aiuto**, su tutte le piattaforme, che apre questo sito nel tuo browser. Nessuna guida si trova *dentro* l'applicazione, dove sarebbe leggibile con la macchina offline. Il progetto originale fornisce un manuale completo. Libera Suite non lo include: descrive ONLYOFFICE e pesa 84 MB in otto lingue. La guida offline arriverà quando la nostra documentazione sarà abbastanza ampia da essere distribuita.
 
 ### Controllo ortografico
 

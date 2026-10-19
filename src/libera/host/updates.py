@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from importlib import metadata
 from typing import TYPE_CHECKING
 
-from libera.host import hooks, session
+from libera.host import hooks, language, session
 from libera.payload import installer, locate
 
 if TYPE_CHECKING:
@@ -51,22 +51,36 @@ def find_channel() -> Channel:
     if os.environ.get("FLATPAK_ID"):
         return Channel(
             "latest",
-            "Run the install command again:\n\n"
-            f"curl -fsSL {installer.DEFAULT_ORIGIN}/install.sh | sh",
+            language.translate(
+                "Run the install command again:\n\n{command}",
+                command=f"curl -fsSL {installer.DEFAULT_ORIGIN}/install.sh | sh",
+            ),
         )
     # The installer's PyInstaller build. Its pointer moves only when the
     # Windows installer is published, which can be days after the rest.
     if sys.platform == "win32" and getattr(sys, "frozen", False):
         return Channel(
             "latest-windows",
-            f"In PowerShell:\n\nirm {installer.DEFAULT_ORIGIN}/install.ps1 | iex",
+            language.translate(
+                "In PowerShell:\n\n{command}",
+                command=f"irm {installer.DEFAULT_ORIGIN}/install.ps1 | iex",
+            ),
         )
     if "/Cellar/" in sys.prefix:
-        return Channel("latest", "In a terminal:\n\nbrew upgrade libera")
+        return Channel(
+            "latest",
+            language.translate(
+                "In a terminal:\n\n{command}", command="brew upgrade libera"
+            ),
+        )
     return Channel(
         "latest",
-        "Update it the way you installed it: pipx upgrade libera, "
-        "uv tool upgrade libera, or the install command again.",
+        language.translate(
+            "Update it the way you installed it: {pipx}, {uv}, "
+            "or the install command again.",
+            pipx="pipx upgrade libera",
+            uv="uv tool upgrade libera",
+        ),
     )
 
 
@@ -104,8 +118,10 @@ def check(current: str, origin: str, state: Path, now: float) -> None:
     session.write_atomically(state, json.dumps(seen))
     if announce:
         hooks.shell.tell(
-            f"Libera Suite {latest} is available",
-            f"This is version {current}. {channel.how}",
+            language.translate("Libera Suite {version} is available", version=latest),
+            language.translate("This is version {version}.", version=current)
+            + " "
+            + channel.how,
         )
 
 

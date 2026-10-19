@@ -99,6 +99,14 @@ cp "$OUT/core/tools/allfontsgen$EXE" "$STAGE/bin/tools/"
 find "$STAGE/bin" \( -name 'libicui18n*' -o -name 'libicuio*' -o -name 'libicutest*' \
     -o -name 'libicutu*' -o -name 'icuin[0-9]*.dll' -o -name 'icuio[0-9]*.dll' \
     -o -name 'icutest[0-9]*.dll' -o -name 'icutu[0-9]*.dll' \) -exec rm -f {} +
+# The CJK character maps of core's PDF reader, 2.9 MB of every core download:
+# nothing here reads a PDF while the viewer is parked (notes/22-pdf.md), and
+# writing one does not open them. Back with the viewer. And on macOS the
+# second copy of the signature library, beside the framework that x2t and
+# libx2tlib link: nothing names the dylib. Measured with smoke, every
+# integration and e2e test passing without both.
+rm -f "$STAGE/bin/cmap.bin"
+[ -d "$STAGE/bin/ooxmlsignature.framework" ] && rm -f "$STAGE/bin"/libooxmlsignature*.dylib
 # Local symbols, which nothing reads at run time: 28 MB of the 187 on macOS
 # (libx2tlib alone 83 to 65 MB), measured with every integration and e2e test
 # passing on the result. There is no debug information left to take. A file

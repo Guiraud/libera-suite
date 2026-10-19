@@ -47,4 +47,4 @@ Le Flatpak s'en charge lui-même.
 | `-v`, `-vv`, `-vvv` | dire les actions en cours ; leur détail ; chaque requête de l'éditeur |
 | `-q` | les erreurs seulement |
 
-`libera --help` liste toutes les options.
+`libera --help` liste toutes les options, et `libera --convert --help` celles du convertisseur.

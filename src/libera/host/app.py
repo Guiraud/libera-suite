@@ -26,6 +26,7 @@ from libera.host import (
     apps,
     hooks,
     instance,
+    language,
     locking,
     menu,
     opening,
@@ -222,11 +223,22 @@ def run(
             private_mode=False,
             storage_path=str(payload_mod.get_state_dir()),
             menu=bar,
+            localization=translate_pywebview(),
         )
         native.stay_open()
     finally:
         threading.excepthook = previous_hook
         _let_go_of_everything()
+
+
+def translate_pywebview() -> dict[str, str]:
+    """pywebview's own strings -- its Edit and View menus, the application
+    menu's Hide and Quit, OK and Cancel, the Save panel's title -- through our
+    catalogue. menu.macos finds the Edit and View menus by these titles."""
+    return {
+        key: language.translate(english)
+        for key, english in webview.localization.original_localization.items()
+    }
 
 
 def _let_go_of_everything() -> None:
@@ -248,8 +260,11 @@ def _say_thread_failed(args: threading.ExceptHookArgs) -> None:
     where = args.thread.name if args.thread else "a thread"
     logger.error("%s failed", where, exc_info=args.exc_value)
     dialogs.say(
-        "Libera Suite ran into a problem",
-        f"{args.exc_value or args.exc_type.__name__}. The details are in the log.",
+        language.translate("Libera Suite ran into a problem"),
+        language.translate(
+            "{error}. The details are in the log.",
+            error=args.exc_value or args.exc_type.__name__,
+        ),
     )
 
 
@@ -356,9 +371,13 @@ def _convert_behind(
     def failed(_error: ConversionError) -> None:
         # convert has logged what x2t said; the user needs to hear it too.
         dialogs.say(
-            f"Libera Suite could not open \u201c{document.name}\u201d",
-            "The converter could not read it: it may be damaged, or in a "
-            "format Libera Suite cannot open.",
+            language.translate(
+                "Libera Suite could not open “{name}”", name=document.name
+            ),
+            language.translate(
+                "The converter could not read it: it may be damaged, or in a "
+                "format Libera Suite cannot open."
+            ),
         )
         close_session_window(session)
 
