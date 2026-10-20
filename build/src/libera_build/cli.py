@@ -368,6 +368,10 @@ def app_windows(_args: argparse.Namespace) -> Steps:
     return [sh("windows/windows-app.sh")]
 
 
+def app_windows_gui_test(_args: argparse.Namespace) -> Steps:
+    return [sh("windows/gui-test.sh")]
+
+
 def given(args: argparse.Namespace, knob: Knob) -> str | None:
     """A knob's value: the option, else its environment variable, which keeps
     working for a command done in this process as it did for a script."""
@@ -721,6 +725,11 @@ def add_app(groups: Groups) -> None:
         p = g.command(name, summary, app_flatpak, ARCH_HERE, DIST)
         p.set_defaults(action=action)
     g.command("windows", "the Windows installer, on Windows", app_windows)
+    g.command(
+        "windows-gui-test",
+        "the suite's gui tier in a real window, on Windows, in the desktop session",
+        app_windows_gui_test,
+    )
 
 
 def add_linux(groups: Groups) -> None:

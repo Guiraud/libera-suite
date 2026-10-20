@@ -240,6 +240,7 @@ def script_for(options: LinuxOptions) -> str:
 
 def run(options: LinuxOptions, engine: Engine | None = None) -> int:
     engine = engine or Engine.here()
+    engine.refuse_remote()
     arch = options.arch or host_arch()
     image = engine.image(f"libera-test-linux-{arch}")
     build = engine.build_argv(image, REPO / "build" / "test-linux", arch=arch)

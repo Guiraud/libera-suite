@@ -15,7 +15,7 @@
 #     ~/.local/bin/libera                     the command
 #     ~/.local/share/libera/venv/             the virtualenv behind it
 #
-# and then asks `libera` to fetch its editor payload, which lands in the
+# and then asks `libera` to fetch its components, which land in the
 # platform data directory (~/Library/Application Support/Libera Suite on macOS,
 # ~/.local/share/libera on Linux, around the virtualenv). Nothing is written
 # outside $HOME and nothing asks for a password.
@@ -65,7 +65,7 @@ With options:
     --prefix DIR        install somewhere else (default: ~/.local)
     --channel flatpak   on Linux, the bundle: its own GTK and WebKit (default)
     --channel pip       the Python package instead, against the system GTK
-    --no-payload        install the command and skip the 120 MB download
+    --no-payload        install the command and skip the 90 MB download
     --origin URL        somewhere other than the public origin
     --help
 
@@ -74,7 +74,7 @@ keeps running: LIBERA_PREFIX, LIBERA_CHANNEL, NO_PAYLOAD, LIBERA_ORIGIN. An
 option wins over the variable.
 
 It writes to $PREFIX/bin/libera and $PREFIX/share/libera and nowhere else,
-then asks libera to fetch its editor payload into the platform data
+then asks libera to fetch its components into the platform data
 directory. Nothing goes outside $HOME and nothing asks for a password.
 
 Uninstalling is `rm -rf` on those two paths; `libera --payload-remove` drops
@@ -164,6 +164,16 @@ fi
 
 say "Libera Suite, on $os/$arch."
 
+# Linux arm64 stops at 0.4.1 for now: 0.5 had no arm64 builder, so it has no
+# arm64 Flatpak and no arm64 editors behind the wheel. Both paths below install
+# that version there instead of the latest; the wheel's installer names it
+# too (installer.LAST_RELEASE_FOR). Empty once a release builds arm64 again.
+PINNED=""
+if [ "$os" = linux ] && [ "$arch" = arm64 ]; then
+    PINNED=0.4.1
+    say "Linux arm64 stays on $PINNED: later releases have no arm64 build yet."
+fi
+
 # --- Linux gets the Flatpak, because the Python package cannot bring GTK -------
 #
 # `pip install libera` puts the host in place and cannot install GTK, WebKitGTK
@@ -242,6 +252,7 @@ install_flatpak() {
     case "$version" in
     "" | *[!0-9.]*) die "$ORIGIN/bundles/latest does not name a version ($version)" ;;
     esac
+    [ -z "$PINNED" ] || version="$PINNED"
 
     bundle="${TMPDIR:-/tmp}/libera-$version-$arch.flatpak"
     url="$ORIGIN/bundles/libera-$version-$arch.flatpak"
@@ -358,7 +369,8 @@ install_pip() {
     [ -x "$VENV/bin/python" ] || die "$VENV/bin/python is not there after venv"
 
     "$VENV/bin/python" -m pip install --quiet --upgrade pip >/dev/null 2>&1 || :
-    "$VENV/bin/python" -m pip install --quiet libera || die "pip install libera failed"
+    spec="libera${PINNED:+==$PINNED}"
+    "$VENV/bin/python" -m pip install --quiet "$spec" || die "pip install $spec failed"
 
     [ -x "$VENV/bin/libera" ] || die \
         "pip reported success and $VENV/bin/libera is not there."
@@ -389,7 +401,7 @@ install_payload() {
         say "    fetch it later with:  libera --payload-install"
         return 0
     fi
-    step "fetching the editor payload (about 120 MB)"
+    step "fetching its components (about 90 MB)"
     "$BIN/libera" --payload-install || die \
         "the payload did not install.
        The command is there; run \`libera --payload-install\` to retry."

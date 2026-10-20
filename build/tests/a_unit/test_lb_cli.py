@@ -11,7 +11,7 @@ import shlex
 from pathlib import Path
 
 import pytest
-from libera_build import bench, buildbox, cli, flatpak, linux, matrix, tidy
+from libera_build import bench, buildbox, cli, containers, flatpak, linux, matrix, tidy
 from libera_build.buildbox import BoxOptions
 from libera_build.cli import Step
 from libera_build.containers import host_arch
@@ -361,3 +361,16 @@ def test_a_dry_toolchain_install_installs_nothing():
     ]
     (step,) = cli.plan(["toolchain", "install", "--dry-run"])
     assert step.argv[-1] in {"-DryRun", "list"}
+
+
+def test_the_flatpak_takes_the_container_builds_payload_when_given_none(
+    monkeypatch, tmp_path
+):
+    """A Linux builder builds its payload in the container, so `out/dist` is
+    empty there: a hand-run `app flatpak` failed on a manifest it never had."""
+    monkeypatch.setattr(buildbox, "exported_dist", lambda arch: tmp_path / arch)
+    engine = containers.Engine("docker", selinux=False)
+
+    builder = flatpak.Builder(FlatpakOptions("build", arch="amd64"), engine)
+
+    assert builder.dist == tmp_path / "amd64"

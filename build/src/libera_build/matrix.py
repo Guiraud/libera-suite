@@ -129,6 +129,7 @@ def convert_in(
 
 def run(options: MatrixOptions, engine: Engine | None = None) -> int:
     engine = engine or Engine.here()
+    engine.refuse_remote()
     dist, arches = choose(options)
     distros = options.distros or DISTROS
     failed = 0

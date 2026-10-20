@@ -22,7 +22,7 @@ import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from libera_build import repo, versions
+from libera_build import buildbox, repo, versions
 from libera_build.artifacts import bundle_name, core_name
 from libera_build.containers import Engine, Mount, Run, interactive, linux_platform
 from libera_build.process import run_quietly
@@ -112,7 +112,14 @@ class Builder:
         self.volume = f"libera-flatpak-{self.arch}"
         self.app = versions.app_version(REPO)
         self.bundle = bundle_name(self.app, self.arch)
-        self.dist = options.dist or repo.dist(versions.payload_version(REPO))
+        # The container build's artifacts first, as `lb linux` takes them: a
+        # Linux builder builds its payload in the container, so its own
+        # out/dist is empty, and `ship` passes --dist where a hand run did not.
+        self.dist = (
+            options.dist
+            or buildbox.exported_dist(self.arch)
+            or repo.dist(versions.payload_version(REPO))
+        )
 
     # --- the container ---------------------------------------------------------
 
@@ -153,6 +160,7 @@ class Builder:
         ])
 
     def ensure_image(self) -> None:
+        self.engine.refuse_remote()
         done = subprocess.run(
             [
                 self.engine.name,

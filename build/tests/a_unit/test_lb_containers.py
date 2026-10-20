@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import zipfile
 
 import pytest
@@ -13,6 +14,7 @@ from libera_build.containers import (
     choose_engine,
     docker_platform,
     linux_platform,
+    remote_host,
 )
 from libera_build.report import RefusedError
 
@@ -132,3 +134,18 @@ def test_a_conversion_is_believed_by_its_text(tmp_path):
     assert not matrix.holds_text(tmp_path / "missing.odt", "x")
     (tmp_path / "c.odt").write_bytes(b"not a zip")
     assert not matrix.holds_text(tmp_path / "c.odt", "x")
+
+
+def answer(endpoint: str):
+    def run(*_args, **_kwargs):
+        return subprocess.CompletedProcess([], 0, stdout=f"{endpoint}\n")
+
+    return run
+
+
+def test_a_docker_context_over_ssh_is_another_machine():
+    run = answer("ssh://fermigier@fedora.local")
+    assert remote_host("docker", {}, run) == "ssh://fermigier@fedora.local"
+    assert remote_host("docker", {}, answer("unix:///var/run/docker.sock")) is None
+    assert remote_host("docker", {"DOCKER_HOST": "tcp://x:2375"}, run) == "tcp://x:2375"
+    assert remote_host("podman", {}, run) is None

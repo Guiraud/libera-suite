@@ -32,7 +32,7 @@
 # fetch-and-verify installer. See locate.bundled_dir().
 app-id: eu.liberasuite.Libera
 runtime: org.gnome.Platform
-runtime-version: '49'
+runtime-version: '51'
 sdk: org.gnome.Sdk
 command: libera
 

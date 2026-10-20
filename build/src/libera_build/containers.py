@@ -113,6 +113,23 @@ class Engine:
     def here(cls) -> Engine:
         return cls(choose_engine(os.environ, platform.system()))
 
+    def refuse_remote(self) -> None:
+        """Refuse an engine that runs on another machine.
+
+        Every command here bind-mounts this tree, and an engine reached
+        through a docker context or DOCKER_HOST over ssh or tcp mounts the
+        paths of the machine it runs on: an x86_64 one also builds an arm64
+        image no further than "exec format error".
+        """
+        if host := remote_host(self.name, os.environ):
+            msg = (
+                f"{self.name} runs on {host}, not on this machine, so it cannot"
+                " mount this tree.\n"
+                "  on a builder:  lb on linux-x86_64 COMMAND...\n"
+                "  or, here:      docker context use orbstack (or desktop-linux)"
+            )
+            raise RefusedError(msg)
+
     def image(self, name: str) -> str:
         """An image these scripts built, named the way the engine wants.
 
@@ -157,6 +174,27 @@ class Engine:
             [self.name, "image", "inspect", image], capture_output=True, check=False
         )
         return done.returncode == 0
+
+
+def remote_host(
+    name: str,
+    env: Mapping[str, str],
+    run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> str | None:
+    """Where docker's daemon is, when that is not this machine: DOCKER_HOST,
+    else the current context's endpoint. None for a local socket or pipe."""
+    if name != "docker":
+        return None
+    host = (
+        env.get("DOCKER_HOST")
+        or run(
+            [name, "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+    )
+    return host if host and not host.startswith(("unix://", "npipe://")) else None
 
 
 def interactive() -> bool:
