@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from libera.manifest import Manifest, ManifestError
-from libera.payload import fonts, generate, locate
+from libera.payload import fonts, generate, locate, prune
 from libera.payload.locate import Payload, PayloadError
 
 if TYPE_CHECKING:
@@ -102,13 +102,31 @@ def _fetch(url: str, dest: Path) -> None:
             raise PayloadError(msg) from e
 
 
+# Platforms this release does not build, and the last release that does. 0.5
+# lost its arm64 Linux builder: a wheel installed there would otherwise fail on
+# "no core artifact", naming nothing to do about it. build/install/install.sh
+# pins the same version for its Flatpak and pip paths.
+LAST_RELEASE_FOR = {"linux-arm64": "0.4.1"}
+
+
 def _artifacts_for(manifest: Manifest, platform: str) -> list[Artifact]:
     """This machine's core and the shared artifacts, refused as a PayloadError
     when the manifest has no core for it, which every caller already reports."""
     try:
         return manifest.select(platform)
     except ManifestError as e:
-        raise PayloadError(str(e)) from e
+        last = LAST_RELEASE_FOR.get(platform)
+        if last is None:
+            raise PayloadError(str(e)) from e
+        msg = (
+            f"this release of Libera Suite has no editors for {platform}; "
+            f"{last} is the last one that does.\n"
+            f"  install it:  pipx install 'libera=={last}'"
+            f"   (or: uv tool install 'libera=={last}')\n"
+            "  or run the install script, which picks it for this machine:\n"
+            "    curl -fsSL https://cdn.abilian.com/libera/install.sh | sh"
+        )
+        raise PayloadError(msg) from e
 
 
 def safe_extract(tar: tarfile.TarFile, dest: Path) -> None:
@@ -179,9 +197,11 @@ def _read_manifest(
         return Manifest.read(f)
     if not trust_manifest:
         msg = (
-            "this build ships no manifest, so downloads cannot be verified.\n"
-            "  install from local artifacts:  libera --payload-install --from DIR\n"
-            "  or accept the origin's manifest explicitly: --trust-manifest"
+            "this copy was installed from source, not from a release, so it has\n"
+            "no checksums of its own to check a download against.\n"
+            "  check it against the download site's:  libera --payload-install"
+            " --trust-manifest\n"
+            "  or install a local build:  libera --payload-install --from DIR"
         )
         raise PayloadError(msg)
     url = f"{base_url}/manifest.json"
@@ -309,7 +329,7 @@ def install(
     base_url = str(source or f"{DEFAULT_ORIGIN}/{locate.PAYLOAD_VERSION}")
     # First, so that what is coming is named before the hundred megabytes.
     verb = "Installing" if local else "Downloading"
-    say(f"{verb} payload version {locate.PAYLOAD_VERSION}")
+    say(f"{verb} Libera Suite's components, version {locate.PAYLOAD_VERSION}")
     manifest = _read_manifest(base_url, local, trust_manifest=trust_manifest)
 
     if manifest.payload_version != locate.PAYLOAD_VERSION:
@@ -372,6 +392,8 @@ def install(
 
     installed = Payload(dest, "installed")
     _index_installed_fonts(installed, say)
+    for gone in prune.remove_unused(dest.parent, keep=dest.name):
+        say(f"  removed the unused payload {gone}")
     return installed
 
 

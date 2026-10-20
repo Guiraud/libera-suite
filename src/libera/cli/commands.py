@@ -16,6 +16,7 @@ import platform
 import shutil
 import sys
 import tempfile
+import time
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -24,7 +25,7 @@ from libera import gui, launcher, payload as payload_mod
 from libera.host import apps, convert, instance, opening, server, session
 from libera.host.convert import ConversionError
 from libera.host.session import NotReadyError
-from libera.payload import NoPayloadError, PayloadError, fonts
+from libera.payload import NoPayloadError, PayloadError, fonts, prune
 
 if TYPE_CHECKING:
     import argparse
@@ -70,8 +71,21 @@ def _refuse(heading: str, paragraphs: list[str], command: str = "") -> None:
 
 
 def install_payload(args: argparse.Namespace) -> int:
+    trust = args.trust_manifest
+    # A copy installed from source asks, in a terminal, rather than wanting
+    # an option nobody would guess; a script still says --trust-manifest.
+    if (
+        args.source is None
+        and not trust
+        and not payload_mod.can_fetch()
+        and _is_interactive()
+    ):
+        print(FROM_SOURCE)
+        if not _confirm("Download them now?"):
+            return 1
+        trust = True
     try:
-        p = payload_mod.install(source=args.source, trust_manifest=args.trust_manifest)
+        p = payload_mod.install(source=args.source, trust_manifest=trust)
     except PayloadError as e:
         return _fail(e)
     print(f"Installed in {p.root}")
@@ -114,6 +128,7 @@ def show_payload_status(_args: argparse.Namespace) -> int:
         return _fail(e)
 
     record = _print_payload(p)
+    _print_installed_versions()
     # Corresponding source, per AGPL. A user holding this binary is entitled to
     # know exactly which revisions it was built from.
     source = record.get("source") or {}
@@ -126,6 +141,21 @@ def show_payload_status(_args: argparse.Namespace) -> int:
     for repo, sha in sorted((source.get("pins") or {}).items()):
         print(f"  {source.get('upstream', 'upstream')}/{repo} @ {sha}")
     return 0
+
+
+def _print_installed_versions() -> None:
+    """Every version in the payload folder, with when a copy last used it:
+    what a launch removes once nobody has, for prune.UNUSED_FOR."""
+    versions = prune.list_versions(payload_mod.get_data_dir())
+    if not versions:
+        return
+    weeks = prune.UNUSED_FOR // (7 * prune.DAY)
+    print(f"installed: (each removed once unused for {weeks} weeks)")
+    for v in reversed(versions):
+        used = time.strftime("%Y-%m-%d", time.localtime(v.last_used))
+        size = prune.measure(v.root) / 1e6
+        this = "  (this version)" if v.name == payload_mod.PAYLOAD_VERSION else ""
+        print(f"  {v.name:<8} last used {used}  {size:4.0f} MB{this}")
 
 
 def _print_payload(p: payload_mod.Payload) -> dict:
@@ -173,39 +203,28 @@ def _resolve_payload_or_offer() -> payload_mod.Payload | None:
 
 
 def _offer_to_install() -> payload_mod.Payload | None:
-    """There is no payload: fetch one if this build can, and the user agrees."""
-    if not payload_mod.can_fetch():
-        _say_there_is_nothing_to_fetch()
-        return None
+    """There are no components: fetch them if the user agrees.
 
-    if not _ask_to_install():
+    A release checks the download against the checksums in its wheel. A copy
+    installed from source has none, and checks it against the download site's
+    own, which the question says before it is answered.
+    """
+    verified = payload_mod.can_fetch()
+    if not _ask_to_install(verified=verified):
         return None
     try:
-        return payload_mod.install()
+        return payload_mod.install(trust_manifest=not verified)
     except PayloadError as e:
         _refuse(CANNOT_START, [str(e)])
         return None
 
 
-def _say_there_is_nothing_to_fetch() -> None:
-    """No payload, with no way for this build to get one.
-
-    Only a released wheel holds the hashes a download is checked against, so
-    reaching here means a checkout or a build that was never stamped. Three
-    ways out, cheapest first, and the last one takes an afternoon.
-    """
-    heading = "Libera Suite has no editor payload, and this build cannot fetch one"
-    why = (
-        "A release carries the hashes it checks downloads against. This copy "
-        "was built from a checkout and has none, so there is nothing to verify "
-        "a download against and nothing to offer."
-    )
-    lines = (
-        "  point at a local build:     export LIBERA_PAYLOAD=/path/to/out/payload\n"
-        "  install built artifacts:    libera --payload-install --from DIR\n"
-        "  or build one (an afternoon; V8 alone is ~30 minutes):   make payload"
-    )
-    _refuse(heading, [why], lines)
+# Said before the question, in a copy that has no checksums of its own.
+FROM_SOURCE = (
+    "This copy of Libera Suite was installed from source, not from a release,"
+    " so it has no checksums of its own: the download will be checked against"
+    " the download site's."
+)
 
 
 def _format_install_command() -> str:
@@ -221,37 +240,44 @@ def _format_install_command() -> str:
     return "libera --payload-install"
 
 
-def _ask_to_install() -> bool:
+def _ask_to_install(*, verified: bool = True) -> bool:
     """Ask before downloading. A non-interactive run never does."""
-    print(
-        "Libera Suite needs its editor payload (about 120 MB), "
-        "and does not have it yet."
-    )
     command = _format_install_command()
     if not _is_interactive():
         # Reached only from open_documents, which has already been past
         # gui.explain_why_no_window(), so a window can be opened here.
         _refuse(
-            "Libera Suite has no editor payload yet",
+            "Libera Suite needs its components",
             [
                 (
-                    "The application is installed; the editors are not. "
-                    "They are about 120 MB and are fetched once."
+                    "The application is installed; its components "
+                    "are not. They are about 90 MB, downloaded once."
                 ),
                 "Run this, then start Libera Suite again:",
             ],
             command,
         )
         return False
-    try:
-        answer = input("Download and install it now? [Y/n] ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return False
-    if answer not in {"", "y", "yes"}:
+    print(
+        "Libera Suite needs its components (about 90 MB, downloaded"
+        " once), and does not have them yet."
+    )
+    if not verified:
+        print(FROM_SOURCE)
+    if not _confirm("Download them now?"):
         print(f"  run `{command}` when you are ready.")
         return False
     return True
+
+
+def _confirm(question: str) -> bool:
+    """Yes unless told no; no when nobody can answer."""
+    try:
+        answer = input(f"{question} [Y/n] ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return False
+    return answer in {"", "y", "yes"}
 
 
 def serve(args: argparse.Namespace) -> int:
@@ -259,6 +285,7 @@ def serve(args: argparse.Namespace) -> int:
     try:
         p = payload_mod.resolve()
         font_index = fonts.choose(p)
+        prune.note_use(p.root)
     except PayloadError as e:
         return _fail(e)
 
@@ -379,6 +406,7 @@ def convert_documents(args: argparse.Namespace) -> int:
         plan = plan_conversions(args)
         p = payload_mod.resolve()
         font_index = fonts.choose(p)
+        prune.note_use(p.root)
     except (CannotConvertError, PayloadError) as e:
         return _fail(e)
     if args.outdir:

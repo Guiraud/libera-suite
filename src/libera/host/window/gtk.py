@@ -35,8 +35,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from webview import Window
+    from webview.guilib import GUIType
 
 __all__ = [
+    "GUI",
     "ask",
     "close_window",
     "complete_startup",
@@ -51,6 +53,9 @@ __all__ = [
     "stay_open",
     "tell",
 ]
+
+
+GUI: GUIType = "gtk"
 
 
 def ask(question: Question, parent: Window | None) -> Answer:

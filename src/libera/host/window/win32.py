@@ -38,8 +38,10 @@ from libera.host.window.portable import (
 
 if TYPE_CHECKING:
     from webview import Window
+    from webview.guilib import GUIType
 
 __all__ = [
+    "GUI",
     "ask",
     "close_window",
     "complete_startup",
@@ -59,7 +61,10 @@ __all__ = [
 MB_OK, MB_YESNOCANCEL, MB_YESNO = 0x0, 0x3, 0x4
 MB_ICONQUESTION, MB_ICONWARNING, MB_ICONINFORMATION = 0x20, 0x30, 0x40
 MB_SETFOREGROUND = 0x10000
+
 IDOK, IDCANCEL, IDYES, IDNO = 1, 2, 6, 7
+
+GUI: GUIType = "edgechromium"
 
 
 def ask(question: Question, parent: Window | None) -> Answer:

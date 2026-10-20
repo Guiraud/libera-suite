@@ -380,7 +380,8 @@ def resolve() -> Payload:
         return Payload(installed, "installed")
 
     msg = (
-        f"no editor payload found (expected version {PAYLOAD_VERSION}).\n"
+        f"Libera Suite's components are not installed"
+        f" (this version needs {PAYLOAD_VERSION}).\n"
         f"  install it:   libera --payload-install\n"
         f"  or point at a local build:   export LIBERA_PAYLOAD=/path/to/out/payload"
     )

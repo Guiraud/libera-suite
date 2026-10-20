@@ -17,7 +17,7 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from libera import logs, timeline
+from libera import launcher, logs, timeline
 from libera.cli import commands
 from libera.host import about, apps
 from libera.payload import locate
@@ -71,7 +71,7 @@ def _make_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--diagnose",
         action="store_true",
-        help="print what a bug report needs: versions, payload, platform",
+        help="print what a bug report needs: versions, components, platform",
     )
     _add_convert_options(parser, shown=False)
     _add_serve_options(parser)
@@ -193,49 +193,59 @@ def _add_convert_options(parser: argparse.ArgumentParser, *, shown: bool) -> Non
 
 
 def _add_payload_options(parser: argparse.ArgumentParser) -> None:
-    """The payload: fetched, verified and installed separately from the wheel,
-    because it is ~120 MB of editor and native binaries. The start window shows
+    """The payload: the Euro-Office components, fetched, verified and installed
+    separately from the wheel, because they are ~90 MB of JavaScript and native
+    binaries. The help says components, which is what a user installs; the
+    options keep the name the code and the scripts use. The start window shows
     the same information; these are for scripts and for a machine with no
     window system."""
-    group = parser.add_argument_group("the editor payload")
+    group = parser.add_argument_group("components (the payload)")
     group.add_argument(
-        "--payload-status", action="store_true", help="where the payload resolved from"
+        "--payload-status",
+        action="store_true",
+        help="where they are installed, and which version",
     )
     group.add_argument(
         "--payload-install",
         action="store_true",
-        help="fetch, verify and install the payload",
+        help="download them, check them and install them",
     )
-    group.add_argument(
-        "--payload-remove", action="store_true", help="delete the installed payload"
-    )
+    group.add_argument("--payload-remove", action="store_true", help="delete them")
     group.add_argument(
         "--from",
         dest="source",
         metavar="DIR_OR_URL",
-        help="local directory of artifacts, or a base URL (default: the public origin)",
+        help="install from a directory of built files, or download from this URL",
     )
     group.add_argument(
         "--trust-manifest",
         action="store_true",
-        help="accept the origin's manifest when the wheel ships none (unverified)",
+        help=(
+            "in a copy installed from source, which has no checksums of its own:"
+            " download without asking, checked against the download site's"
+        ),
     )
 
 
 def _add_launcher_options(parser: argparse.ArgumentParser) -> None:
     """Linux has no application bundle to hold this, so it is a command. The
-    Flatpak installs the same entry itself, so there the command only says
-    so."""
+    Flatpak installs the same entry itself. Where it makes no sense the options
+    stay, so that they still answer with why, but the help leaves them out."""
+    shown = launcher.explain_unsupported() is None
+
+    def help_(text: str) -> str:
+        return text if shown else argparse.SUPPRESS
+
     group = parser.add_argument_group("the Linux launcher")
     group.add_argument(
         "--launcher-install",
         action="store_true",
-        help="put Libera Suite in the launcher, with an icon and Open With",
+        help=help_("put Libera Suite in the launcher, with an icon and Open With"),
     )
     group.add_argument(
         "--launcher-remove",
         action="store_true",
-        help="take the desktop entry and its icon away",
+        help=help_("take the desktop entry and its icon away"),
     )
 
 

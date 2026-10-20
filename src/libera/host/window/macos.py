@@ -35,8 +35,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Sequence
 
     from webview import Window
+    from webview.guilib import GUIType
+
+GUI: GUIType = "cocoa"
 
 logger = logging.getLogger(__name__)
+
 
 T = TypeVar("T")
 

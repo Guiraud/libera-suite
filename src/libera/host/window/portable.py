@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from webview import Window
+    from webview.guilib import GUIType
 
 
 T = TypeVar("T")
@@ -61,6 +62,11 @@ class Question:
 class Toolkit(Protocol):
     """What a toolkit module answers. Each toolkit is a module, one of each;
     the type checkers hold a module to a Protocol as readily as a class."""
+
+    # pywebview's backend for this toolkit, named rather than guessed: left to
+    # itself pywebview tries Qt first in a KDE session, which we do not ship,
+    # and every launch on Plasma printed Qt's import traceback before GTK.
+    GUI: GUIType
 
     def run_on_gui_thread(self, work: Callable[[], T]) -> T:
         """Run work where the toolkit wants it, and return its answer."""

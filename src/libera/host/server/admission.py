@@ -26,9 +26,34 @@ logger = logging.getLogger(__name__)
 # frames itself.
 FRAME_ANCESTORS = "frame-ancestors 'self'"
 
+# Nothing the page loads or sends goes anywhere but this host, whatever the
+# editor's code would like: upstream's bundles still carry an analytics
+# loader, and the page sends nothing on its own. The exception is pictures,
+# from anywhere: a document can link one by its web address, which is its own
+# reference, as in every office suite. What sdkjs needs besides: eval and
+# WebAssembly, inline scripts (the editor's pages and the start window have
+# them), and blob: and data: for what it builds in memory -- workers, fonts,
+# images. Measured by tests/c_e2e/host/test_network.py.
+DIRECTIVES = (
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src * data: blob:",
+    "font-src 'self' data: blob:",
+    "connect-src 'self' data: blob:",
+    "media-src 'self' data: blob:",
+    "worker-src 'self' blob:",
+    "frame-src 'self' data: blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    FRAME_ANCESTORS,
+)
+POLICY = "; ".join(DIRECTIVES)
+
 # On every answer, whichever route or error produced it.
 SECURITY_HEADERS = (
-    ("Content-Security-Policy", FRAME_ANCESTORS),
+    ("Content-Security-Policy", POLICY),
     # The declared type is the type: a browser that sniffed text/plain into
     # HTML would undo the adapter's guarantee that a refused request is
     # answered in plain text.

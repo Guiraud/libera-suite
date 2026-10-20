@@ -3,6 +3,7 @@
     locate     where a payload is, and whether it is the right one
     generate   the parts that can only be built on this machine
     fonts      the index of the fonts installed on it, beside the payload
+    prune      which installed versions are still used, and removing the rest
     installer  fetch, verify, unpack, generate, put in place
 
 One module per verb, in that order, and nothing imports upward. Each
