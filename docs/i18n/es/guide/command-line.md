@@ -1,6 +1,6 @@
 # Línea de comandos
 
-Libera Suite se usa desde sus ventanas, pero un terminal llega a algunas cosas que ninguna ventana ofrece: convertir de una vez una carpeta entera de documentos, instalar los editores en una máquina a la que se accede por SSH, preparar el informe que pide un error.
+Libera Suite se usa desde sus ventanas, pero un terminal llega a algunas cosas que ninguna ventana ofrece: convertir de una vez una carpeta entera de documentos, instalar los componentes en una máquina a la que se accede por SSH, preparar el informe que pide un error.
 
 El comando es `libera`, en Linux y macOS. Instalado como Flatpak es `flatpak run eu.liberasuite.Libera`, seguido de las mismas opciones. En Windows es `libera-cli.exe`, en la carpeta donde se instaló Libera Suite; no está en el `PATH`.
 
@@ -9,7 +9,7 @@ El comando es `libera`, en Linux y macOS. Instalado como Flatpak es `flatpak run
 | | |
 | :--- | :--- |
 | `libera` | la ventana de inicio: nuevo, abrir, recientes |
-| `libera ARCHIVO...` | cada documento en su propia ventana; el archivo decide el editor. [Más](documents.md#open) |
+| `libera ARCHIVO...` | cada documento en su propia ventana; el archivo decide la aplicación. [Más](documents.md#open) |
 
 ## Convertir
 
@@ -21,12 +21,12 @@ El comando es `libera`, en Linux y macOS. Instalado como Flatpak es `flatpak run
 
 [Más, con ejemplos](documents.md#from-the-command-line).
 
-## Los editores
+## Los componentes
 
 | | |
 | :--- | :--- |
-| `libera --payload-install` | descargar, comprobar e instalar los editores. `--from CARPETA` los instala desde una carpeta. [Más](../main/alt-install.md#the-editors) |
-| `libera --payload-status` | dónde están los editores, su versión y el [código fuente](../licence.md#corresponding-source) del que se compilaron |
+| `libera --payload-install` | descargar, comprobar e instalar los componentes. `--from CARPETA` los instala desde una carpeta. [Más](../main/alt-install.md#the-editors) |
+| `libera --payload-status` | dónde están los componentes, su versión y el [código fuente](../licence.md#corresponding-source) del que se compilaron |
 | `libera --payload-remove` | borrarlos. [Más](../main/install.md#uninstall) |
 
 ## El menú de aplicaciones de Linux
@@ -43,8 +43,8 @@ El Flatpak lo hace por sí mismo.
 | | |
 | :--- | :--- |
 | `libera --diagnose` | todo lo que necesita un informe de error, en una sola pantalla. [Más](../main/install.md#if-something-goes-wrong) |
-| `libera --version` | la versión de la aplicación y la de los editores |
-| `-v`, `-vv`, `-vvv` | decir qué está haciendo; cómo; cada petición del editor |
+| `libera --version` | la versión de la aplicación y la de los componentes |
+| `-v`, `-vv`, `-vvv` | decir qué está haciendo; cómo; cada petición a los componentes |
 | `-q` | solo errores |
 
 `libera --help` enumera todas las opciones, y `libera --convert --help` las del conversor.

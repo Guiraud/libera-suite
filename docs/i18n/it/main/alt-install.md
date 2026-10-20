@@ -15,7 +15,7 @@ curl -fsSL https://cdn.abilian.com/libera/install.sh | bash -s -- --help
 | :--- | :--- |
 | `--prefix DIR` | installare altrove (predefinito: `~/.local`) |
 | `--channel pip` | su Linux, installare il pacchetto Python anche se c'è Flatpak |
-| `--no-payload` | installare subito il comando, scaricare gli editor più tardi |
+| `--no-payload` | installare subito il comando, scaricare i componenti più tardi |
 | `--origin URL` | scaricare da un server diverso da quello pubblico |
 
 Scrive solo in `~/.local/bin` e `~/.local/share`. Apri il suo indirizzo in un browser per leggerlo prima di eseguirlo.
@@ -29,7 +29,7 @@ uv tool install libera      # oppure: pipx install libera
 libera --payload-install
 ```
 
-Per provarla senza installarla, `uvx libera` la avvia da una cache; al primo avvio propone di scaricare gli editor.
+Per provarla senza installarla, `uvx libera` la avvia da una cache; al primo avvio propone di scaricare i componenti.
 
 Su Linux la finestra è disegnata da GTK, i cui collegamenti Python vengono dalla tua distribuzione e sono compilati per il suo Python. Un ambiente isolato non li vede, quindi `pipx` ha bisogno di due opzioni:
 
@@ -47,34 +47,35 @@ Ecco cosa fa lo script di installazione quando c'è Flatpak:
 ```sh
 arch=amd64     # oppure arm64, secondo la tua macchina
 ver=$(curl -fsSL https://cdn.abilian.com/libera/bundles/latest)
+# su arm64: ver=0.4.1, l'ultima versione compilata per questa piattaforma
 curl -fLO "https://cdn.abilian.com/libera/bundles/libera-$ver-$arch.flatpak"
 flatpak install --user "./libera-$ver-$arch.flatpak"
 flatpak run eu.liberasuite.Libera
 ```
 
-`bundles/latest` contiene il numero della versione attuale, quindi queste righe restano valide da una versione all'altra. Il pacchetto, di circa 82 MB, contiene gli editor. Gira sull'ambiente di esecuzione GNOME, che `flatpak` scarica da Flathub la prima volta; una macchina senza la sorgente Flathub deve prima aggiungerla:
+`bundles/latest` contiene il numero della versione attuale, quindi queste righe restano valide da una versione all'altra. Il pacchetto, di circa 70 MB, contiene i componenti. Gira sull'ambiente di esecuzione GNOME, che `flatpak` scarica da Flathub la prima volta; una macchina senza la sorgente Flathub deve prima aggiungerla:
 
 ```sh
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
-## Gli editor {#the-editors}
+## I componenti {#the-editors}
 
-Il programma di installazione per Windows e il Flatpak includono gli editor. Tutti gli altri canali li scaricano una volta, dopo l'applicazione. `libera` lo propone al primo avvio; questo comando avvia direttamente il download:
+Il programma di installazione per Windows e il Flatpak includono i componenti. Tutti gli altri canali li scaricano una volta, dopo l'applicazione. `libera` lo propone al primo avvio; questo comando avvia direttamente il download:
 
 ```sh
 libera --payload-install
 ```
 
-Scarica circa 120 MB da `cdn.abilian.com` e verifica ogni file con le impronte fornite con l'applicazione, fermandosi al primo che non corrisponde. Poi costruisce l'indice dei caratteri della tua macchina, il che richiede un momento.
+Scarica circa 90 MB da `cdn.abilian.com` e verifica ogni file con le impronte fornite con l'applicazione, fermandosi al primo che non corrisponde. Poi costruisce l'indice dei caratteri della tua macchina, il che richiede un momento.
 
-Per installare editor che hai costruito tu, o che ti sono stati forniti, indicagli la loro cartella:
+Per installare componenti che hai costruito tu, o che ti sono stati forniti, indicagli la loro cartella:
 
 ```sh
 libera --payload-install --from /percorso/degli/artefatti
 ```
 
-[Build the payload](/en/develop/build/), in inglese, spiega come costruirli. `libera --payload-remove` li elimina; occupano circa 450 MB su disco.
+[Costruire i componenti](/en/develop/build/), in inglese, spiega come costruirli. `libera --payload-remove` li elimina; occupano circa 350 MB su disco.
 
 ## Dove si trovano i file
 
@@ -85,7 +86,7 @@ libera --payload-install --from /percorso/degli/artefatti
 | macOS | `~/Library/Application Support/Libera Suite/` |
 | Windows | `%LOCALAPPDATA%\Libera Suite\` |
 
-Gli editor si trovano lì, in `payload/<version>/`. Per usare editor che stanno altrove, per esempio una build locale, imposta `LIBERA_PAYLOAD` sulla loro cartella; prevale su tutto quanto sopra.
+I componenti si trovano lì, in `payload/<version>/`. Un aggiornamento mette la nuova versione accanto alla vecchia, e Libera Suite rimuove una versione vecchia quando nulla l'ha usata per quattro settimane: un Libera Suite installato in altro modo sullo stesso account potrebbe ancora usarla. `libera --payload-status` le elenca, con la data dell'ultimo uso. Per usare componenti che stanno altrove, per esempio una build locale, imposta `LIBERA_PAYLOAD` sulla loro cartella; prevale su tutto quanto sopra.
 
 ## Una voce nel menu delle applicazioni su Linux {#a-launcher-entry-on-linux}
 

@@ -11,11 +11,11 @@ libera ~/Documents/presupuesto.xlsx
 libera ~/Documents/red.vsdx
 ```
 
-**Es el documento el que decide qué editor obtienes.** No hay ningún comando para elegir uno, igual que no se elige un editor de texto para abrir un `.txt`: abres el documento y aparece el editor adecuado. Un `.xlsx` se abre en Tables, un `.pptx` en Slides, un `.vsdx` en Diagrams.
+**Es el documento el que decide qué aplicación obtienes.** No hay ningún comando para elegir uno, igual que no se elige un editor de texto para abrir un `.txt`: abres el documento y aparece la aplicación adecuada. Un `.xlsx` se abre en Tables, un `.pptx` en Slides, un `.vsdx` en Diagrams.
 
 ![La ventana de inicio, con una tarjeta New para cada uno de Document, Spreadsheet y Presentation, un botón Open y una lista Recent de tres documentos.](../assets/start.png)
 
-Sin argumentos, `libera` abre la **ventana de inicio**: un documento nuevo de cualquier tipo, un diálogo para abrir, tus documentos recientes y la procedencia de los editores. Elige algo y la ventana de inicio da paso al documento.
+Sin argumentos, `libera` abre la **ventana de inicio**: un documento nuevo de cualquier tipo, un diálogo para abrir, tus documentos recientes y la procedencia de los componentes. Elige algo y la ventana de inicio da paso al documento.
 
 Libera Suite abre **un documento por ventana**, así que un comodín de la shell hace lo que parece:
 
@@ -23,17 +23,17 @@ Libera Suite abre **un documento por ventana**, así que un comodín de la shell
 libera ~/Documents/*.docx     # una ventana para cada uno
 ```
 
-También puedes abrir un documento desde el editor, con **Archivo ▸ Abrir** o **Archivo ▸ Abrir reciente**. Los dos abren una ventana nueva y no tocan el documento que ya tienes abierto.
+También puedes abrir un documento desde la ventana del documento, con **Archivo ▸ Abrir** o **Archivo ▸ Abrir reciente**. Los dos abren una ventana nueva y no tocan el documento que ya tienes abierto.
 
 **Un documento que sueltas** sobre una ventana de Libera Suite, incluida la ventana de inicio, se abre en una ventana propia. Una imagen que sueltas sobre un documento se inserta en él.
 
-**Archivo ▸ Nuevo** ofrece, desde cualquier ventana, un documento, una hoja de cálculo o una presentación, cada uno en su propia ventana. En macOS, `⌘N` crea uno del mismo tipo que la ventana en primer plano. En el propio editor, **Archivo ▸ Crear nuevo** te pregunta cuál de los tres quieres crear.
+**Archivo ▸ Nuevo** ofrece, desde cualquier ventana, un documento, una hoja de cálculo o una presentación, cada uno en su propia ventana. En macOS, `⌘N` crea uno del mismo tipo que la ventana en primer plano. En la propia ventana del documento, **Archivo ▸ Crear nuevo** te pregunta cuál de los tres quieres crear.
 
 ## Guardar
 
 **Archivo ▸ Guardar** vuelve a escribir el documento que abriste. **Archivo ▸ Guardar como** pregunta dónde ponerlo. A partir de ahí, ese es el documento que estás editando.
 
-Al guardar, el formato de trabajo del editor se convierte de nuevo en un documento de verdad, lo que tarda alrededor de un segundo.
+Al guardar, el formato de trabajo se convierte de nuevo en un documento de verdad, lo que tarda alrededor de un segundo.
 
 ## Exportar
 
@@ -57,7 +57,7 @@ Elegir un formato cambia el nombre del archivo en el diálogo. No pueden quedar 
 
 El conversor no sabe escribir todos los formatos que sabe leer. En particular, `.doc` se abre pero no se guarda; usa `.docx` o `.rtf` para algo que tenga que volver a una versión antigua de Word.
 
-Si buscas una entrada **Descargar como** en el menú Archivo, no existe. Los editores la ocultan cuando funcionan como aplicación de escritorio sin conexión y ponen Guardar como en su lugar: la misma función, una entrada más arriba.
+Si buscas una entrada **Descargar como** en el menú Archivo, no existe. Los componentes la ocultan cuando funcionan como aplicación de escritorio sin conexión y ponen Guardar como en su lugar: la misma función, una entrada más arriba.
 
 ### Desde la línea de comandos {#from-the-command-line}
 
@@ -76,7 +76,7 @@ Un archivo que ya tiene el nuevo nombre se reemplaza. El documento que se convie
 
 En Linux y Windows la barra está dentro de la ventana: **Archivo**, **Edición**, **Ver** y **Ayuda**, este último con *Ayuda de Libera* y *Acerca de Libera Suite*. De lo que ofrece allí el menú se derivan tres diferencias. Ningún elemento muestra un atajo de teclado, pero Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Mayús-S, Ctrl-P y Ctrl-Z hacen allí lo que las teclas ⌘ de abajo hacen en un Mac. **Abrir reciente** se construye al iniciar la aplicación: un documento que abres hoy aparece en él mañana. Nada se atenúa: Guardar sin nada que guardar no hace nada.
 
-En macOS es una barra de menús de Mac de verdad, con los mismos elementos más **Ventana**. Los atajos habituales funcionan allí, tenga o no el foco el editor:
+En macOS es una barra de menús de Mac de verdad, con los mismos elementos más **Ventana**. Los atajos habituales funcionan allí, tenga o no el foco el documento:
 
 | | |
 | :--- | :--- |
@@ -92,7 +92,7 @@ En macOS es una barra de menús de Mac de verdad, con los mismos elementos más 
 
 **Archivo ▸ Abrir reciente** se reconstruye cada vez que lo abres. El menú **Ventana** enumera todos los documentos abiertos.
 
-Guardar, Deshacer y Rehacer aparecen atenuados cuando no hay nada que guardar o deshacer. El editor rechaza esas órdenes sin decir nada: un elemento de menú que siguiera activo parecería roto.
+Guardar, Deshacer y Rehacer aparecen atenuados cuando no hay nada que guardar o deshacer. Los componentes rechazan esas órdenes sin decir nada: un elemento de menú que siguiera activo parecería roto.
 
 ## Cerrar
 
@@ -147,7 +147,7 @@ Otra se limita a las fuentes que incluye Libera Suite, sin las instaladas en tu 
 installed_fonts = false
 ```
 
-Y otra fija el idioma de los editores, cuando no debe ser el de tu sistema. Un documento nuevo sigue tomando el tamaño de papel de la región de tu sistema:
+Y otra fija el idioma de las aplicaciones, cuando no debe ser el de tu sistema. Un documento nuevo sigue tomando el tamaño de papel de la región de tu sistema:
 
 ```toml
 ui_language = "fr"
@@ -157,7 +157,7 @@ Para usar otro archivo durante un arranque, sin tocar este, indíquelo con `libe
 
 ## Dónde van tus archivos de trabajo
 
-Mientras un documento está abierto, Libera Suite mantiene una carpeta de sesión junto a sus datos de aplicación. Contiene la copia de trabajo del editor y un registro continuo de tus cambios, lo que hace que guardar sea rápido y deshacer sea fiable. No es una copia de seguridad: el documento está donde lo guardaste.
+Mientras un documento está abierto, Libera Suite mantiene una carpeta de sesión junto a sus datos de aplicación. Contiene la copia de trabajo y un registro continuo de tus cambios, lo que hace que guardar sea rápido y deshacer sea fiable. No es una copia de seguridad: el documento está donde lo guardaste.
 
 ---
 

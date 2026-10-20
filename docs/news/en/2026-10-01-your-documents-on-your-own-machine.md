@@ -1,21 +1,17 @@
 ---
 date: 2026-10-01
-description: Libera Suite, a free office suite for Windows, macOS and Linux, is in beta. It opens Word, Excel and PowerPoint files, needs no account, and keeps your documents on your own computer.
+description: Libera Suite, a free office suite for Linux, Windows and macOS, enters public beta. It opens and saves the Microsoft Office and OpenDocument formats, with no account and no online service.
 ---
 
-# Libera Suite: your documents, on your own machine
+# Libera Suite enters public beta
 
-Today we are opening the beta of **Libera Suite**, a free office suite for Windows, macOS and Linux. Write letters and reports, keep your figures in a spreadsheet, prepare a presentation, all on your own computer, with your own files. There is no account to create and no subscription to pay.
+**Libera Suite** is a free office suite for Linux, Windows and macOS. It includes a word processor, a spreadsheet, a presentation program and a viewer for Visio files. It runs on your computer, with no account, no online service and no telemetry. It opens and saves the Microsoft Office and OpenDocument formats. Its public beta starts today.
 
 [Install Libera Suite](../main/install.md){ .md-button .md-button--primary }
 
 ![Libera Words, with a document open: the editor's toolbar in the Libera Words purple, and a laid-out page below it.](../assets/words.png)
 
-## It opens what people send you
-
-Everybody sends `.docx`. Libera Suite opens it, along with the `.xlsx` and `.pptx` that come with it, and lays them out the way their authors saw them: fonts, images, tables and tracked changes included. When you save, you get a file in the same format, which your colleagues open in Microsoft Office or LibreOffice like any other.
-
-The credit goes to a document engine that has spent twenty years being handed other people's documents. Libera Suite runs that engine on your computer.
+## Four applications
 
 | | | |
 | :--- | :--- | :--- |
@@ -24,39 +20,47 @@ The credit goes to a document engine that has spent twenty years being handed ot
 | **Libera Slides** | Presentations | `.pptx` `.odp` |
 | **Libera Diagrams** | A viewer for Visio drawings | `.vsdx` |
 
-You also get the rest of an office suite: a start window with your recent documents, spell checking in five languages, PDF export, printing, and a recovery that offers your work back if the computer stops under you.
+A Word, Excel or PowerPoint file opens with its layout: fonts, images, tables and tracked changes included. Saving produces a file in the same format, which Microsoft Office and LibreOffice open like any other.
 
-## Free, and yours to keep
+The four applications share a start window with your recent documents, spell checking in five languages, PDF export, printing, and recovery of your work after a crash.
 
-There is no licence fee and no monthly bill. Install it on as many computers as you like, and keep it as long as you like. It keeps working without a paid server, and cannot be switched off from a distance.
+## Free software, at no cost
 
-Libera Suite is free software: anyone may read its source code, change it and share it. The application is under the Apache License 2.0 and the editors under the GNU AGPL v3. [Licence and attribution](../licence.md) says how to get the exact source of any release.
+Libera Suite asks for no licence and no subscription. You can install it on as many computers as you like and keep it for as long as you like. It depends on no server of ours to work.
+
+It is free software: anyone can read its source code, change it and share it. The application is under the Apache License 2.0 and the Euro-Office components under the GNU AGPL v3. [Licence and attribution](../licence.md) explains how to get the exact source code of each version.
 
 ## Your documents stay on your computer
 
-Libera Suite reads and writes your documents on your disk, with software on your disk, and never uploads them. It works without an account or a cloud service, and has no telemetry, analytics or crash reporting: it sends us nothing about you, your documents or the way you use it.
+Libera Suite reads and writes your documents on your disk and sends them nowhere. It sends us no information about you, your documents or the way you use it.
 
-It goes online to download its editors when you install it. [The documentation lists](../index.md#what-leaves-your-machine) every connection it makes; the source is public, so you can check.
+It goes online to download the Euro-Office components when you install it. [The documentation lists](../index.md#what-leaves-your-machine) every connection it makes, and the source code lets you check.
 
-## A beta, with its gaps in plain view
+## How to install it
 
-Libera Suite runs on **Windows 10 and 11 (x64)**, **macOS (Apple Silicon)** and **Linux (x86_64 and arm64)**. Windows gets an installer, Linux a single Flatpak file with the editors inside it, and macOS one command in the terminal.
+- **Linux** (x86_64 and arm64): one command in the terminal, which installs a Flatpak package when Flatpak is present.
+- **macOS** (Apple Silicon): one command in the terminal, with Homebrew or without it.
+- **Windows** 10 and 11 (x64): an installer, with no administrator rights needed.
 
-The known gaps are [published in full](../main/status.md) and kept current. Each document has its own window, as there are no tabs yet. Nothing stops two windows from editing the same document, in which case one of them loses its changes. Diagrams reads Visio files and cannot save them. Windows warns about the installer until it is signed.
+The [install page](../main/install.md) gives the commands.
 
-## Tell us what breaks
+## The limits of the beta
 
-The most useful thing you can send us is **a document that comes out wrong, attached**. The engine is mature, so when a document looks wrong the cause is far more likely to be on our side: a font we did not ship, a resource we failed to serve. We fix those quickly, once somebody shows us one.
+Each document has its own window, with no tabs. Nothing yet stops two windows from editing the same document: the last one to save overwrites the other's work. Diagrams reads Visio files but cannot save them. The Windows installer is not signed yet, so Windows shows a warning when you open it. [The status page](../main/status.md) gives the full list and is kept up to date.
 
-If you choose software for an organisation, tell us **what it would need** to switch. Today is the cheapest moment to shape the answer.
+## Your feedback
 
-[Install](../main/install.md) takes a minute, and [Feedback](../feedback.md) says how to reach us.
+The layout engine is well proven: when a document looks wrong in Libera Suite, the cause is most often in our packaging, a missing font or resource. Those defects are quick to fix, once we see them. The most useful feedback is therefore a document that looks wrong, attached to your message.
 
-## Who makes it
+If you choose software for an organisation, tell us which features it would need to adopt Libera Suite.
 
-Libera Suite is made by [Abilian](https://abilian.com), a French company that builds free software. Its editors come from [Euro-Office](https://github.com/Euro-Office), itself a fork of [ONLYOFFICE](https://www.onlyoffice.com/) by Ascensio System SIA. The document engine and the format support, the hard part of an office suite, are theirs, and we reimplemented none of it. We built the desktop application around them: the windows, the menus, opening and saving, and the packaging.
+[Feedback](../feedback.md) explains how to write to us.
 
-The engine stays upstream's, built from source at exact revisions with [a short patch queue](../develop/patches.md) of our own. The part we maintain is small enough for a small team to commit to for the long run.
+## Who develops it
+
+Libera Suite is developed by [Abilian](https://abilian.com), a French free software company. It is built on the components of [Euro-Office](https://github.com/Euro-Office), a fork of [ONLYOFFICE](https://www.onlyoffice.com/), the software of Ascensio System SIA. Those components provide the document engine and the format support. Abilian wrote the desktop application that hosts them: the windows, the menus, opening and saving files, and the packaging.
+
+We build the Euro-Office components from their source, at fixed revisions. The fixes we apply to them are [published and explained](../develop/patches.md).
 
 *Abilian*
 

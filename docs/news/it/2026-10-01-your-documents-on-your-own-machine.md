@@ -1,21 +1,17 @@
 ---
 date: 2026-10-01
-description: Libera Suite, una suite per ufficio libera e gratuita per Windows, macOS e Linux, è in beta. Apre i file di Word, Excel e PowerPoint, non chiede nessun account e tiene i tuoi documenti sul tuo computer.
+description: Libera Suite, una suite per ufficio libera e gratuita per Linux, Windows e macOS, entra in beta pubblica. Apre e salva i formati di Microsoft Office e OpenDocument, senza account e senza servizi online.
 ---
 
-# Libera Suite: i tuoi documenti, sulla tua macchina
+# Libera Suite entra in beta pubblica
 
-Oggi apriamo la beta di **Libera Suite**, una suite per ufficio libera e gratuita per Windows, macOS e Linux. Scrivi lettere e relazioni, tieni i tuoi conti in un foglio di calcolo, prepara una presentazione, tutto sul tuo computer, con i tuoi file. Nessun account da creare, nessun abbonamento da pagare.
+**Libera Suite** è una suite per ufficio libera e gratuita per Linux, Windows e macOS. Comprende un elaboratore di testi, un foglio di calcolo, un programma di presentazioni e un visualizzatore di file Visio. Funziona sul tuo computer, senza account, senza servizi online e senza telemetria. Apre e salva i formati di Microsoft Office e OpenDocument. La sua beta pubblica inizia oggi.
 
 [Installa Libera Suite](../main/install.md){ .md-button .md-button--primary }
 
-![Libera Words con un documento aperto: la barra degli strumenti dell'editor nel viola di Libera Words e, sotto, una pagina impaginata.](../assets/words.png)
+![Libera Words con un documento aperto: la barra degli strumenti dell'editor nel viola di Libera Words, e sotto una pagina impaginata.](../assets/words.png)
 
-## Apre i file che ti mandano
-
-Tutti mandano `.docx`. Libera Suite li apre, insieme ai `.xlsx` e ai `.pptx` che li accompagnano, e li impagina come li vedevano i loro autori: caratteri, immagini, tabelle e revisioni comprese. Quando salvi, ottieni un file nello stesso formato, che i tuoi colleghi aprono in Microsoft Office o in LibreOffice come qualsiasi altro.
-
-Il merito è di un motore dei documenti che da vent'anni si vede consegnare i file degli altri. Libera Suite fa girare quel motore sul tuo computer.
+## Quattro applicazioni
 
 | | | |
 | :--- | :--- | :--- |
@@ -24,39 +20,47 @@ Il merito è di un motore dei documenti che da vent'anni si vede consegnare i fi
 | **Libera Slides** | Presentazioni | `.pptx` `.odp` |
 | **Libera Diagrams** | Un visualizzatore di disegni Visio | `.vsdx` |
 
-Trovi anche il resto di una suite per ufficio: una finestra iniziale con i documenti recenti, il controllo ortografico in cinque lingue, l'esportazione in PDF, la stampa e un ripristino che ti restituisce il lavoro se il computer si ferma a metà.
+Un file Word, Excel o PowerPoint si apre con la sua impaginazione: caratteri, immagini, tabelle e revisioni comprese. Il salvataggio produce un file nello stesso formato, che Microsoft Office e LibreOffice aprono come qualsiasi altro.
 
-## Gratuita, e tua per sempre
+Le quattro applicazioni condividono una finestra iniziale con i documenti recenti, il controllo ortografico in cinque lingue, l'esportazione in PDF, la stampa e il recupero del lavoro dopo un arresto anomalo.
 
-Nessuna licenza da pagare, nessuna bolletta mensile. Installala su tutti i computer che vuoi e tienila finché vuoi. Nessun server deve restare pagato perché continui a funzionare, e nessuno può spegnerla a distanza.
+## Libera e gratuita
 
-Libera Suite è software libero: chiunque può leggerne il codice sorgente, modificarlo e condividerlo. L'applicazione è sotto Apache License 2.0 e gli editor sotto GNU AGPL v3. [Licenza e attribuzione](../licence.md) spiega come ottenere il codice sorgente esatto di ogni versione.
+Libera Suite non chiede né licenza né abbonamento. Puoi installarla su tutti i computer che vuoi e tenerla finché vuoi. Per funzionare non dipende da nessun nostro server.
+
+È software libero: chiunque può leggerne il codice sorgente, modificarlo e condividerlo. L'applicazione è sotto licenza Apache 2.0 e i componenti di Euro-Office sotto GNU AGPL v3. [Licenza e attribuzione](../licence.md) spiega come ottenere il codice sorgente esatto di ogni versione.
 
 ## I tuoi documenti restano sul tuo computer
 
-Libera Suite legge e scrive i tuoi documenti sul tuo disco, con un software che si trova sul tuo disco, e non li carica mai da nessuna parte. Dietro non ci sono né account né cloud, e non c'è telemetria, né statistica d'uso, né segnalazione di crash: non ci invia nulla su di te, sui tuoi documenti o sul modo in cui la usi.
+Libera Suite legge e scrive i tuoi documenti sul tuo disco e non li invia da nessuna parte. Non ci trasmette alcuna informazione su di te, sui tuoi documenti o sul modo in cui la usi.
 
-Si collega a internet per scaricare i suoi editor durante l'installazione. [La documentazione elenca](../index.md#what-leaves-your-machine) ogni sua connessione, e il codice sorgente è pubblico: puoi verificarlo.
+Si collega a internet per scaricare i componenti di Euro-Office durante l'installazione. [La documentazione elenca](../index.md#what-leaves-your-machine) ciascuna delle sue connessioni, e il codice sorgente permette di verificarlo.
 
-## Una beta, con le lacune in vista
+## Come installarla
 
-Libera Suite funziona su **Windows 10 e 11 (x64)**, **macOS (Apple Silicon)** e **Linux (x86_64 e arm64)**. Windows ha il suo programma di installazione, Linux un unico file Flatpak con dentro gli editor, e macOS un comando nel terminale.
+- **Linux** (x86_64 e arm64): un comando nel terminale, che installa un pacchetto Flatpak quando Flatpak è presente.
+- **macOS** (Apple Silicon): un comando nel terminale, con o senza Homebrew.
+- **Windows** 10 e 11 (x64): un programma di installazione, senza diritti di amministratore.
 
-Le lacune note sono [pubblicate per intero](../main/status.md) e tenute aggiornate. Ogni documento ha la sua finestra, perché le schede non ci sono ancora. Niente impedisce a due finestre di modificare lo stesso documento, e una delle due perderà le sue modifiche. Diagrams legge i file Visio ma non li salva. Windows diffida del programma di installazione finché non è firmato.
+La [pagina di installazione](../main/install.md) riporta i comandi.
 
-## Dicci cosa non va
+## I limiti della beta
 
-La cosa più utile che puoi mandarci è **un documento che viene male, in allegato**. Il motore è maturo: quando un file viene male, la causa è molto più probabilmente dalla nostra parte, un carattere che non abbiamo incluso, una risorsa che non abbiamo servito. Li correggiamo in fretta, appena qualcuno ce ne mostra uno.
+Ogni documento ha la sua finestra, senza schede. Ancora nulla impedisce a due finestre di modificare lo stesso documento: l'ultima che salva sovrascrive il lavoro dell'altra. Diagrams legge i file Visio ma non può salvarli. Il programma di installazione per Windows non è ancora firmato, quindi Windows mostra un avviso quando lo apri. [La pagina sullo stato](../main/status.md) riporta l'elenco completo e viene tenuta aggiornata.
 
-Se scegli il software per un'organizzazione, dicci **di cosa avrebbe bisogno** per cambiare. Oggi la risposta è ancora facile da orientare.
+## I tuoi commenti
 
-L'[installazione](../main/install.md) richiede un minuto, e [Commenti](../feedback.md) spiega come raggiungerci.
+Il motore di impaginazione è collaudato: quando un documento si vede male in Libera Suite, la causa sta quasi sempre nel nostro pacchetto, in un carattere o una risorsa mancante. Sono difetti che si correggono in fretta, a patto di vederli. Il commento più utile è quindi un documento che si vede male, allegato al tuo messaggio.
 
-## Chi la fa
+Se scegli il software per un'organizzazione, dicci quali funzioni le servirebbero per adottare Libera Suite.
 
-Libera Suite è sviluppata da [Abilian](https://abilian.com), un'azienda francese che fa software libero. I suoi editor vengono da [Euro-Office](https://github.com/Euro-Office), a sua volta un fork di [ONLYOFFICE](https://www.onlyoffice.com/), sviluppato da Ascensio System SIA. Il motore dei documenti e il supporto dei formati, la parte difficile di una suite per ufficio, sono loro, e non ne abbiamo riscritto nulla. Noi abbiamo costruito intorno l'applicazione desktop: le finestre, i menu, l'apertura e il salvataggio, e i pacchetti.
+[Commenti](../feedback.md) spiega come scriverci.
 
-Il motore resta quello del progetto originale, costruito dai sorgenti a revisioni esatte, con [una breve serie di patch](/en/develop/patches/) nostra. La parte che manteniamo è piccola, e un gruppo piccolo può impegnarsi a curarla nel tempo.
+## Chi la sviluppa
+
+Libera Suite è sviluppata da [Abilian](https://abilian.com), un'azienda francese di software libero. È costruita sui componenti di [Euro-Office](https://github.com/Euro-Office), un fork di [ONLYOFFICE](https://www.onlyoffice.com/), il software di Ascensio System SIA. Questi componenti forniscono il motore dei documenti e il supporto dei formati. Abilian ha scritto l'applicazione desktop che li ospita: le finestre, i menu, l'apertura e il salvataggio dei file, il pacchetto.
+
+Compiliamo i componenti di Euro-Office dai loro sorgenti, a revisioni fissate. Le correzioni che vi applichiamo sono [pubblicate e spiegate](/en/develop/patches/).
 
 *Abilian*
 

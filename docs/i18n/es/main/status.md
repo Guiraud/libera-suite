@@ -8,24 +8,24 @@ La interfaz de Libera Suite está en inglés: los menús y botones se citan aqu�
 
 | | |
 | :--- | :--- |
-| **Cuatro editores** | Windows 10 y 11 en x64, Linux en x86_64 y arm64, macOS en Apple Silicon. Words, Tables y Slides editan; Diagrams lee archivos de Visio. |
+| **Cuatro aplicaciones** | Windows 10 y 11 en x64, Linux en x86_64 (arm64 con la 0.4.1), macOS en Apple Silicon. Words, Tables y Slides editan; Diagrams lee archivos de Visio. |
 | **Abrir y guardar** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
-| **Exportar** | Save As ofrece una lista de formatos para cada editor, PDF incluido. Cada formato ofrecido se comprueba con una conversión real, cuyo texto se vuelve a leer. |
+| **Exportar** | Save As ofrece una lista de formatos para cada aplicación, PDF incluido. Cada formato ofrecido se comprueba con una conversión real, cuyo texto se vuelve a leer. |
 | **Imágenes** | Se conservan al abrir y al guardar; Insertar ▸ Imagen funciona. |
 | **Imprimir** | Genera un PDF, pregunta dónde guardarlo y lo abre en tu visor de PDF. |
 | **Corrección ortográfica** | Cinco idiomas, con sugerencias. Más abajo, los detalles. |
-| **En tu idioma** | Los editores siguen el idioma de tu sistema, y un documento nuevo parte de la plantilla en blanco de tu región: papel A4 en todas partes salvo en Estados Unidos, y corrección ortográfica en tu idioma. La barra de menús, la ventana de inicio y los diálogos siguen en inglés. |
+| **En tu idioma** | Las aplicaciones siguen el idioma de tu sistema, y un documento nuevo parte de la plantilla en blanco de tu región: papel A4 en todas partes salvo en Estados Unidos, y corrección ortográfica en tu idioma. En español, francés, alemán e italiano también los siguen la barra de menús, la ventana de inicio y los diálogos; en cualquier otro idioma están en inglés. |
 | **Documentos recientes** | Archivo ▸ Abrir reciente recuerda los últimos 20. |
-| **Varios documentos a la vez** | También de tipos distintos, una ventana para cada uno: desde Archivo ▸ Nuevo o Archivo ▸ Abrir, con doble clic en el gestor de archivos o con `libera *.docx`. El tipo de archivo elige el editor. |
+| **Varios documentos a la vez** | También de tipos distintos, una ventana para cada uno: desde Archivo ▸ Nuevo o Archivo ▸ Abrir, con doble clic en el gestor de archivos o con `libera *.docx`. El tipo de archivo elige la aplicación. |
 | **En el menú Inicio y en el menú de aplicaciones** | En Windows, el instalador añade Libera Suite al menú Inicio y al escritorio, y la incluye en *Abrir con* del Explorador de archivos. En Linux, el Flatpak la añade al menú de aplicaciones con su icono y sus asociaciones de archivos; `libera --launcher-install` hace lo mismo con cualquier otra instalación. |
-| **Una ventana de inicio** | `libera` sin argumentos: documento nuevo, abrir, documentos recientes y procedencia de los editores. |
+| **Una ventana de inicio** | `libera` sin argumentos: documento nuevo, abrir, documentos recientes y procedencia de los componentes. |
 | **Recuperación tras un cierre inesperado** | Los cambios sin guardar se te ofrecen la próxima vez que abres el documento. |
 | **Un documento abierto en otro lugar** | Si LibreOffice u otra instancia de Libera Suite ya lo tiene abierto, se marca como *bloqueado para edición*: puedes leerlo y modificarlo, y al guardar se pregunta dónde, de modo que el archivo de la otra instancia nunca se sobrescribe. Abrir un documento que ya muestra una ventana trae esa ventana al frente. Microsoft Office y Libera Suite no ven los bloqueos del otro: un documento abierto en Word no está protegido. |
 | **Al cerrar, pregunta** | Una ventana con cambios sin guardar ofrece Guardar, No guardar o Cancelar. |
 | **Una barra de menús** | File, Edit, View y Help en todas las plataformas. macOS añade Window junto con los atajos habituales. |
-| **Acerca de** | Quién escribió los editores y con qué licencia: `Archivo ▸ Acerca de` en el editor, `Ayuda ▸ Acerca de Libera Suite` en Linux y Windows. macOS lo pone en el menú de la aplicación. |
+| **Acerca de** | Quién escribió los componentes y con qué licencia: `Archivo ▸ Acerca de` en la ventana del documento, `Ayuda ▸ Acerca de Libera Suite` en Linux y Windows. macOS lo pone en el menú de la aplicación. |
 | **Los ajustes se conservan** | El tema, las unidades, el idioma de la corrección y ajustes similares siguen ahí tras reiniciar. |
-| **Instalación de los editores** | Desde el servidor, o desde una carpeta local de artefactos compilados. En ambos casos, cada artefacto se comprueba con las huellas incluidas en la aplicación. |
+| **Instalación de los componentes** | Desde el servidor, o desde una carpeta local de artefactos compilados. En ambos casos, cada artefacto se comprueba con las huellas incluidas en la aplicación. |
 
 ## Problemas conocidos
 
@@ -45,31 +45,31 @@ Si te encuentras con algo que *no* está en esta lista, [cuéntanoslo](../feedba
 
 ## Hecho en parte
 
-**La barra de menús en Linux y Windows.** Está dibujada en la ventana, con Archivo, Edición, Ver y Ayuda; cada elemento funciona. Ninguno muestra un atajo de teclado, pero las teclas habituales funcionan: Ctrl-N crea un documento nuevo del mismo tipo, Ctrl-O abre uno, Ctrl-W cierra la ventana (preguntando antes por los cambios sin guardar), y los atajos propios del editor, Ctrl-S, Ctrl-Mayús-S (Guardar como), Ctrl-P y Ctrl-Z, también funcionan. En Windows, Ctrl-N, Ctrl-O y Ctrl-W aún no se han comprobado en una máquina real. Archivo ▸ Nuevo ▸ Documento, Hoja de cálculo o Presentación funciona, igual que las tarjetas Nuevo de la ventana de inicio y la pestaña Archivo del editor.
+**La barra de menús en Linux y Windows.** Está dibujada en la ventana, con Archivo, Edición, Ver y Ayuda; cada elemento funciona. Ninguno muestra un atajo de teclado, pero las teclas habituales funcionan: Ctrl-N crea un documento nuevo del mismo tipo, Ctrl-O abre uno, Ctrl-W cierra la ventana (preguntando antes por los cambios sin guardar), y los atajos propios de los componentes, Ctrl-S, Ctrl-Mayús-S (Guardar como), Ctrl-P y Ctrl-Z, también funcionan. En Windows, Ctrl-N, Ctrl-O y Ctrl-W aún no se han comprobado en una máquina real. Archivo ▸ Nuevo ▸ Documento, Hoja de cálculo o Presentación funciona, igual que las tarjetas Nuevo de la ventana de inicio y la pestaña Archivo del propio documento.
 
 **`Libera.app` en macOS.** `build/macos/macos-app.sh` la compila. Abre un documento con doble clic o soltado sobre su icono del Dock, aparece en *Abrir con* y muestra la marca de Libera en el Dock. Pero es un lanzador alrededor del intérprete con el que se compiló (no incluye, firma ni notariza nada): todavía no es algo que se pueda dar a otra persona.
 
 ## Sin empezar
 
-### En el editor
+### En la ventana del documento
 
 - **Documentos protegidos con contraseña.** Ni abrirlos ni guardarlos.
 - **Firmas digitales.**
 - **Combinar correspondencia.**
 - **Complementos.** Desactivados en el proyecto original de este fork, así que el panel nunca aparece.
-- **Macros.** Desactivadas. Las macros del editor son JavaScript y no ejecutan el VBA de los documentos de Microsoft Office, así que las macros de un documento no se ejecutan. Se conservan: al guardar un `.docm`, `.xlsm` o `.pptm`, su VBA queda intacto. [La hoja de ruta](/en/develop/roadmap/), en inglés, describe qué llegará en su lugar.
+- **Macros.** Desactivadas. Las macros propias de los componentes son JavaScript y no ejecutan el VBA de los documentos de Microsoft Office, así que las macros de un documento no se ejecutan. Se conservan: al guardar un `.docm`, `.xlsm` o `.pptm`, su VBA queda intacto. [La hoja de ruta](/en/develop/roadmap/), en inglés, describe qué llegará en su lugar.
 
 ### En la aplicación
 
 - **Pestañas.** Las ventanas existen y el menú Window las enumera, pero no se pueden reunir en una sola ventana.
-- **Una aplicación redistribuible en macOS.** `Libera.app` funciona desde tu propia copia del código y no incluye ni intérprete ni editores. Windows tiene una: su instalador lo trae todo.
+- **Una aplicación redistribuible en macOS.** `Libera.app` funciona desde tu propia copia del código y no incluye ni intérprete ni componentes. Windows tiene una: su instalador lo trae todo.
 - **Actualizaciones automáticas** y **firma de código**. macOS trata una `Libera.app` compilada por ti como software de un desarrollador no identificado. Windows avisa sobre el instalador descargado.
 - **Una ayuda sin conexión**, legible sin navegador ni red. El menú Help abre este sitio; About funciona sin conexión. Más abajo, los detalles.
 
 ### En otros ámbitos
 
 - **Editar diagramas.** Diagrams abre un archivo `.vsdx` y lo muestra. El conversor no sabe escribir ningún formato de Visio: no hay nada que guardar ni una plantilla en blanco con la que empezar.
-- **Editar PDF.** El proyecto original tiene un editor de PDF; los editores que instala Libera Suite todavía no lo incluyen, porque nada lo abriría.
+- **Editar PDF.** El proyecto original tiene un editor de PDF; los componentes que instala Libera Suite todavía no lo incluyen, porque nada lo abriría.
 - **Colaboración, almacenamiento en la nube, cuentas, telemetría.** Nada de esto está hecho ni en marcha. [La hoja de ruta](/en/develop/roadmap/), en inglés, describe cómo sería cada uno si llegara. [Qué sale de tu máquina](../index.md#what-leaves-your-machine) recoge todo el uso de la red por parte de la aplicación.
 
 ## Notas sobre algunas carencias
@@ -80,7 +80,7 @@ Hay un menú **Ayuda**, en todas las plataformas, que abre este sitio en tu nave
 
 ### Corrección ortográfica
 
-Libera Suite incluye diccionarios de **inglés (de Estados Unidos y del Reino Unido), francés, alemán, español e italiano**: 9,5 MB, elegidos porque el conjunto completo ocupa 327. Añadir un idioma requiere una línea en `build/payload/dictionaries.txt` y volver a compilar los editores.
+Libera Suite incluye diccionarios de **inglés (de Estados Unidos y del Reino Unido), francés, alemán, español e italiano**: 9,5 MB, elegidos porque el conjunto completo ocupa 327. Añadir un idioma requiere una línea en `build/payload/dictionaries.txt` y volver a compilar los componentes.
 
 Un idioma sin diccionario no es un error: sus palabras simplemente se consideran correctas, como en la aplicación de escritorio del proyecto original. Las palabras añadidas con *Add to dictionary* se conservan, para todos los documentos y todos los idiomas.
 

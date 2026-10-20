@@ -1,6 +1,6 @@
 # Installer
 
-Libera Suite fonctionne sous **Windows 10 et 11 (x64)**, **Linux (x86_64 et arm64)** et **macOS (Apple Silicon)**. L'installation ne demande aucun mot de passe administrateur : elle se fait pour votre compte seulement.
+Libera Suite fonctionne sous **Windows 10 et 11 (x64)**, **Linux (x86_64 et arm64)** et **macOS (Apple Silicon)**. L'installation ne demande aucun mot de passe administrateur : elle se fait pour votre compte seulement. Sous Linux arm64, le script d'installation installe la 0.4.1, la dernière version compilée pour cette plateforme, en attendant qu'une version plus récente le soit de nouveau.
 
 ## Windows {#windows}
 
@@ -43,7 +43,7 @@ Avec [Homebrew](https://brew.sh), ouvrez le Terminal et lancez :
 brew install abilian/tap/libera
 ```
 
-Homebrew construit Libera Suite sur votre Mac. Au premier lancement de `libera`, celle-ci propose de télécharger les éditeurs, environ 110 Mo.
+Homebrew construit Libera Suite sur votre Mac. Au premier lancement de `libera`, celle-ci propose de télécharger ses composants, environ 90 Mo.
 
 Sans Homebrew, il vous faut Python 3.12 ou plus récent, que macOS ne fournit pas : installez-le depuis [python.org](https://www.python.org/downloads/macos/). Lancez ensuite :
 
@@ -73,7 +73,7 @@ La page suivante est [Travailler sur des documents](../guide/documents.md) : ouv
 
 Relancez le même installateur ou la même commande. La version installée est remplacée par la plus récente.
 
-Avec Homebrew, lancez `brew upgrade libera`. Si une nouvelle version a besoin de nouveaux éditeurs, Libera Suite propose de les télécharger à son lancement suivant.
+Avec Homebrew, lancez `brew upgrade libera`. Si une nouvelle version a besoin de nouveaux composants, Libera Suite propose de les télécharger à son lancement suivant.
 
 ## Désinstaller {#uninstall}
 
@@ -119,7 +119,7 @@ libera --diagnose
 La commande affiche un écran. Deux lignes comptent surtout :
 
 - **`window`** doit indiquer `ok`. Sous Linux, `NOT AVAILABLE` signifie qu'il manque des paquets système ; lancer `libera` affiche la commande pour les installer.
-- **`payload`** désigne les éditeurs et leur provenance. `MISSING` signifie qu'ils n'ont pas été téléchargés : lancez `libera --payload-install`.
+- **`payload`** désigne les composants et leur provenance. `MISSING` signifie qu'ils n'ont pas été téléchargés : lancez `libera --payload-install`.
 
 La page [État des lieux](status.md) recense les problèmes que nous connaissons déjà. Pour tout le reste, [écrivez-nous](../feedback.md), en collant la sortie de `libera --diagnose`.
 

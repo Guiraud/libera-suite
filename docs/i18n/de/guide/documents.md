@@ -11,11 +11,11 @@ libera ~/Documents/budget.xlsx
 libera ~/Documents/netzwerk.vsdx
 ```
 
-**Das Dokument bestimmt, welchen Editor Sie bekommen.** Es gibt keinen Befehl, einen auszuwählen, so wie man auch keinen Texteditor für eine `.txt`-Datei auswählt: Sie öffnen das Dokument, und der richtige Editor erscheint. Eine `.xlsx`-Datei öffnet sich in Tables, eine `.pptx`-Datei in Slides, eine `.vsdx`-Datei in Diagrams.
+**Das Dokument bestimmt, welche Anwendung Sie bekommen.** Es gibt keinen Befehl, eine auszuwählen, so wie man auch keinen Texteditor für eine `.txt`-Datei auswählt: Sie öffnen das Dokument, und die richtige Anwendung erscheint. Eine `.xlsx`-Datei öffnet sich in Tables, eine `.pptx`-Datei in Slides, eine `.vsdx`-Datei in Diagrams.
 
 ![Das Startfenster mit je einer Kachel New für Document, Spreadsheet und Presentation, einer Schaltfläche Open und einer Liste Recent mit drei Dokumenten.](../assets/start.png)
 
-Ohne Argument öffnet `libera` das **Startfenster**: ein neues Dokument jeder Art, einen Öffnen-Dialog, Ihre zuletzt verwendeten Dokumente und die Herkunft der Editoren. Wählen Sie etwas aus, und das Startfenster verschwindet; das Dokument bleibt.
+Ohne Argument öffnet `libera` das **Startfenster**: ein neues Dokument jeder Art, einen Öffnen-Dialog, Ihre zuletzt verwendeten Dokumente und die Herkunft der Komponenten. Wählen Sie etwas aus, und das Startfenster verschwindet; das Dokument bleibt.
 
 Libera Suite öffnet **ein Dokument pro Fenster**, daher tut ein Platzhalter der Shell, wonach er aussieht:
 
@@ -23,17 +23,17 @@ Libera Suite öffnet **ein Dokument pro Fenster**, daher tut ein Platzhalter der
 libera ~/Documents/*.docx     # jedes in seinem Fenster
 ```
 
-Sie können ein Dokument auch aus dem Editor heraus öffnen, über **Datei ▸ Öffnen** oder **Datei ▸ Zuletzt benutztes Dokument öffnen**. Beides öffnet ein neues Fenster und lässt das bereits geöffnete Dokument unberührt.
+Sie können ein Dokument auch aus dem Dokumentfenster heraus öffnen, über **Datei ▸ Öffnen** oder **Datei ▸ Zuletzt benutztes Dokument öffnen**. Beides öffnet ein neues Fenster und lässt das bereits geöffnete Dokument unberührt.
 
 **Ein Dokument, das Sie** auf ein Fenster von Libera Suite ziehen, das Startfenster eingeschlossen, öffnet sich in einem eigenen Fenster. Ein Bild, das Sie auf ein Dokument ziehen, wird darin eingefügt.
 
-**Datei ▸ Neu** bietet aus jedem Fenster ein Dokument, eine Tabelle oder eine Präsentation an, jeweils in einem eigenen Fenster. Unter macOS erzeugt `⌘N` eines von der Art des vorderen Fensters. Im Editor selbst fragt **Datei ▸ Neues Dokument erstellen**, welches der drei Sie anlegen möchten.
+**Datei ▸ Neu** bietet aus jedem Fenster ein Dokument, eine Tabelle oder eine Präsentation an, jeweils in einem eigenen Fenster. Unter macOS erzeugt `⌘N` eines von der Art des vorderen Fensters. Im Dokumentfenster selbst fragt **Datei ▸ Neues Dokument erstellen**, welches der drei Sie anlegen möchten.
 
 ## Speichern
 
 **Datei ▸ Speichern** schreibt in das Dokument zurück, das Sie geöffnet haben. **Datei ▸ Speichern unter** fragt, wohin es soll. Von da an bearbeiten Sie dieses Dokument.
 
-Beim Speichern wird das Arbeitsformat des Editors wieder in ein echtes Dokument umgewandelt, was etwa eine Sekunde dauert.
+Beim Speichern wird das Arbeitsformat wieder in ein echtes Dokument umgewandelt, was etwa eine Sekunde dauert.
 
 ## Exportieren
 
@@ -57,7 +57,7 @@ Die Wahl eines Formats benennt die Datei im Dialog um. Der Dialog lässt nicht z
 
 Nicht jedes Format, das der Konverter lesen kann, kann er auch schreiben. Insbesondere `.doc` lässt sich öffnen, aber nicht speichern; verwenden Sie `.docx` oder `.rtf` für etwas, das zurück an ein altes Word gehen muss.
 
-Falls Sie im Menü Datei einen Eintrag **Herunterladen als** suchen: Es gibt keinen. Die Editoren blenden ihn aus, wenn sie als Offline-Desktop-Anwendung laufen, und setzen Speichern unter an seine Stelle: dieselbe Aufgabe, einen Menüeintrag weiter oben.
+Falls Sie im Menü Datei einen Eintrag **Herunterladen als** suchen: Es gibt keinen. Die Komponenten blenden ihn aus, wenn sie als Offline-Desktop-Anwendung laufen, und setzen Speichern unter an seine Stelle: dieselbe Aufgabe, einen Menüeintrag weiter oben.
 
 ### Auf der Kommandozeile {#from-the-command-line}
 
@@ -76,7 +76,7 @@ Eine Datei, die schon unter dem neuen Namen existiert, wird ersetzt. Das umgewan
 
 Unter Linux und Windows sitzt die Leiste im Fenster: **Datei**, **Bearbeiten**, **Ansicht** und **Hilfe**, Letzteres mit *Libera-Hilfe* und *Über Libera Suite*. Aus dem, was das Menü dort bietet, ergeben sich drei Unterschiede. Kein Eintrag zeigt ein Tastenkürzel an, aber Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Umschalt-S, Ctrl-P und Ctrl-Z tun dort, was die ⌘-Tasten unten auf einem Mac tun. **Zuletzt verwendet** wird beim Start der Anwendung aufgebaut; ein Dokument, das Sie heute öffnen, erscheint dort also morgen. Nichts wird ausgegraut: Speichern ohne etwas zu speichern tut nichts.
 
-Unter macOS ist es eine echte Mac-Menüleiste, mit denselben Einträgen plus **Fenster**. Die üblichen Tastenkürzel funktionieren dort, ob der Editor den Fokus hat oder nicht:
+Unter macOS ist es eine echte Mac-Menüleiste, mit denselben Einträgen plus **Fenster**. Die üblichen Tastenkürzel funktionieren dort, ob das Dokument den Fokus hat oder nicht:
 
 | | |
 | :--- | :--- |
@@ -92,7 +92,7 @@ Unter macOS ist es eine echte Mac-Menüleiste, mit denselben Einträgen plus **F
 
 **Datei ▸ Zuletzt verwendet** wird bei jedem Öffnen neu aufgebaut. Das Menü **Fenster** listet alle geöffneten Dokumente auf.
 
-Speichern, Rückgängig und Wiederholen sind ausgegraut, wenn es nichts zu speichern oder rückgängig zu machen gibt. Der Editor lehnt diese Befehle stillschweigend ab; ein Menüeintrag, der verfügbar bliebe, sähe kaputt aus.
+Speichern, Rückgängig und Wiederholen sind ausgegraut, wenn es nichts zu speichern oder rückgängig zu machen gibt. Die Komponenten lehnen diese Befehle stillschweigend ab; ein Menüeintrag, der verfügbar bliebe, sähe kaputt aus.
 
 ## Schließen
 
@@ -147,7 +147,7 @@ Eine weitere beschränkt sich auf die Schriften, die Libera Suite mitliefert, oh
 installed_fonts = false
 ```
 
-Und eine legt die Sprache der Editoren fest, wenn es nicht die Ihres Systems sein soll. Ein neues Dokument richtet sein Papierformat weiterhin nach der Region Ihres Systems:
+Und eine legt die Sprache der Anwendungen fest, wenn es nicht die Ihres Systems sein soll. Ein neues Dokument richtet sein Papierformat weiterhin nach der Region Ihres Systems:
 
 ```toml
 ui_language = "fr"
@@ -157,7 +157,7 @@ Um für einen Start eine andere Datei zu verwenden, ohne diese anzutasten, geben
 
 ## Wo Ihre Arbeitsdateien liegen
 
-Solange ein Dokument geöffnet ist, hält Libera Suite einen Sitzungsordner neben ihren Anwendungsdaten. Er enthält die Arbeitskopie des Editors und ein laufendes Protokoll Ihrer Änderungen, was das Speichern schnell und das Rückgängigmachen zuverlässig macht. Er ist keine Sicherung: Das Dokument liegt dort, wo Sie es gespeichert haben.
+Solange ein Dokument geöffnet ist, hält Libera Suite einen Sitzungsordner neben ihren Anwendungsdaten. Er enthält die Arbeitskopie und ein laufendes Protokoll Ihrer Änderungen, was das Speichern schnell und das Rückgängigmachen zuverlässig macht. Er ist keine Sicherung: Das Dokument liegt dort, wo Sie es gespeichert haben.
 
 ---
 

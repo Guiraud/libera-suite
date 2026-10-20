@@ -42,6 +42,7 @@ nav = [
         { "Install" = "main/install.md" },
         { "Other ways to install" = "main/alt-install.md" },
         { "What works today" = "main/status.md" },
+        { "Libera Suite and Euro-Office" = "main/euro-office.md" },
         { "About" = "main/about.md" },
     ]},
     { "Using Libera Suite" = [
@@ -60,8 +61,9 @@ nav = [
     ]},
     { "News" = [
         { "All news" = "news/index.md" },
+        { "Libera Suite 0.5: in your language, with your fonts" = "news/2026-10-20-libera-suite-0-5.md" },
         { "Libera Suite 0.4: safer in a shared folder, more faithful to OpenDocument" = "news/2026-10-12-libera-suite-0-4.md" },
-        { "Libera Suite: your documents, on your own machine" = "news/2026-10-01-your-documents-on-your-own-machine.md" },
+        { "Libera Suite enters public beta" = "news/2026-10-01-your-documents-on-your-own-machine.md" },
     ]},
     { "Feedback" = "feedback.md" },
 ]
@@ -96,6 +98,11 @@ lang = "it"
 name = "Español"
 link = "/es/"
 lang = "es"
+
+[[project.extra.alternate]]
+name = "Nederlands"
+link = "/nl/"
+lang = "nl"
 
 [project.theme]
 

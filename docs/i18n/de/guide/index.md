@@ -8,7 +8,7 @@ Beginnen Sie mit [Installieren](../main/install.md). Diese drei Seiten sind zum 
 2. [Mit Dokumenten arbeiten](documents.md): öffnen, speichern, exportieren, drucken.
 3. [Was heute funktioniert](../main/status.md): was gebaut ist, und die Probleme, die wir bereits kennen.
 
-Jeder Editor hat seine eigene Farbe. Alles andere am Fenster ist gleich:
+Jede Anwendung hat ihre eigene Farbe. Alles andere am Fenster ist gleich:
 
 ![Libera Tables mit einer leeren Tabelle; die Symbolleiste im Blaugrün von Libera Tables.](../assets/tables.png)
 
@@ -18,14 +18,14 @@ Jeder Editor hat seine eigene Farbe. Alles andere am Fenster ist gleich:
 
 Libera Suite besteht aus zwei Teilen, die getrennt ankommen.
 
-**Die Anwendung** ist ein kleines Python-Paket von einigen hundert Kilobyte: das Fenster, die Befehlszeile und die Host-Anwendung, mit der der Editor spricht.
+**Die Anwendung** ist ein kleines Python-Paket von einigen hundert Kilobyte: das Fenster, die Befehlszeile und die Host-Anwendung, mit der die Komponenten sprechen.
 
-**Die Editoren** sind alles andere: die Dokument-Engine, die Editoren selbst, die Schriften. Die Anwendung nennt das den *Payload*. Er ist komprimiert etwa 110 MB groß unter macOS und 120 MB unter Linux. Sie laden oder installieren ihn einmal; das Python-Paket enthält ihn nicht.
+**Die Komponenten** sind alles andere: die Dokument-Engine, die Bearbeitungskomponenten, die Schriften. Die Befehlszeile nennt sie den *Payload*. Sie sind komprimiert etwa 90 MB groß. Sie laden oder installieren sie einmal; das Python-Paket enthält sie nicht.
 
-Beide haben getrennte Versionsnummern. Die Anwendung prüft, ob die Editoren, die sie findet, die erwarteten sind. Eine Korrektur an der Anwendung bedeutet deshalb nicht, die Editoren erneut herunterzuladen.
+Beide haben getrennte Versionsnummern. Die Anwendung prüft, ob die Komponenten, die sie findet, die erwarteten sind. Eine Korrektur an der Anwendung bedeutet deshalb nicht, die Komponenten erneut herunterzuladen.
 
-Das Windows-Installationsprogramm und das Linux-Flatpak enthalten beide Teile. Alle anderen Installationswege richten zuerst die Anwendung ein und laden dann einmal die Editoren herunter.
+Das Windows-Installationsprogramm und das Linux-Flatpak enthalten beide Teile. Alle anderen Installationswege richten zuerst die Anwendung ein und laden dann einmal die Komponenten herunter.
 
 ## Was es nicht ist
 
-Libera Suite spricht mit keinem Server, braucht kein Konto und lädt Ihre Dokumente nie hoch. Der Editor läuft als lokaler Webinhalt, der über `127.0.0.1` an ein Fenster auf Ihrem eigenen Rechner ausgeliefert wird. Es gibt keine Zusammenarbeit, keinen Cloud-Speicher und keine Telemetrie, weil nichts davon gebaut ist.
+Libera Suite spricht mit keinem Server, braucht kein Konto und lädt Ihre Dokumente nie hoch. Die Komponenten laufen als lokaler Webinhalt, der über `127.0.0.1` an ein Fenster auf Ihrem eigenen Rechner ausgeliefert wird. Es gibt keine Zusammenarbeit, keinen Cloud-Speicher und keine Telemetrie, weil nichts davon gebaut ist.

@@ -9,7 +9,7 @@ Incluye, por favor:
 - **Qué hiciste**: el elemento del menú, el botón, la tecla.
 - **Qué pasó**: el mensaje exacto, si lo hubo. Una captura de pantalla vale más que una descripción.
 - **El documento**, si el problema tiene que ver con un documento y puedes compartirlo. Un documento que reproduce el problema vale más que cualquier descripción. Si no puedes compartirlo, dilo: un documento reducido que siga fallando sirve igual.
-- **Tu plataforma**: la salida de `libera --diagnose`, que incluye las versiones, dice si se puede abrir una ventana y de dónde vienen los editores. Basta con pegarla una vez.
+- **Tu plataforma**: la salida de `libera --diagnose`, que incluye las versiones, dice si se puede abrir una ventana y de dónde vienen los componentes. Basta con pegarla una vez.
 
 Los problemas de presentación, en particular, son difíciles de seguir sin el documento: el motor de maquetación hace algo concreto con algo concreto del documento. Necesitamos las dos cosas.
 

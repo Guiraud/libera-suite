@@ -9,7 +9,7 @@ Please include:
 - **What you did**: the menu item, the button, the keystroke.
 - **What happened**: the exact message if there was one. A screenshot beats a description.
 - **The document**, if the problem is about a document and you can share it. A document that reproduces the problem is worth more than any description of it. If you cannot share it, say so: a reduced document that still misbehaves is just as good.
-- **Your platform**: `libera --diagnose` output, which has the versions, whether a window can be opened at all, and where the payload came from. One paste covers it.
+- **Your platform**: `libera --diagnose` output, which has the versions, whether a window can be opened at all, and where the components came from. One paste covers it.
 
 Rendering problems in particular are hard to chase without the document: the layout engine is doing something specific with something specific in the document. Both are needed.
 

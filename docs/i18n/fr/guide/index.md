@@ -8,7 +8,7 @@ Commencez par [Installer](../main/install.md). Ces trois pages se lisent dans l'
 2. [Travailler sur des documents](documents.md) : ouvrir, enregistrer, exporter, imprimer.
 3. [État des lieux](../main/status.md) : les fonctions disponibles et les problèmes que nous connaissons déjà.
 
-Chaque éditeur a sa propre couleur. Pour le reste, la fenêtre est la même :
+Chaque application a sa propre couleur. Pour le reste, la fenêtre est la même :
 
 ![Libera Tables contient une feuille de calcul vide, et sa barre d'outils est dans le bleu-vert de Libera Tables.](../assets/tables.png)
 
@@ -18,14 +18,14 @@ Chaque éditeur a sa propre couleur. Pour le reste, la fenêtre est la même :
 
 Libera Suite se compose de deux parties qui arrivent séparément.
 
-**L'application** est un petit paquet Python. Elle pèse quelques centaines de kilo-octets : la fenêtre, la ligne de commande et l'application hôte avec laquelle l'éditeur communique.
+**L'application** est un petit paquet Python. Elle pèse quelques centaines de kilo-octets : la fenêtre, la ligne de commande et l'application hôte avec laquelle les composants communiquent.
 
-**Les éditeurs** sont tout le reste : le moteur de documents, les éditeurs eux-mêmes, les polices. L'application appelle cet ensemble le *payload*. Il pèse environ 110 Mo compressé sous macOS et 120 Mo sous Linux. Vous le téléchargez ou l'installez une fois ; le paquet Python ne l'inclut pas.
+**Les composants** sont tout le reste : le moteur de documents, les composants d'édition, les polices. La ligne de commande les appelle le *payload*. Ils pèsent environ 90 Mo compressés. Vous les téléchargez ou les installez une fois ; le paquet Python ne les inclut pas.
 
-Les deux ont des numéros de version distincts. L'application vérifie que les éditeurs qu'elle trouve sont bien ceux qu'elle attend. Une correction de l'application n'oblige donc pas à retélécharger les éditeurs.
+Les deux ont des numéros de version distincts. L'application vérifie que les composants qu'elle trouve sont bien ceux qu'elle attend. Une correction de l'application n'oblige donc pas à retélécharger les composants.
 
-L'installateur Windows et le Flatpak Linux contiennent les deux parties. Toutes les autres façons d'installer mettent d'abord l'application en place, puis téléchargent les éditeurs une fois.
+L'installateur Windows et le Flatpak Linux contiennent les deux parties. Toutes les autres façons d'installer mettent d'abord l'application en place, puis téléchargent les composants une fois.
 
 ## Ses limites
 
-Libera Suite ne parle à aucun serveur, ne demande aucun compte et n'envoie jamais vos documents nulle part. L'éditeur s'exécute comme un contenu web local, servi sur `127.0.0.1` à une fenêtre de votre propre machine. Il n'y a ni collaboration, ni stockage en ligne, ni télémétrie, parce que rien de tout cela n'est construit.
+Libera Suite ne parle à aucun serveur, ne demande aucun compte et n'envoie jamais vos documents nulle part. Les composants s'exécutent comme un contenu web local, servi sur `127.0.0.1` à une fenêtre de votre propre machine. Il n'y a ni collaboration, ni stockage en ligne, ni télémétrie, parce que rien de tout cela n'est construit.

@@ -9,7 +9,7 @@ Bitte geben Sie an:
 - **Was Sie getan haben**: den Menüeintrag, die Schaltfläche, die Taste.
 - **Was passiert ist**: den genauen Wortlaut einer Meldung, falls es eine gab. Ein Bildschirmfoto ist besser als eine Beschreibung.
 - **Das Dokument**, wenn es um ein Dokument geht und Sie es teilen können. Ein Dokument, das das Problem auslöst, ist mehr wert als jede Beschreibung. Wenn Sie es nicht teilen können, sagen Sie es: Ein verkleinertes Dokument, das sich noch genauso verhält, ist ebenso gut.
-- **Ihre Plattform**: die Ausgabe von `libera --diagnose`. Sie enthält die Versionen, ob sich überhaupt ein Fenster öffnen lässt und woher die Editoren stammen. Einmal einfügen genügt.
+- **Ihre Plattform**: die Ausgabe von `libera --diagnose`. Sie enthält die Versionen, ob sich überhaupt ein Fenster öffnen lässt und woher die Komponenten stammen. Einmal einfügen genügt.
 
 Darstellungsprobleme lassen sich ohne das Dokument kaum verfolgen: Die Layout-Engine tut etwas Bestimmtes mit etwas Bestimmtem im Dokument. Wir brauchen beides.
 

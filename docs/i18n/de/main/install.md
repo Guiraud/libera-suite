@@ -1,6 +1,6 @@
 # Installieren
 
-Libera Suite läuft unter **Windows 10 und 11 (x64)**, **Linux (x86_64 und arm64)** und **macOS (Apple Silicon)**. Die Installation braucht kein Administratorkennwort: Sie gilt nur für Ihr Benutzerkonto.
+Libera Suite läuft unter **Windows 10 und 11 (x64)**, **Linux (x86_64 und arm64)** und **macOS (Apple Silicon)**. Die Installation braucht kein Administratorkennwort: Sie gilt nur für Ihr Benutzerkonto. Unter Linux arm64 installiert das Installationsskript 0.4.1, die letzte dafür gebaute Version, bis wieder eine neuere gebaut wird.
 
 ## Windows {#windows}
 
@@ -43,7 +43,7 @@ Mit [Homebrew](https://brew.sh) öffnen Sie das Terminal und führen aus:
 brew install abilian/tap/libera
 ```
 
-Homebrew baut Libera Suite auf Ihrem Mac. Beim ersten Start von `libera` bietet sie an, die Editoren herunterzuladen, etwa 110 MB.
+Homebrew baut Libera Suite auf Ihrem Mac. Beim ersten Start von `libera` bietet sie an, ihre Komponenten herunterzuladen, etwa 90 MB.
 
 Ohne Homebrew brauchen Sie Python 3.12 oder neuer, das macOS nicht mitbringt: Installieren Sie es von [python.org](https://www.python.org/downloads/macos/). Führen Sie dann aus:
 
@@ -73,7 +73,7 @@ Die nächste Seite ist [Mit Dokumenten arbeiten](../guide/documents.md): öffnen
 
 Führen Sie dasselbe Installationsprogramm oder denselben Befehl erneut aus. Die installierte Version wird durch die neueste ersetzt.
 
-Mit Homebrew führen Sie `brew upgrade libera` aus. Braucht eine neue Version neue Editoren, bietet Libera Suite beim nächsten Start an, sie herunterzuladen.
+Mit Homebrew führen Sie `brew upgrade libera` aus. Braucht eine neue Version neue Komponenten, bietet Libera Suite beim nächsten Start an, sie herunterzuladen.
 
 ## Deinstallieren {#uninstall}
 
@@ -119,7 +119,7 @@ libera --diagnose
 Der Befehl gibt eine Bildschirmseite aus. Zwei Zeilen zählen vor allem:
 
 - **`window`** sollte `ok` lauten. Unter Linux bedeutet `NOT AVAILABLE`, dass Systempakete fehlen; `libera` gibt beim Start den Befehl aus, um sie zu installieren.
-- **`payload`** nennt die Editoren und ihre Herkunft. `MISSING` heißt, dass sie nicht heruntergeladen wurden: Führen Sie `libera --payload-install` aus.
+- **`payload`** nennt die Komponenten und ihre Herkunft. `MISSING` heißt, dass sie nicht heruntergeladen wurden: Führen Sie `libera --payload-install` aus.
 
 [Was heute funktioniert](status.md) führt die Probleme auf, die wir bereits kennen. Für alles andere [schreiben Sie uns](../feedback.md) und fügen Sie die Ausgabe von `libera --diagnose` ein.
 

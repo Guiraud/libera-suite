@@ -1,13 +1,14 @@
 # How this is tested
 
-Everything except the native window is automated, and one checkout drives all of it. One command runs the suite locally, another runs the same suite in a Linux container, and the same command reaches either Linux builder over ssh. Two things are still done by hand, both out of reach of a headless run: the macOS window and the Windows one, with their menus and their dialogs.
+Everything except the native window is automated, and one checkout drives all of it. One command runs the suite locally, another runs the same suite in a Linux container, and the same command reaches either Linux builder over ssh. The application in its real window runs under test on all three platforms; what is still done by hand is the menus and the dialogs, which need a click.
 
 ```sh
 make verify                        # locally: lint, 1027 tests, docs, patch queue, converter
 make test-gui                      # the application in a real window, here
 lb linux test                      # the same suite, in the Linux test container
 lb linux gui-test                  # the real window too, under Xvfb
-lb on linux-arm64 linux test       # and on the arm64 builder
+lb on linux-x86_64 linux gui-test  # the real window, on the x86_64 builder
+lb on windows-x86_64 app windows-gui-test   # and in WebView2, on the Windows builder
 ```
 
 ## The three platforms
@@ -16,19 +17,21 @@ lb on linux-arm64 linux test       # and on the arm64 builder
 |---|---|---|
 | **Linux** x86_64, arm64 | the whole suite, the real GTK window, the type checkers | the test container, locally or on either builder |
 | **macOS** arm64 | the whole suite, the real AppKit window, the type checkers, the docs checks | natively, on a machine with a payload |
-| **Windows** x64 | the patch queue on every push, the payload and the installer | a GitHub runner, and the Windows builder |
+| **Windows** x64 | the patch queue on every push, the payload and the installer, the real WebView2 window | a GitHub runner, and the Windows builder |
 
 **Linux** has the most automation, because all of it fits in a container. `lb linux test` mounts a payload, installs Chromium and runs `pytest` inside the image, so the integration and end-to-end tiers run there exactly as they do natively. `lb linux gui` goes further and opens a real GTK window under Xvfb, screenshots it and counts the colours in the image: under two dozen means the window came up empty, which is how a WebKit that refuses to paint presents itself. `lb linux dialog` answers the GTK question the host asks before overwriting a file. Both arches are real machines (`build/builders.toml`), and `lb on PLATFORM COMMAND…` runs any of this on either one, against the commit the calling checkout sits at.
 
 **macOS** runs the whole suite natively, under `make verify`. Its window layer is AppKit through pywebview, which nothing headless drives, so the menu bar, the file dialogs and printing are checked by opening the application.
 
-**Windows** is the thinnest. On every push that touches `build/`, `.github/workflows/windows.yml` verifies that the patch queue still applies with `core.autocrlf` off, which is a corruption a Mac cannot reproduce. A version tag builds the payload and the installer on a hosted runner. The Windows builder does the same for a release. The test suite does not run on Windows yet; the application is exercised there by installing it and using it.
+**Windows** is the thinnest. On every push that touches `build/`, `.github/workflows/windows.yml` verifies that the patch queue still applies with `core.autocrlf` off, which is a corruption a Mac cannot reproduce. A version tag builds the payload and the installer on a hosted runner. The Windows builder does the same for a release. The `gui` tier runs there too, with `lb on windows-x86_64 app windows-gui-test`: an ssh session has no desktop, so `build/windows/gui-test.sh` runs the tier as a scheduled task in the desktop session of the user it connects as, at the console or over Remote Desktop, which must be active, and hands back pytest's output. The rest of the suite does not run on Windows yet.
 
 A Linux payload has to be built on Linux. A Flatpak bundle cannot be cross-built at all, because bubblewrap's seccomp filter is per-architecture. The builders exist for that reason. It is also why "run the tests on every platform" means ssh rather than a matrix in a YAML file.
 
 ## Why not a hosted CI run
 
-The suite needs the editor payload: `x2t` as a real binary, the fonts, the blank documents, several hundred megabytes of it, built from pinned upstream sources over several hours. The upper tiers need a browser as well. A hosted runner starts with none of that, so the two workflows in `.github/` do the one job that needs a Windows kernel and nothing else. The standard for "everything passed" is `make verify` on a machine that already has a payload on it.
+The suite needs the editor payload: `x2t` as a real binary, the fonts, the blank documents, several hundred megabytes of it, built from pinned upstream sources over several hours. The upper tiers need a browser as well. A hosted runner starts with none of that, so the two workflows in `.github/` do the one job that needs a Windows kernel and nothing else. The standard for "everything passed" is `make verify` on a machine that has a payload or can fetch one.
+
+The suite finds the payload this tree wants and no other: `LIBERA_PAYLOAD` if set, an installed payload of exactly that version, this checkout's build tree (native or the container's), and otherwise that version downloaded from the origin into `~/.cache/libera-tests/`, once, checked against its manifest. It used to take any payload installed on the machine, and a checkout wanting 0.4.1 reported the bugs of a leftover 0.2 as failures. A version not yet published, with no build tree, skips the upper tiers, and the header says why.
 
 ## What the tests assert
 
@@ -38,14 +41,13 @@ uv run pytest -m unit         # 562 tests, against nothing at all
 uv run pytest -m integration  # 160, the host over HTTP against a real payload
 uv run pytest -m e2e          # 83, the editor in headless Chromium
 uv run pytest -m gui          # 3, the application in a real window
-uv run playwright install chromium   # once, for the keyboard tests
 ```
 
 Each level sits in its own directory, which also supplies the marker on every test it holds. `build/tests/` holds another 216 for the build and release tooling, which need no payload. The whole run takes about five minutes.
 
 The `gui` tier runs in the engine a user has. It launches the shipped CLI on two documents of different types and lets it open real windows. Each window's own page then photographs its canvas and posts it to the host: `libera --shot FILE` arms that in a window as well as under `--serve`, each window posting to a name of its own. The ink measurement below therefore runs against WKWebView, WebKitGTK or WebView2, with no screenshot utility and no screen-recording permission anywhere.
 
-Two things keep that safe to run on a machine somebody is using. Every launch gets a home of its own, so it cannot hand its documents to a Libera Suite the user has open, nor leave any state behind. The tier is also skipped unless a run asks for it by marker, because a real window takes the focus while it is up. On Linux it wants a display, which `lb linux gui-test` supplies with Xvfb.
+Two things keep that safe to run on a machine somebody is using. Every launch gets a home of its own, so it cannot hand its documents to a Libera Suite the user has open, nor leave any state behind. The tier is also skipped unless a run asks for it by marker, because a real window takes the focus while it is up. On Linux it wants a display, which `lb linux gui-test` supplies with Xvfb; on Windows a logged-on session, which `lb app windows-gui-test` reaches through a scheduled task. A run in which every test skipped itself is a failure there, not a pass.
 
 The assertions open the output, because this toolchain reports success on broken results. `allfontsgen` exits 0 having found no fonts and writes a well-formed `AllFonts.js`, after which the editor draws every glyph as a box. `x2t in.docx out/Editor.bin` writes a blank document and exits 0, because it takes the output format from the extension and `.bin` names none. So the end-to-end tier photographs the editor's own canvas from inside the page and measures the ink on it. Rows of dark pixels are grouped into bands. The check complains if there are too few bands, if two sit closer together than a line of text can be, or if one is a hairline rule. A regression in the blank documents collapsed the leading, and the pages rendered as overlapping, struck-through lines while every cheaper check passed. A good render has band pitch `[30, 17, 30]`; that one had `[12, 5, 23]`.
 
@@ -74,7 +76,7 @@ Each release phase verifies its own artifact too, after the bundle phase once fo
 
 ```sh
 cd docs
-make check       # all five editions, strict: a broken cross-reference fails the build
+make check       # all six editions, strict: a broken cross-reference fails the build
 make switcher    # where a click on the language selector actually lands
 ```
 

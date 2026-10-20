@@ -6,24 +6,24 @@ Libera Suite is early. This page is a status list: it says what is built, what i
 
 | | |
 | :--- | :--- |
-| **Four editors** | Windows 10 and 11 on x64, Linux on x86_64 and arm64, macOS on Apple Silicon. Words, Tables and Slides edit; Diagrams reads Visio files. |
+| **Four applications** | Windows 10 and 11 on x64, Linux on x86_64 (arm64 on 0.4.1), macOS on Apple Silicon. Words, Tables and Slides edit; Diagrams reads Visio files. |
 | **Open and save** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
-| **Export** | Save As offers a format popup per editor, PDF included. Every format offered is checked by converting a document to it and reading its text back. |
+| **Export** | Save As offers a format popup per application, PDF included. Every format offered is checked by converting a document to it and reading its text back. |
 | **Images** | Preserved on open and save; Insert ▸ Image works. |
 | **Print** | Renders to PDF, asks where to keep it, and opens it in your PDF viewer. |
 | **Spell checking** | Five languages, with suggestions. See below. |
-| **In your language** | The editors follow your system's language, and a new document starts from your region's blank: A4 paper everywhere but the US, and spell-checked in your language. The menu bar, the start window and the dialogs are still in English. |
+| **In your language** | The applications follow your system's language, and a new document starts from your region's blank: A4 paper everywhere but the US, and spell-checked in your language. In French, German, Italian and Spanish, the menu bar, the start window and the dialogs follow too; in any other language they are in English. |
 | **Recent documents** | File ▸ Open Recent remembers the last 20. |
-| **Several documents at once** | Of any kind, one window each: from File ▸ New or File ▸ Open, by double-clicking in the file manager, or as `libera *.docx`. The file's type picks the editor. |
+| **Several documents at once** | Of any kind, one window each: from File ▸ New or File ▸ Open, by double-clicking in the file manager, or as `libera *.docx`. The file's type picks the application. |
 | **In the Start menu and the launcher** | On Windows, the installer puts Libera Suite in the Start menu, on the desktop and in Explorer's *Open with*. On Linux, the Flatpak adds it to the launcher with its icon and file associations, and `libera --launcher-install` does the same for any other install. |
-| **A start window** | `libera` on its own: new, open, recent, and where the payload came from. |
+| **A start window** | `libera` on its own: new, open, recent, and where the components came from. |
 | **Crash recovery** | Unsaved edits are offered back the next time you open the document. |
 | **A document open elsewhere** | Opened while LibreOffice or another copy of Libera Suite has it, it is marked *locked for editing*: you can read and change it, and saving asks where, so the other copy's file is never written over. Opening a document a window already shows brings that window forward. Neither Microsoft Office nor Libera Suite sees the other's locks, so a document open in Word is not protected. |
 | **Closing asks** | A window with unsaved changes offers Save, Don't Save or Cancel. |
 | **A menu bar** | File, Edit, View and Help on every platform. macOS adds Window, and the usual shortcuts. |
-| **About** | Who wrote the editors, and under what licence: `File ▸ About` inside the editor, and `Help ▸ About Libera Suite` on Linux and Windows. macOS puts it in the application menu. |
+| **About** | Who wrote the components, and under what licence: `File ▸ About` inside the document window, and `Help ▸ About Libera Suite` on Linux and Windows. macOS puts it in the application menu. |
 | **Settings persist** | Theme, units, spellcheck language and the like are still set after a restart. |
-| **Payload install** | From the origin, or from a local directory of built artifacts. Either way every artifact is verified against hashes shipped in the application. |
+| **Component install** | From the origin, or from a local directory of built artifacts. Either way every artifact is verified against hashes shipped in the application. |
 
 ## Known issues
 
@@ -43,24 +43,24 @@ If you hit something that is *not* on this list, [tell us about it](../feedback.
 
 ## Half-built
 
-**The menu bar on Linux and Windows.** It is drawn inside the window, with File, Edit, View and Help, and every item works. None shows a keyboard shortcut, but the usual keys work. Ctrl-N makes a new document of the same kind and Ctrl-O opens one. Ctrl-W closes the window, asking first about unsaved changes. The editor's own Ctrl-S, Ctrl-Shift-S (Save As), Ctrl-P and Ctrl-Z work as well. On Windows, Ctrl-N, Ctrl-O and Ctrl-W have not yet been checked on a real machine. File ▸ New ▸ Document, Spreadsheet or Presentation works, as do the New tiles in the start window and the editor's own File tab.
+**The menu bar on Linux and Windows.** It is drawn inside the window, with File, Edit, View and Help, and every item works. None shows a keyboard shortcut, but the usual keys work. Ctrl-N makes a new document of the same kind and Ctrl-O opens one. Ctrl-W closes the window, asking first about unsaved changes. The components' own Ctrl-S, Ctrl-Shift-S (Save As), Ctrl-P and Ctrl-Z work as well. On Windows, Ctrl-N, Ctrl-O and Ctrl-W have not yet been checked on a real machine. File ▸ New ▸ Document, Spreadsheet or Presentation works, as do the New tiles in the start window and the document's own File tab.
 
 **`Libera.app` on macOS.** `build/macos/macos-app.sh` builds it. It opens a document on a double-click or dropped on its Dock icon, appears in *Open With*, and shows the Libera mark in the Dock. But it is a launcher around the interpreter it was built with (nothing is embedded, signed or notarised), so it is not something you can hand to somebody else yet.
 
 ## Not started
 
-### In the editor
+### In the document window
 
 - **Password-protected documents.** Neither opening nor saving one.
 - **Digital signatures.**
 - **Mail merge.**
 - **Plugins.** Disabled upstream in this fork, so the panel never appears.
-- **Macros.** Turned off. The editor's own macros are JavaScript, and run none of the VBA in documents from Microsoft Office, so a document's macros are not run. They are kept: saving a `.docm`, `.xlsm` or `.pptm` leaves its VBA as it was. [The roadmap](../develop/roadmap.md) says what comes instead.
+- **Macros.** Turned off. The components' own macros are JavaScript, and run none of the VBA in documents from Microsoft Office, so a document's macros are not run. They are kept: saving a `.docm`, `.xlsm` or `.pptm` leaves its VBA as it was. [The roadmap](../develop/roadmap.md) says what comes instead.
 
 ### In the application
 
 - **Tabs.** Windows exist and the Window menu lists them, but they cannot be merged into one window.
-- **A redistributable application on macOS.** `Libera.app` runs from your own checkout and embeds no interpreter and no payload. Windows has one: its installer brings everything.
+- **A redistributable application on macOS.** `Libera.app` runs from your own checkout and embeds no interpreter and no components. Windows has one: its installer brings everything.
 - **Automatic updates**, and **code signing**. macOS treats a `Libera.app` you have built as software from an unidentified developer. Windows warns about the downloaded installer.
 - **Offline help**, readable without a browser or a network. The Help menu opens this site; About works offline. See below.
 
@@ -78,7 +78,7 @@ There is a **Help** menu, on every platform, and it opens this site in your brow
 
 ### Spell checking
 
-Libera Suite ships dictionaries for **English (US and UK), French, German, Spanish and Italian**: 9.5 MB, chosen because the full set is 327 MB. Adding a language is one line in `build/payload/dictionaries.txt` and a payload rebuild.
+Libera Suite ships dictionaries for **English (US and UK), French, German, Spanish and Italian**: 9.5 MB, chosen because the full set is 327 MB. Adding a language is one line in `build/payload/dictionaries.txt` and a rebuild of the components.
 
 A language with no dictionary is not an error: its words are simply treated as correct, which is what upstream's own desktop application does. Words added through *Add to dictionary* are kept, for every document and every language.
 

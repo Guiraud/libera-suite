@@ -1,6 +1,6 @@
 # Command line
 
-Libera Suite is used from its windows, but a terminal reaches a few things no window offers: converting a folder of documents in one go, installing the editors on a machine you reach over SSH, the report a bug needs.
+Libera Suite is used from its windows, but a terminal reaches a few things no window offers: converting a folder of documents in one go, installing the components on a machine you reach over SSH, the report a bug needs.
 
 The command is `libera`, on Linux and macOS. Installed as a Flatpak it is `flatpak run eu.liberasuite.Libera`, followed by the same options. On Windows it is `libera-cli.exe`, in the folder Libera Suite was installed in; it is not on the `PATH`.
 
@@ -9,7 +9,7 @@ The command is `libera`, on Linux and macOS. Installed as a Flatpak it is `flatp
 | | |
 | :--- | :--- |
 | `libera` | the start window: new, open, recent |
-| `libera FILE...` | each document in a window of its own; the file decides the editor. [More](documents.md#open) |
+| `libera FILE...` | each document in a window of its own; the file decides the application. [More](documents.md#open) |
 
 ## Convert
 
@@ -21,12 +21,12 @@ The command is `libera`, on Linux and macOS. Installed as a Flatpak it is `flatp
 
 [Converting from the command line](documents.md#from-the-command-line) gives examples.
 
-## The editors
+## The components
 
 | | |
 | :--- | :--- |
-| `libera --payload-install` | download, check and install the editors. `--from DIR` installs them from a folder instead. [More](../main/alt-install.md#the-editors) |
-| `libera --payload-status` | where the editors are, their version, and the [source](../licence.md#corresponding-source) they were built from |
+| `libera --payload-install` | download, check and install the components. `--from DIR` installs them from a folder instead. [More](../main/alt-install.md#the-editors) |
+| `libera --payload-status` | where the components are, their version, and the [source](../licence.md#corresponding-source) they were built from |
 | `libera --payload-remove` | delete them. [More](../main/install.md#uninstall) |
 
 ## Linux applications menu
@@ -43,8 +43,8 @@ The Flatpak does this itself.
 | | |
 | :--- | :--- |
 | `libera --diagnose` | everything a bug report needs, on one screen. [More](../main/install.md#if-something-goes-wrong) |
-| `libera --version` | the application's version and the editors' |
-| `-v`, `-vv`, `-vvv` | say what it is doing; how; every request to the editor |
+| `libera --version` | the application's version and the components' |
+| `-v`, `-vv`, `-vvv` | say what it is doing; how; every request to the components |
 | `-q` | errors only |
 
 `libera --help` lists every option, and `libera --convert --help` those of the converter.

@@ -9,7 +9,7 @@ Merci d'indiquer :
 - **Vos actions** : l'élément de menu, le bouton, la touche.
 - **Le résultat** : le message exact s'il y en a eu un. Une capture d'écran vaut mieux qu'une description.
 - **Le document**, si le problème le concerne et que vous pouvez le partager. Un document qui reproduit le problème vaut plus que toute description. Si vous ne pouvez pas le partager, dites-le : un document réduit qui pose toujours problème fait tout aussi bien l'affaire.
-- **Votre plateforme** : la sortie de `libera --diagnose`, qui donne les versions, dit si une fenêtre peut s'ouvrir et d'où viennent les éditeurs. Un seul copier-coller suffit.
+- **Votre plateforme** : la sortie de `libera --diagnose`, qui donne les versions, dit si une fenêtre peut s'ouvrir et d'où viennent les composants. Un seul copier-coller suffit.
 
 Les problèmes de rendu, en particulier, sont difficiles à suivre sans le document : le moteur de mise en page fait quelque chose de précis avec quelque chose de précis dans le document. Il nous faut les deux.
 

@@ -1,6 +1,6 @@
 # Installare
 
-Libera Suite funziona su **Windows 10 e 11 (x64)**, **Linux (x86_64 e arm64)** e **macOS (Apple Silicon)**. L'installazione non chiede la password di amministratore: vale solo per il tuo account.
+Libera Suite funziona su **Windows 10 e 11 (x64)**, **Linux (x86_64 e arm64)** e **macOS (Apple Silicon)**. L'installazione non chiede la password di amministratore: vale solo per il tuo account. Su Linux arm64 lo script di installazione installa la 0.4.1, l'ultima versione compilata per questa piattaforma, finché non lo sarà di nuovo una più recente.
 
 ## Windows {#windows}
 
@@ -43,7 +43,7 @@ Con [Homebrew](https://brew.sh), apri il Terminale ed esegui:
 brew install abilian/tap/libera
 ```
 
-Homebrew costruisce Libera Suite sul tuo Mac. Al primo avvio di `libera`, ti propone di scaricare gli editor, circa 110 MB.
+Homebrew costruisce Libera Suite sul tuo Mac. Al primo avvio di `libera`, ti propone di scaricare i suoi componenti, circa 90 MB.
 
 Senza Homebrew ti serve Python 3.12 o più recente, che macOS non include: installalo da [python.org](https://www.python.org/downloads/macos/). Poi esegui:
 
@@ -73,7 +73,7 @@ La pagina successiva è [Lavorare con i documenti](../guide/documents.md): aprir
 
 Esegui di nuovo lo stesso programma di installazione o lo stesso comando. La versione installata viene sostituita dalla più recente.
 
-Con Homebrew, esegui `brew upgrade libera`. Se una nuova versione ha bisogno di nuovi editor, Libera Suite ti propone di scaricarli al suo avvio successivo.
+Con Homebrew, esegui `brew upgrade libera`. Se una nuova versione ha bisogno di nuovi componenti, Libera Suite ti propone di scaricarli al suo avvio successivo.
 
 ## Disinstallare {#uninstall}
 
@@ -119,7 +119,7 @@ libera --diagnose
 Il comando stampa una schermata. Contano soprattutto due righe:
 
 - **`window`** dovrebbe dire `ok`. Su Linux, `NOT AVAILABLE` significa che mancano pacchetti di sistema; avviare `libera` mostra il comando per installarli.
-- **`payload`** indica gli editor e la loro provenienza. `MISSING` significa che non sono stati scaricati: esegui `libera --payload-install`.
+- **`payload`** indica i componenti e la loro provenienza. `MISSING` significa che non sono stati scaricati: esegui `libera --payload-install`.
 
 [Cosa funziona oggi](status.md) elenca i problemi che conosciamo già. Per tutto il resto, [scrivici](../feedback.md) e incolla l'output di `libera --diagnose`.
 

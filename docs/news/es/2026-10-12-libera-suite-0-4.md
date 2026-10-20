@@ -41,6 +41,6 @@ Los límites que quedan, entre ellos la falta de pestañas y un instalador de Wi
 
 ## Informa de los problemas
 
-El informe más útil sigue siendo un documento que sale mal, adjunto al mensaje. [Comentarios](../feedback.md) explica cómo escribirnos.
+El informe más útil sigue siendo un documento que sale mal, adjunto a tu mensaje junto con la salida de `libera --diagnose`. [Comentarios](../feedback.md) explica cómo escribirnos.
 
 *Abilian*

@@ -9,7 +9,7 @@ Indica per favore:
 - **Cosa hai fatto**: la voce di menu, il pulsante, il tasto.
 - **Cosa è successo**: il messaggio esatto, se ce n'è stato uno. Uno screenshot vale più di una descrizione.
 - **Il documento**, se il problema riguarda un documento e puoi condividerlo. Un documento che riproduce il problema vale più di qualsiasi descrizione. Se non puoi condividerlo, dillo: un documento ridotto che si comporta ancora male va altrettanto bene.
-- **La tua piattaforma**: l'output di `libera --diagnose`, che contiene le versioni, dice se una finestra può aprirsi e da dove vengono gli editor. Basta incollarlo una volta.
+- **La tua piattaforma**: l'output di `libera --diagnose`, che contiene le versioni, dice se una finestra può aprirsi e da dove vengono i componenti. Basta incollarlo una volta.
 
 I problemi di resa, in particolare, sono difficili da seguire senza il documento: il motore di impaginazione fa qualcosa di preciso con qualcosa di preciso nel documento. Ci servono tutti e due.
 

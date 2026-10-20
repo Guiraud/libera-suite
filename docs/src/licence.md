@@ -5,23 +5,23 @@
 | | |
 | :--- | :--- |
 | **The host**: the `libera` package, everything in `src/libera/` | [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) |
-| **The editor payload**: Euro-Office, and our patch queue against it | [AGPL v3](https://www.gnu.org/licenses/agpl-3.0.html) |
+| **The components**: Euro-Office, and our patch queue against it | [AGPL v3](https://www.gnu.org/licenses/agpl-3.0.html) |
 
-They arrive separately and stay separate. The host is a few hundred kilobytes of Python and JavaScript on PyPI; the payload is a download of about 120 MB, or the contents of a Flatpak bundle. Nothing of the payload is vendored into the wheel.
+They arrive separately and stay separate. The host is a few hundred kilobytes of Python and JavaScript on PyPI; the components are a download of about 90 MB, or the contents of a Flatpak bundle. Nothing of them is vendored into the wheel.
 
-Run `libera --payload-status` to see the payload in use and the upstream revisions it was built from.
+Run `libera --payload-status` to see the components in use and the upstream revisions they were built from.
 
 ## What it is built from
 
-Libera Suite includes components from [**Euro-Office**](https://github.com/Euro-Office), an AGPL fork of **ONLYOFFICE**, which is developed by Ascensio System SIA. Those components are modified; our changes to them are the patch queue described below. The editors, the document engine and the format support are theirs; the host, the packaging and the desktop integration are ours.
+Libera Suite includes components from [**Euro-Office**](https://github.com/Euro-Office), an AGPL fork of **ONLYOFFICE**, which is developed by Ascensio System SIA. Those components are modified; our changes to them are the patch queue described below. The editing components, the document engine and the format support are theirs; the host, the packaging and the desktop integration are ours.
 
 We are grateful for both. An office suite's hard part is the twenty years of reading other people's `.docx` files correctly. That part is inherited.
 
 ## Corresponding source
 
-The payload is AGPL, which requires that you can get the source for what you are running, and that includes our modifications to it.
+The components are AGPL, which requires that you can get the source for what you are running, and that includes our modifications to it.
 
-Every Libera Suite release writes three things into its payload manifest:
+Every Libera Suite release writes three things into the manifest of its components:
 
 - the exact upstream revision of each repository it was built from, pinned by commit hash;
 - the commit of Libera Suite itself;

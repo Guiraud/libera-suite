@@ -24,7 +24,7 @@ The beta has been public since October 2026. 0.5 is about what its testers meet 
 
 **A save that loses the text is a failed save.** Every format Save As offers is now checked by reading the document's text back. The application itself will refuse a save whose result has lost the text, and keep the document recoverable.
 
-**Nothing leaves your machine, by construction.** Today it is a promise about our code. 0.5 makes the editor's page unable to reach the network at all, and measures whether the converter ever tries to.
+**Libera Suite sends your documents nowhere on its own, by construction.** Today it is a promise about our code. 0.5 makes the editor's page unable to send anything off the machine. The one thing it still fetches is a picture a document links to by address rather than carrying, as every office suite does: that is the document's own reference, and only the picture comes back. The converter is measured the same way.
 
 **Following Euro-Office's desktop release.** Euro-Office now publishes desktop builds of its own. Our editors move to the revisions behind them, so a bug fixed there is fixed here.
 

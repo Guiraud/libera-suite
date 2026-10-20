@@ -41,6 +41,6 @@ Die verbleibenden Grenzen, darunter fehlende Tabs und ein noch nicht signiertes 
 
 ## Probleme melden
 
-Die nützlichste Meldung bleibt ein Dokument, das falsch herauskommt, als Anhang. [Rückmeldung](../feedback.md) sagt, wie Sie uns erreichen.
+Die nützlichste Meldung bleibt ein Dokument, das falsch herauskommt, als Anhang Ihrer Nachricht, zusammen mit der Ausgabe von `libera --diagnose`. [Rückmeldung](../feedback.md) sagt, wie Sie uns erreichen.
 
 *Abilian*

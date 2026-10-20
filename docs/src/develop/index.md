@@ -76,7 +76,6 @@ uv run pytest                 # everything
 uv run pytest -m unit         # fast and isolated
 uv run pytest -m integration  # the host, against a real payload
 uv run pytest -m e2e          # the editor, in a real browser
-uv run playwright install chromium   # once, for the keyboard tests
 ```
 
 The suite is a pyramid, one directory per level, and the marker comes from the directory. The two upper levels skip themselves when they have nothing to run against: no payload, or no Chromium (set `CHROMIUM=/path/to/browser` if yours is somewhere unusual). A skip and a pass look the same in pytest's summary line, so the run names the payload it found before anything executes.

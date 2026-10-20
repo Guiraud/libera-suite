@@ -9,7 +9,7 @@ Sie öffnet und speichert die Dateiformate von Microsoft Office und LibreOffice,
 - **Libera Slides** für Präsentationen: `.pptx`, `.odp`
 - **Libera Diagrams**, ein Betrachter für Visio-Zeichnungen (`.vsdx`)
 
-![Libera Words mit einem geöffneten Dokument: die Symbolleiste des Editors im Violett von Libera Words, darunter eine gesetzte Seite.](assets/words.png)
+![Libera Words mit einem geöffneten Dokument: die Symbolleiste im Violett von Libera Words, darunter eine gesetzte Seite.](assets/words.png)
 
 [Libera Suite installieren](main/install.md){ .md-button .md-button--primary }
 
@@ -19,38 +19,39 @@ Sie öffnet und speichert die Dateiformate von Microsoft Office und LibreOffice,
 
 ## Wo das Projekt steht
 
-Alle vier laufen heute unter **Windows** 10 und 11 (x64), **Linux** (x86_64 und arm64) und **macOS** (Apple Silicon). Das Projekt ist jung. [Was heute funktioniert](main/status.md) führt den Stand auf: was gebaut ist, was halb fertig ist und was noch nicht begonnen wurde.
+Alle vier laufen heute unter **Windows** 10 und 11 (x64), **Linux** (x86_64, und arm64 mit Version 0.4.1) und **macOS** (Apple Silicon). Das Projekt ist jung. [Was heute funktioniert](main/status.md) führt den Stand auf: was gebaut ist, was halb fertig ist und was noch nicht begonnen wurde.
 
 Zum Ausprobieren beginnen Sie mit [Installieren](main/install.md): Unter Linux und macOS genügt ein Befehl, Windows hat ein Installationsprogramm. Zum Selberbauen beginnen Sie mit der [Übersicht für Entwickler](/en/develop/), auf Englisch. In jedem Fall: [Sagen Sie uns, wie es gelaufen ist](feedback.md).
 
 ## Warum
 
-Der größte Teil der Arbeit an einer Office-Suite steckt in der Dokument-Engine, dem Teil, der eine `.docx`-Datei aus der Software eines anderen liest und so setzt, wie ihr Verfasser sie gemeint hat. Diese Engine gibt es bereits als freie Software, und sie läuft bereits offline: Die Editoren von Libera Suite sind die von [Euro-Office](https://github.com/Euro-Office), einem AGPL-Fork von ONLYOFFICE, entwickelt von Ascensio System SIA, und laufen lokal mit derselben Dokument-Engine und derselben Unterstützung der Formate. Der Engine fehlte eine Desktop-Anwendung, die klein genug ist, damit ein einziges Team sie verantworten kann.
+Der größte Teil der Arbeit an einer Office-Suite steckt in der Dokument-Engine, dem Teil, der eine `.docx`-Datei aus der Software eines anderen liest und so setzt, wie ihr Verfasser sie gemeint hat. Diese Engine gibt es bereits als freie Software, und sie läuft bereits offline: Die Bearbeitungskomponenten von Libera Suite sind die von [Euro-Office](https://github.com/Euro-Office), einem AGPL-Fork von ONLYOFFICE, entwickelt von Ascensio System SIA, und laufen lokal mit derselben Dokument-Engine und derselben Unterstützung der Formate. Der Engine fehlte eine Desktop-Anwendung, die klein genug ist, damit ein einziges Team sie verantworten kann.
 
 Libera Suite ist diese Anwendung: einige tausend Zeilen Python und JavaScript. Alles andere stammt aus dem Upstream-Projekt.
 
 ## Was Ihren Rechner verlässt {#what-leaves-your-machine}
 
-Ihre Dokumente verlassen ihn nie.
+Nichts, was Sie nicht selbst senden. Libera Suite schickt Ihre Dokumente von sich aus nirgendwohin: Sie gehen dorthin, wohin Sie sie schicken.
 
 Libera Suite hat **keine Telemetrie**, keine Nutzungsstatistik, keine Absturzberichte und keine Konten: Sie sendet uns nichts über Sie, Ihre Dokumente oder Ihre Nutzung. Sollte je etwas dieser Art hinzukommen, bleibt es ausgeschaltet, bis Sie es einschalten.
 
-Für Downloads verbindet sie sich allerdings mit unserem Server. Heute betrifft das die Editoren, bei der Installation von Libera Suite und erneut, wenn eine neue Version neue Editoren braucht. Höchstens einmal am Tag fragt sie außerdem, ob eine neuere Version erschienen ist, und meldet das einmal; sie lädt nichts herunter und sagt Ihnen, wie Sie aktualisieren. Wie jede Anfrage im Web zeigt jeder dieser Downloads unserem Server Ihre IP-Adresse, und sonst nichts über Sie.
+Für Downloads verbindet sie sich allerdings mit unserem Server. Heute betrifft das die Komponenten, bei der Installation von Libera Suite und erneut, wenn eine neue Version neue Komponenten braucht. Höchstens einmal am Tag fragt sie außerdem, ob eine neuere Version erschienen ist, und meldet das einmal; sie lädt nichts herunter und sagt Ihnen, wie Sie aktualisieren. Wie jede Anfrage im Web zeigt jeder dieser Downloads unserem Server Ihre IP-Adresse, und sonst nichts über Sie.
 
 Die Tabelle führt jede Verbindung auf, die die Anwendung heute herstellt, damit Sie die Aussage prüfen können. Jede neue, die Suche nach Updates eingeschlossen, erscheint hier mit der Version, die sie einführt.
 
 | | |
 | :--- | :--- |
-| **Die Editoren** | Bei der Installation von Libera Suite von `cdn.abilian.com` heruntergeladen, und erneut nur, wenn eine neue Version neue Editoren braucht. Jeder Download wird anhand der Prüfsummen geprüft, die in der Anwendung mitgeliefert werden. |
+| **Die Komponenten** | Bei der Installation von Libera Suite von `cdn.abilian.com` heruntergeladen, und erneut nur, wenn eine neue Version neue Komponenten braucht. Jeder Download wird anhand der Prüfsummen geprüft, die in der Anwendung mitgeliefert werden. |
 | **Die Suche nach Updates** | Höchstens einmal am Tag die Versionsnummer der neuesten Ausgabe, gelesen von `cdn.abilian.com`. Eine neuere wird einmal gemeldet; heruntergeladen wird nichts. Offline geschieht nichts. `check_updates = false` in der [Konfigurationsdatei](guide/documents.md#your-name-in-documents) schaltet sie ab. |
-| **Der eigene Verkehr des Editors** | Ein Webserver auf `127.0.0.1`, Teil der Anwendung, der den Editor an ein Fenster auf demselben Rechner ausliefert. Ein anderer Rechner erreicht ihn nicht. Einem Programm auf Ihrem Rechner antwortet er nur, wenn es einen Schlüssel vorweist, den nur Ihr Konto lesen kann. |
+| **Der eigene Verkehr der Komponenten** | Ein Webserver auf `127.0.0.1`, Teil der Anwendung, der die Komponenten an ein Fenster auf demselben Rechner ausliefert. Ein anderer Rechner erreicht ihn nicht. Einem Programm auf Ihrem Rechner antwortet er nur, wenn es einen Schlüssel vorweist, den nur Ihr Konto lesen kann. Die Seite der Komponenten darf nichts anderes erreichen, außer Bildern, auf die ein Dokument verweist. |
+| **Bilder, auf die ein Dokument verweist** | Ein Dokument kann ein Bild über seine Webadresse anzeigen, statt es zu enthalten. Libera Suite lädt es dann beim Öffnen oder Konvertieren des Dokuments von dieser Adresse, wie jede Office-Suite, und dieser Server sieht Ihre IP-Adresse. Das Dokument selbst wird nicht gesendet. |
 | **Links, die Sie anklicken** | Die Hilfe und Ähnliches öffnen sich in *Ihrem* Browser. Libera Suite ruft sie nicht selbst ab. |
 
 Ihre Dokumente werden auf Ihrer Festplatte gelesen und geschrieben, von einem Konverter auf Ihrer Festplatte. Sie werden nie hochgeladen, indiziert oder ausgewertet.
 
 ## Lizenz und Quellcode
 
-Libera Suite ist freie Software: Die Host-Anwendung steht unter der [Apache-2.0](licence.md); die Editoren, die sie ausführt, stehen unter der AGPL v3, ebenso wie der Euro-Office-Code, aus dem sie gebaut werden. Jede Version hält die genauen Upstream-Revisionen fest, aus denen sie gebaut wurde, und die Patches, die darauf angewendet wurden. Der zugehörige Quellcode ist also immer ein Commit plus eine Patch-Reihe, die sich nachweislich darauf anwenden lässt.
+Libera Suite ist freie Software: Die Host-Anwendung steht unter der [Apache-2.0](licence.md); die Komponenten, die sie ausführt, stehen unter der AGPL v3, ebenso wie der Euro-Office-Code, aus dem sie gebaut werden. Jede Version hält die genauen Upstream-Revisionen fest, aus denen sie gebaut wurde, und die Patches, die darauf angewendet wurden. Der zugehörige Quellcode ist also immer ein Commit plus eine Patch-Reihe, die sich nachweislich darauf anwenden lässt.
 
 ---
 

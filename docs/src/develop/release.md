@@ -6,6 +6,69 @@ A release is one set of artifacts that agree with each other. No single machine 
 
 Read [Build the payload](build.md) first if you have never built one. This page assumes you have.
 
+## Start to finish
+
+The whole of a release, in order. Each step says what to run and what has to be true before the next. The sections below are the detail behind them.
+
+**1. Decide what ships.**
+
+- The release plan (`notes/plans/release-X.Y.md`) has a *What X.Y needs before it ships* list. It is empty, or what is left is moved to the next plan, in writing.
+- The two versions are settled. `pyproject.toml` is the application's (`0.5.0`). `src/libera/payload/payload.version` is the payload's (`0.5`), and it moves only when the payload changed. A payload version already published is never rebuilt: a new payload takes a new number.
+- Every platform that shipped last time has a builder, and `build/builders.toml` lists it. A platform missing from a release is not just absent: once `bundles/latest` moves, `curl | sh` on that platform asks for a bundle that does not exist, and a pip install there finds no core in the manifest. If a builder is gone, build that platform elsewhere (an Apple Silicon Mac builds the arm64 Linux core and the arm64 Flatpak, see the table below), or decide in writing to drop it, and say so on the install page.
+
+**2. Make the tree release-ready.**
+
+```sh
+git switch devel && git pull
+make verify                         # lint, the whole suite, docs links, the patch queue, the converter
+lb payload patches                  # the queue still applies to the pinned SHAs
+```
+
+- `CHANGES.md`: the section's `Unreleased` becomes the date.
+- A news post in `docs/news/<lang>/YYYY-MM-DD-libera-suite-X-Y.md`, the same file name in the five languages.
+- The user pages say what is true of this version: `main/status.md` and `develop/roadmap.md` above all, in every edition where they are translated.
+
+**3. Test the real application on every platform, from artifacts.** The automated tiers cover a lot, not a person opening documents. Build the installers without publishing anything:
+
+```sh
+lb on linux-x86_64 --update payload container
+lb on linux-x86_64 app flatpak --arch amd64                  # → ~/muchado/build/out/libera-X.Y.Z-amd64.flatpak
+lb on windows-x86_64 --update payload all
+lb on windows-x86_64 app windows                            # → C:\b\out\windows\Libera-Suite-Setup-X.Y.Z.exe
+lb on linux-x86_64 linux gui-test                           # the gui tier, WebKitGTK
+lb on windows-x86_64 app windows-gui-test                   # the gui tier, WebView2
+make test-gui                                               # the gui tier, here
+```
+
+Then by hand, on each platform: open a `.docx`, a `.xlsx` and a `.pptx`; type, save, Save As in another format; close with unsaved changes; open a document LibreOffice has open; drop a file on a window; print; Help. Once with `ui_language` set to each translated language. On Linux the desktop is the VNC session described in `notes/15-builders.md`; on Windows, Windows App to the builder. For testers outside, a pre-release (below) does the same through the real channels without moving any of them.
+
+**4. Tag, then ship.**
+
+```sh
+git tag -a X.Y.Z -m 'Libera Suite X.Y.Z' && git push sourcehut X.Y.Z    # no "v"
+lb release plan                     # what will run
+make ship                           # update … publish (asks on the terminal) … verify
+lb release status                   # after any pause: where the release has got to
+```
+
+`publish` is the step with no undo. If a phase fails, fix it and run that phase again (`lb release ship collect push check`); the table in *The runbook, by hand* says what each one does.
+
+**5. Check what users get.**
+
+```sh
+lb release released-gui             # the published Flatpak, screenshotted on each Linux builder
+```
+
+On a machine that has never had Libera Suite: `curl -fsSL https://cdn.abilian.com/libera/install.sh | sh` on Linux and macOS, `irm https://cdn.abilian.com/libera/install.ps1 | iex` on Windows, then open a document. `libera --payload-status` names the new payload.
+
+**6. The channels `make ship` does not move.**
+
+- Homebrew: `cd ~/projects/homebrew-tap && make update FORMULA=libera`, read the diff, then commit and push there. Brew's users see nothing until the push.
+- The public mirror and the upstream mirrors, at the same moment as the binaries (see *Publish* below).
+- The site: `make docs-publish`, which deploys `docs.liberasuite.eu` with the news post and the pages from step 2.
+
+**7. Open the next cycle.** `pyproject.toml` goes to the next version on `devel`, `CHANGES.md` gets a new `Unreleased` section, and the release plan gets its outcome in a line, with what moved to the next one.
+
 ## make ship
 
 ```sh

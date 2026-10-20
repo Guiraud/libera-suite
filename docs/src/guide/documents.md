@@ -9,11 +9,11 @@ libera ~/Documents/budget.xlsx
 libera ~/Documents/network.vsdx
 ```
 
-**The document decides which editor you get.** There is no command to pick one, in the same way there is no command to pick a text editor for a `.txt`: you open the document and the right editor comes up. An `.xlsx` opens in Tables, a `.pptx` in Slides, a `.vsdx` in Diagrams.
+**The document decides which application you get.** There is no command to pick one, in the same way there is no command to pick a text editor for a `.txt`: you open the document and the right application comes up. An `.xlsx` opens in Tables, a `.pptx` in Slides, a `.vsdx` in Diagrams.
 
 ![The start window, with a New tile for each of Document, Spreadsheet and Presentation, an Open button, and a Recent list of three documents.](../assets/start.png)
 
-`libera` on its own opens the **start window**: a new document of any kind, an open dialog, your recent documents, and where the payload came from. Pick something and the start window goes away, leaving you with the document.
+`libera` on its own opens the **start window**: a new document of any kind, an open dialog, your recent documents, and where the components came from. Pick something and the start window goes away, leaving you with the document.
 
 Libera Suite opens **one document per window**, so a shell glob does what it looks like it does:
 
@@ -21,17 +21,17 @@ Libera Suite opens **one document per window**, so a shell glob does what it loo
 libera ~/Documents/*.docx     # one window each
 ```
 
-You can also open a document from inside the editor, through **File ▸ Open** or **File ▸ Open Recent**. Either opens a new window; neither disturbs the document you already have open.
+You can also open a document from inside the document window, through **File ▸ Open** or **File ▸ Open Recent**. Either opens a new window; neither disturbs the document you already have open.
 
 **Dropping a document** on any Libera Suite window, the start window included, opens it in a window of its own. An image dropped on a document is inserted into it.
 
-**File ▸ New** offers a Document, a Spreadsheet or a Presentation from any window, each in a window of its own. On macOS, `⌘N` makes one of the same kind as the front window. Inside the editor, you get the same choice from **File ▸ Create New**.
+**File ▸ New** offers a Document, a Spreadsheet or a Presentation from any window, each in a window of its own. On macOS, `⌘N` makes one of the same kind as the front window. Inside the document window, you get the same choice from **File ▸ Create New**.
 
 ## Save
 
 **File ▸ Save** writes back to the document you opened. **File ▸ Save As** asks where to put it. From then on that is the document you are editing.
 
-Saving converts the editor's working format back into a real document, which takes about a second.
+Saving converts the working format back into a real document, which takes about a second.
 
 ## Export
 
@@ -55,7 +55,7 @@ Choosing a format renames the file in the dialog. The dialog will not let the tw
 
 Not every format the converter can read is one it can write. `.doc` in particular opens but does not save; use `.docx` or `.rtf` for something that has to go back to an old Word.
 
-If you are looking for a **Download As** entry in the File menu, there isn't one. The editors hide it when they run as an offline desktop application and put Save As in its place: the same job, one menu entry earlier.
+If you are looking for a **Download As** entry in the File menu, there isn't one. The components hide it when they run as an offline desktop application and put Save As in its place: the same job, one menu entry earlier.
 
 ### From the command line
 
@@ -74,7 +74,7 @@ A file already there under the new name is replaced. Nothing is written over the
 
 On Linux and Windows the bar sits inside the window: **File**, **Edit**, **View** and **Help**, the last holding *Libera Help* and *About Libera Suite*. Three differences follow from what the menu there offers. None of the items shows a keyboard shortcut, but Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Shift-S, Ctrl-P and Ctrl-Z do what the ⌘ keys below do on a Mac. **Open Recent** is built when the application starts, so a document you open today appears in it tomorrow. Nothing greys out, so Save with nothing to save does nothing.
 
-On macOS it is a real Mac menu bar, with the same items plus **Window**. The usual shortcuts work there whether or not the editor has focus:
+On macOS it is a real Mac menu bar, with the same items plus **Window**. The usual shortcuts work there whether or not the document has focus:
 
 | | |
 | :--- | :--- |
@@ -90,7 +90,7 @@ On macOS it is a real Mac menu bar, with the same items plus **Window**. The usu
 
 **File ▸ Open Recent** is rebuilt each time you open it. The **Window** menu lists every open document.
 
-Save, Undo and Redo are greyed out when there is nothing to save or undo. The editor declines those silently: a menu item that stayed available would look broken.
+Save, Undo and Redo are greyed out when there is nothing to save or undo. The components decline those silently: a menu item that stayed available would look broken.
 
 ## Closing
 
@@ -145,7 +145,7 @@ And one keeps to the fonts Libera Suite ships, leaving out those installed on yo
 installed_fonts = false
 ```
 
-And one sets the editors' language, when it should not be your system's. A new document still takes its paper size from your system's region:
+And one sets the language of the applications, when it should not be your system's. A new document still takes its paper size from your system's region:
 
 ```toml
 ui_language = "fr"
@@ -155,7 +155,7 @@ To use another file for one run, without touching this one, name it with `libera
 
 ## Where your working files go
 
-While a document is open, Libera Suite keeps a session directory alongside its application data. It holds the editor's working copy and a running log of your changes, which makes saving fast and undo reliable. It is not a backup: the document is where you saved it.
+While a document is open, Libera Suite keeps a session directory alongside its application data. It holds the working copy and a running log of your changes, which makes saving fast and undo reliable. It is not a backup: the document is where you saved it.
 
 ---
 

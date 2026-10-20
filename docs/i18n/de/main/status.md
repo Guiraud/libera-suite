@@ -8,24 +8,24 @@ Die Oberfläche von Libera Suite ist englisch: Menüs und Schaltflächen werden 
 
 | | |
 | :--- | :--- |
-| **Vier Editoren** | Windows 10 und 11 auf x64, Linux auf x86_64 und arm64, macOS auf Apple Silicon. Words, Tables und Slides bearbeiten; Diagrams liest Visio-Dateien. |
+| **Vier Anwendungen** | Windows 10 und 11 auf x64, Linux auf x86_64 (arm64 mit 0.4.1), macOS auf Apple Silicon. Words, Tables und Slides bearbeiten; Diagrams liest Visio-Dateien. |
 | **Öffnen und speichern** | Words `.docx .odt .rtf .txt .md`, Tables `.xlsx .ods .csv`, Slides `.pptx .odp`. Save, Save As, New. |
-| **Exportieren** | Save As bietet für jeden Editor eine Formatliste an, PDF eingeschlossen. Jedes angebotene Format wird durch eine echte Konvertierung geprüft, deren Text danach wieder gelesen wird. |
+| **Exportieren** | Save As bietet für jede Anwendung eine Formatliste an, PDF eingeschlossen. Jedes angebotene Format wird durch eine echte Konvertierung geprüft, deren Text danach wieder gelesen wird. |
 | **Bilder** | Bleiben beim Öffnen und Speichern erhalten; Einfügen ▸ Bild funktioniert. |
 | **Drucken** | Erzeugt ein PDF, fragt, wo es aufbewahrt werden soll, und öffnet es in Ihrem PDF-Betrachter. |
 | **Rechtschreibprüfung** | Fünf Sprachen, mit Vorschlägen. Siehe unten. |
-| **In Ihrer Sprache** | Die Editoren folgen der Sprache Ihres Systems, und ein neues Dokument beginnt mit der leeren Vorlage Ihrer Region: A4-Papier überall außer in den USA, und Rechtschreibprüfung in Ihrer Sprache. Menüleiste, Startfenster und Dialoge sind noch auf Englisch. |
+| **In Ihrer Sprache** | Die Anwendungen folgen der Sprache Ihres Systems, und ein neues Dokument beginnt mit der leeren Vorlage Ihrer Region: A4-Papier überall außer in den USA, und Rechtschreibprüfung in Ihrer Sprache. Auf Deutsch, Französisch, Italienisch und Spanisch folgen auch Menüleiste, Startfenster und Dialoge; in jeder anderen Sprache sind sie auf Englisch. |
 | **Zuletzt verwendete Dokumente** | Datei ▸ Zuletzt verwendet merkt sich die letzten 20. |
-| **Mehrere Dokumente gleichzeitig** | Auch verschiedener Art, jedes in seinem Fenster: über Datei ▸ Neu oder Datei ▸ Öffnen, per Doppelklick im Dateimanager oder mit `libera *.docx`. Der Dateityp bestimmt den Editor. |
+| **Mehrere Dokumente gleichzeitig** | Auch verschiedener Art, jedes in seinem Fenster: über Datei ▸ Neu oder Datei ▸ Öffnen, per Doppelklick im Dateimanager oder mit `libera *.docx`. Der Dateityp bestimmt die Anwendung. |
 | **Im Startmenü und im Anwendungsmenü** | Unter Windows legt das Installationsprogramm Libera Suite im Startmenü und auf dem Desktop ab und trägt sie im Explorer unter *Öffnen mit* ein. Unter Linux trägt das Flatpak sie mit Symbol und Dateizuordnungen in das Anwendungsmenü ein; `libera --launcher-install` tut dasselbe für jede andere Installation. |
-| **Ein Startfenster** | `libera` ohne Argument: neues Dokument, öffnen, zuletzt verwendete Dokumente und die Herkunft der Editoren. |
+| **Ein Startfenster** | `libera` ohne Argument: neues Dokument, öffnen, zuletzt verwendete Dokumente und die Herkunft der Komponenten. |
 | **Wiederherstellung nach Abstürzen** | Nicht gespeicherte Änderungen werden beim nächsten Öffnen des Dokuments wieder angeboten. |
 | **Ein anderswo geöffnetes Dokument** | Ist es bereits in LibreOffice oder einer anderen Instanz von Libera Suite geöffnet, wird es als *zur Bearbeitung gesperrt* markiert: Sie können es lesen und ändern, und beim Speichern wird nach dem Ort gefragt, sodass die Datei der anderen Instanz nie überschrieben wird. Ein Dokument, das bereits in einem Fenster angezeigt wird, holt beim erneuten Öffnen dieses Fenster nach vorn. Microsoft Office und Libera Suite sehen die Sperren des jeweils anderen nicht: Ein in Word geöffnetes Dokument ist nicht geschützt. |
 | **Schließen fragt nach** | Ein Fenster mit nicht gespeicherten Änderungen bietet Speichern, Nicht speichern oder Abbrechen an. |
 | **Eine Menüleiste** | File, Edit, View und Help auf allen Plattformen. macOS ergänzt Window sowie die üblichen Tastenkürzel. |
-| **Über** | Wer die Editoren geschrieben hat und unter welcher Lizenz: `Datei ▸ Über das Produkt` im Editor, `Hilfe ▸ Über Libera Suite` unter Linux und Windows. macOS legt es in das Anwendungsmenü. |
+| **Über** | Wer die Komponenten geschrieben hat und unter welcher Lizenz: `Datei ▸ Über das Produkt` im Dokumentfenster, `Hilfe ▸ Über Libera Suite` unter Linux und Windows. macOS legt es in das Anwendungsmenü. |
 | **Einstellungen bleiben erhalten** | Design, Maßeinheiten, Sprache der Rechtschreibprüfung und Ähnliches sind nach einem Neustart noch gesetzt. |
-| **Installation der Editoren** | Vom Server oder aus einem lokalen Ordner mit gebauten Artefakten. In beiden Fällen wird jedes Artefakt anhand der Prüfsummen geprüft, die mit der Anwendung geliefert werden. |
+| **Installation der Komponenten** | Vom Server oder aus einem lokalen Ordner mit gebauten Artefakten. In beiden Fällen wird jedes Artefakt anhand der Prüfsummen geprüft, die mit der Anwendung geliefert werden. |
 
 ## Bekannte Probleme
 
@@ -45,31 +45,31 @@ Wenn Sie auf etwas stoßen, das *nicht* auf dieser Liste steht, [melden Sie es u
 
 ## Halb fertig
 
-**Die Menüleiste unter Linux und Windows.** Sie ist im Fenster gezeichnet, mit Datei, Bearbeiten, Ansicht und Hilfe; jeder Eintrag funktioniert. Keiner zeigt ein Tastenkürzel an, aber die üblichen Tasten funktionieren: Ctrl-N legt ein neues Dokument derselben Art an, Ctrl-O öffnet eines, Ctrl-W schließt das Fenster (und fragt vorher nach ungespeicherten Änderungen), und die eigenen Kürzel des Editors, Ctrl-S, Ctrl-Umschalt-S (Speichern unter), Ctrl-P und Ctrl-Z, funktionieren ebenfalls. Unter Windows wurden Ctrl-N, Ctrl-O und Ctrl-W noch nicht auf einem echten Rechner geprüft. Datei ▸ Neu ▸ Dokument, Tabelle oder Präsentation funktioniert, ebenso die Kacheln Neu im Startfenster und der Reiter Datei des Editors.
+**Die Menüleiste unter Linux und Windows.** Sie ist im Fenster gezeichnet, mit Datei, Bearbeiten, Ansicht und Hilfe; jeder Eintrag funktioniert. Keiner zeigt ein Tastenkürzel an, aber die üblichen Tasten funktionieren: Ctrl-N legt ein neues Dokument derselben Art an, Ctrl-O öffnet eines, Ctrl-W schließt das Fenster (und fragt vorher nach ungespeicherten Änderungen), und die eigenen Kürzel der Komponenten, Ctrl-S, Ctrl-Umschalt-S (Speichern unter), Ctrl-P und Ctrl-Z, funktionieren ebenfalls. Unter Windows wurden Ctrl-N, Ctrl-O und Ctrl-W noch nicht auf einem echten Rechner geprüft. Datei ▸ Neu ▸ Dokument, Tabelle oder Präsentation funktioniert, ebenso die Kacheln Neu im Startfenster und der Reiter Datei des Dokuments.
 
 **`Libera.app` unter macOS.** `build/macos/macos-app.sh` baut sie. Sie öffnet ein Dokument per Doppelklick oder wenn es auf ihr Dock-Symbol gezogen wird, erscheint unter *Öffnen mit* und zeigt das Libera-Zeichen im Dock. Sie ist aber ein Starter um den Interpreter, mit dem sie gebaut wurde (nichts ist eingebettet, signiert oder notarisiert), und damit noch nichts, was man jemand anderem geben kann.
 
 ## Noch nicht begonnen
 
-### Im Editor
+### Im Dokumentfenster
 
 - **Kennwortgeschützte Dokumente.** Weder öffnen noch speichern.
 - **Digitale Signaturen.**
 - **Serienbriefe.**
 - **Plugins.** In diesem Fork vom Upstream-Projekt abgeschaltet, daher erscheint das Panel nie.
-- **Makros.** Abgeschaltet. Die Makros des Editors sind JavaScript und führen kein VBA aus Microsoft-Office-Dokumenten aus, daher werden die Makros eines Dokuments nicht ausgeführt. Sie bleiben erhalten: Beim Speichern einer `.docm`-, `.xlsm`- oder `.pptm`-Datei bleibt ihr VBA unverändert. [Die Roadmap](/en/develop/roadmap/), auf Englisch, beschreibt, was stattdessen kommt.
+- **Makros.** Abgeschaltet. Die Makros der Komponenten sind JavaScript und führen kein VBA aus Microsoft-Office-Dokumenten aus, daher werden die Makros eines Dokuments nicht ausgeführt. Sie bleiben erhalten: Beim Speichern einer `.docm`-, `.xlsm`- oder `.pptm`-Datei bleibt ihr VBA unverändert. [Die Roadmap](/en/develop/roadmap/), auf Englisch, beschreibt, was stattdessen kommt.
 
 ### In der Anwendung
 
 - **Tabs.** Die Fenster gibt es, und das Menü Window listet sie auf, aber sie lassen sich nicht in einem Fenster zusammenführen.
-- **Eine weitergebbare Anwendung unter macOS.** `Libera.app` läuft aus Ihrer eigenen Kopie des Quellcodes und bettet weder Interpreter noch Editoren ein. Windows hat eine: Sein Installationsprogramm bringt alles mit.
+- **Eine weitergebbare Anwendung unter macOS.** `Libera.app` läuft aus Ihrer eigenen Kopie des Quellcodes und bettet weder Interpreter noch Komponenten ein. Windows hat eine: Sein Installationsprogramm bringt alles mit.
 - **Automatische Aktualisierungen** und **Code-Signatur**. macOS behandelt eine selbst gebaute `Libera.app` als Software eines nicht verifizierten Entwicklers. Windows warnt vor dem heruntergeladenen Installationsprogramm.
 - **Eine Offline-Hilfe**, lesbar ohne Browser und ohne Netz. Das Menü Help öffnet diese Website; About funktioniert offline. Siehe unten.
 
 ### Anderswo
 
 - **Diagramme bearbeiten.** Diagrams öffnet eine `.vsdx`-Datei und zeigt sie an. Der Konverter kann kein Visio-Format schreiben, also gibt es nichts zu speichern und keine leere Vorlage für den Anfang.
-- **PDF-Bearbeitung.** Das Upstream-Projekt hat einen PDF-Editor; die Editoren, die Libera Suite installiert, enthalten ihn noch nicht, weil nichts ihn öffnen würde.
+- **PDF-Bearbeitung.** Das Upstream-Projekt hat einen PDF-Editor; die Komponenten, die Libera Suite installiert, enthalten ihn noch nicht, weil nichts ihn öffnen würde.
 - **Zusammenarbeit, Cloud-Speicher, Konten, Telemetrie.** Nichts davon ist gebaut, und an nichts davon wird gearbeitet. [Die Roadmap](/en/develop/roadmap/), auf Englisch, beschreibt, wie jedes davon aussähe, falls es käme. [Was Ihren Rechner verlässt](../index.md#what-leaves-your-machine) führt die gesamte Netzwerknutzung der Anwendung auf.
 
 ## Hinweise zu einzelnen Lücken
@@ -80,7 +80,7 @@ Es gibt ein Menü **Hilfe**, auf allen Plattformen, und es öffnet diese Website
 
 ### Rechtschreibprüfung
 
-Libera Suite liefert Wörterbücher für **Englisch (USA und Großbritannien), Französisch, Deutsch, Spanisch und Italienisch** mit: 9,5 MB, ausgewählt, weil der vollständige Satz 327 MB umfasst. Eine Sprache hinzuzufügen, erfordert eine Zeile in `build/payload/dictionaries.txt` und einen Neubau der Editoren.
+Libera Suite liefert Wörterbücher für **Englisch (USA und Großbritannien), Französisch, Deutsch, Spanisch und Italienisch** mit: 9,5 MB, ausgewählt, weil der vollständige Satz 327 MB umfasst. Eine Sprache hinzuzufügen, erfordert eine Zeile in `build/payload/dictionaries.txt` und einen Neubau der Komponenten.
 
 Eine Sprache ohne Wörterbuch ist kein Fehler: Ihre Wörter gelten schlicht als richtig, wie in der Desktop-Anwendung des Upstream-Projekts. Über *Add to dictionary* hinzugefügte Wörter bleiben erhalten, für alle Dokumente und alle Sprachen.
 

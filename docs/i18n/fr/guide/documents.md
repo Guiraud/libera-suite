@@ -11,11 +11,11 @@ libera ~/Documents/budget.xlsx
 libera ~/Documents/reseau.vsdx
 ```
 
-**C'est le document qui décide de l'éditeur.** Aucune commande ne sert à en choisir un, de même qu'on ne choisit pas d'éditeur de texte pour ouvrir un `.txt` : vous ouvrez le document et le bon éditeur apparaît. Un `.xlsx` s'ouvre dans Tables, un `.pptx` dans Slides, un `.vsdx` dans Diagrams.
+**C'est le document qui décide de l'application.** Aucune commande ne sert à en choisir une, de même qu'on ne choisit pas d'éditeur de texte pour ouvrir un `.txt` : vous ouvrez le document et la bonne application apparaît. Un `.xlsx` s'ouvre dans Tables, un `.pptx` dans Slides, un `.vsdx` dans Diagrams.
 
 ![La fenêtre de démarrage, avec une tuile New pour chacun des types Document, Spreadsheet et Presentation, un bouton Open, et une liste Recent de trois documents.](../assets/start.png)
 
-Seule, la commande `libera` ouvre la **fenêtre de démarrage** : un nouveau document de n'importe quel type, une boîte de dialogue d'ouverture, vos documents récents et la provenance des éditeurs. Choisissez quelque chose et la fenêtre de démarrage s'efface devant le document.
+Seule, la commande `libera` ouvre la **fenêtre de démarrage** : un nouveau document de n'importe quel type, une boîte de dialogue d'ouverture, vos documents récents et la provenance des composants. Choisissez quelque chose et la fenêtre de démarrage s'efface devant le document.
 
 Libera Suite ouvre **un document par fenêtre**, si bien qu'un motif du shell se comporte comme prévu :
 
@@ -23,17 +23,17 @@ Libera Suite ouvre **un document par fenêtre**, si bien qu'un motif du shell se
 libera ~/Documents/*.docx     # une fenêtre chacun
 ```
 
-Vous pouvez aussi ouvrir un document depuis l'éditeur, par **Fichier ▸ Ouvrir** ou **Fichier ▸ Ouvrir récent**. L'un et l'autre ouvrent une nouvelle fenêtre et laissent en place le document déjà ouvert.
+Vous pouvez aussi ouvrir un document depuis la fenêtre du document, par **Fichier ▸ Ouvrir** ou **Fichier ▸ Ouvrir récent**. L'un et l'autre ouvrent une nouvelle fenêtre et laissent en place le document déjà ouvert.
 
 **Un document déposé** sur une fenêtre de Libera Suite, fenêtre de démarrage comprise, s'ouvre dans sa propre fenêtre. Une image déposée sur un document y est insérée.
 
-**Fichier ▸ Nouveau** propose un document, une feuille de calcul ou une présentation depuis n'importe quelle fenêtre, chacun dans sa propre fenêtre. Sous macOS, `⌘N` en crée un du même type que la fenêtre au premier plan. Dans l'éditeur, **Fichier ▸ Nouveau document** vous demande lequel des trois créer.
+**Fichier ▸ Nouveau** propose un document, une feuille de calcul ou une présentation depuis n'importe quelle fenêtre, chacun dans sa propre fenêtre. Sous macOS, `⌘N` en crée un du même type que la fenêtre au premier plan. Dans la fenêtre du document, **Fichier ▸ Nouveau document** vous demande lequel des trois créer.
 
 ## Enregistrer
 
 **Fichier ▸ Enregistrer** réécrit le document que vous avez ouvert. **Fichier ▸ Enregistrer sous** demande où le placer. À partir de là, c'est ce document-là que vous modifiez.
 
-L'enregistrement reconvertit le format de travail de l'éditeur en un vrai document, en une seconde environ.
+L'enregistrement reconvertit le format de travail en un vrai document, en une seconde environ.
 
 ## Exporter
 
@@ -57,7 +57,7 @@ Choisir un format renomme le fichier dans la boîte de dialogue. Les deux ne peu
 
 Le convertisseur ne sait pas écrire tous les formats qu'il sait lire. Le `.doc`, en particulier, s'ouvre mais ne s'enregistre pas ; utilisez `.docx` ou `.rtf` pour un document qui doit repartir vers une ancienne version de Word.
 
-Si vous cherchez une entrée **Télécharger comme** dans le menu Fichier, il n'y en a pas. Les éditeurs la masquent quand ils fonctionnent comme une application de bureau hors ligne ; ils mettent Enregistrer sous à sa place : la même fonction, une entrée plus haut dans le menu.
+Si vous cherchez une entrée **Télécharger comme** dans le menu Fichier, il n'y en a pas. Les composants la masquent quand ils fonctionnent comme une application de bureau hors ligne ; ils mettent Enregistrer sous à sa place : la même fonction, une entrée plus haut dans le menu.
 
 ### En ligne de commande {#from-the-command-line}
 
@@ -76,7 +76,7 @@ Un fichier qui porte déjà le nouveau nom est remplacé. Le document converti n
 
 Sous Linux et Windows, la barre se trouve dans la fenêtre : **Fichier**, **Édition**, **Affichage** et **Aide**, ce dernier contenant *Aide de Libera* et *À propos de Libera Suite*. Le menu y impose trois différences. Aucun élément n'affiche de raccourci clavier, mais Ctrl-N, Ctrl-O, Ctrl-W, Ctrl-S, Ctrl-Maj-S, Ctrl-P et Ctrl-Z font sur ces systèmes l'équivalent des touches ⌘ ci-dessous sur un Mac. **Ouvrir un fichier récent** est construit au lancement de l'application : un document ouvert aujourd'hui y apparaît demain. Rien n'est grisé : Enregistrer sans rien à enregistrer ne fait rien.
 
-Sous macOS, c'est une vraie barre de menus Mac, avec les mêmes éléments plus **Fenêtre**. Les raccourcis habituels y fonctionnent, que l'éditeur ait le focus ou non :
+Sous macOS, c'est une vraie barre de menus Mac, avec les mêmes éléments plus **Fenêtre**. Les raccourcis habituels y fonctionnent, que le document ait le focus ou non :
 
 | | |
 | :--- | :--- |
@@ -92,7 +92,7 @@ Sous macOS, c'est une vraie barre de menus Mac, avec les mêmes éléments plus 
 
 **Fichier ▸ Ouvrir un fichier récent** est reconstruit à chaque ouverture du menu. Le menu **Fenêtre** liste tous les documents ouverts.
 
-Enregistrer, Annuler et Rétablir sont grisés quand il n'y a rien à enregistrer ou à annuler. L'éditeur refuse ces commandes sans rien dire : un élément de menu resté actif aurait l'air cassé.
+Enregistrer, Annuler et Rétablir sont grisés quand il n'y a rien à enregistrer ou à annuler. Les composants refusent ces commandes sans rien dire : un élément de menu resté actif aurait l'air cassé.
 
 ## Fermer
 
@@ -147,7 +147,7 @@ Une autre s'en tient aux polices fournies par Libera Suite, sans celles install�
 installed_fonts = false
 ```
 
-Une dernière fixe la langue des éditeurs, quand elle ne doit pas être celle de votre système. Un nouveau document prend toujours son format de papier dans la région de votre système :
+Une dernière fixe la langue des applications, quand elle ne doit pas être celle de votre système. Un nouveau document prend toujours son format de papier dans la région de votre système :
 
 ```toml
 ui_language = "fr"
@@ -157,7 +157,7 @@ Pour utiliser un autre fichier le temps d'un lancement, sans toucher à celui-ci
 
 ## Où vont vos fichiers de travail
 
-Tant qu'un document est ouvert, Libera Suite conserve un dossier de session à côté de ses données d'application. Il contient la copie de travail de l'éditeur et le journal de vos modifications : l'enregistrement est ainsi rapide et l'annulation fiable. Ce n'est pas une sauvegarde : le document est là où vous l'avez enregistré.
+Tant qu'un document est ouvert, Libera Suite conserve un dossier de session à côté de ses données d'application. Il contient la copie de travail et le journal de vos modifications : l'enregistrement est ainsi rapide et l'annulation fiable. Ce n'est pas une sauvegarde : le document est là où vous l'avez enregistré.
 
 ---
 

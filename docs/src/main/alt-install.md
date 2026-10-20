@@ -15,7 +15,7 @@ curl -fsSL https://cdn.abilian.com/libera/install.sh | bash -s -- --help
 | :--- | :--- |
 | `--prefix DIR` | install somewhere else (default: `~/.local`) |
 | `--channel pip` | on Linux, install the Python package even when Flatpak is there |
-| `--no-payload` | install the command now, download the editors later |
+| `--no-payload` | install the command now, download the components later |
 | `--origin URL` | download from somewhere other than the public server |
 
 It writes to `~/.local/bin` and `~/.local/share` and nowhere else. Open its URL in a browser to read it before running it.
@@ -29,7 +29,7 @@ uv tool install libera      # or: pipx install libera
 libera --payload-install
 ```
 
-To try it without installing it, `uvx libera` runs it from a cache; the first run offers to download the editors.
+To try it without installing it, `uvx libera` runs it from a cache; the first run offers to download the components.
 
 On Linux, the window is drawn by GTK, whose Python bindings come from your distribution and are built for its own Python. An isolated environment cannot see them, so `pipx` needs two flags:
 
@@ -47,34 +47,35 @@ This is what the install script does when Flatpak is present:
 ```sh
 arch=amd64     # or arm64, for your machine
 ver=$(curl -fsSL https://cdn.abilian.com/libera/bundles/latest)
+# on arm64: ver=0.4.1, the last version built for it
 curl -fLO "https://cdn.abilian.com/libera/bundles/libera-$ver-$arch.flatpak"
 flatpak install --user "./libera-$ver-$arch.flatpak"
 flatpak run eu.liberasuite.Libera
 ```
 
-`bundles/latest` holds the current version number, so these lines stay valid from one release to the next. The bundle, about 82 MB, contains the editors. It runs on the GNOME runtime, which `flatpak` downloads from Flathub the first time; a machine without the Flathub remote needs it added first:
+`bundles/latest` holds the current version number, so these lines stay valid from one release to the next. The bundle, about 70 MB, contains the components. It runs on the GNOME runtime, which `flatpak` downloads from Flathub the first time; a machine without the Flathub remote needs it added first:
 
 ```sh
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
-## The editors
+## The components {#the-editors}
 
-The Windows installer and the Flatpak include the editors. Every other channel downloads them once, after the application. `libera` offers to the first time it runs; this does it explicitly:
+The Windows installer and the Flatpak include the components. Every other channel downloads them once, after the application. `libera` offers to the first time it runs; this does it explicitly:
 
 ```sh
 libera --payload-install
 ```
 
-It downloads about 120 MB from `cdn.abilian.com` and checks every file against fingerprints that came inside the application, stopping at the first that disagrees. It then builds a font index for your machine, which takes a moment.
+It downloads about 90 MB from `cdn.abilian.com` and checks every file against fingerprints that came inside the application, stopping at the first that disagrees. It then builds a font index for your machine, which takes a moment.
 
-To install editors you built yourself, or were given, point it at their directory:
+To install components you built yourself, or were given, point it at their directory:
 
 ```sh
 libera --payload-install --from /path/to/artifacts
 ```
 
-[Build the payload](../develop/build.md) explains how to build them. `libera --payload-remove` deletes them again; they take about 450 MB on disk.
+[Build the components](../develop/build.md) explains how to build them. `libera --payload-remove` deletes them again; they take about 350 MB on disk.
 
 ## Where things live
 
@@ -85,7 +86,7 @@ libera --payload-install --from /path/to/artifacts
 | macOS | `~/Library/Application Support/Libera Suite/` |
 | Windows | `%LOCALAPPDATA%\Libera Suite\` |
 
-The editors sit under `payload/<version>/` there. To use editors from somewhere else, a local build for instance, set `LIBERA_PAYLOAD` to their directory; it overrides everything above.
+The components sit under `payload/<version>/` there. An update puts a new version beside the old one, and Libera Suite removes an old one once nothing has used it for four weeks: Libera Suite installed another way on the same account may still be running on it. `libera --payload-status` lists them, with when each was last used. To use components from somewhere else, a local build for instance, set `LIBERA_PAYLOAD` to their directory; it overrides everything above.
 
 ## A launcher entry on Linux
 

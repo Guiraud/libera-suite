@@ -41,6 +41,6 @@ The remaining limits, among them the lack of tabs and a Windows installer that i
 
 ## Report problems
 
-The most useful report is still a document that comes out wrong, attached to the message. [Feedback](../feedback.md) says how to reach us.
+The most useful report is still a document that comes out wrong, attached to your message with the output of `libera --diagnose`. [Feedback](../feedback.md) says how to reach us.
 
 *Abilian*

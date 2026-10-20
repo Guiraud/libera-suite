@@ -41,6 +41,6 @@ I limiti che restano, tra cui la mancanza di schede e un programma di installazi
 
 ## Segnalateci i problemi
 
-La segnalazione più utile resta un documento che esce male, allegato al messaggio. [Commenti](../feedback.md) spiega come scriverci.
+La segnalazione più utile resta un documento che esce male, allegato al tuo messaggio insieme all'output di `libera --diagnose`. [Commenti](../feedback.md) spiega come scriverci.
 
 *Abilian*
