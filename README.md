@@ -13,7 +13,7 @@ Four editors share one application. The file picks the editor, so there is nothi
 
 ![Libera Words, with a document open: the editor's toolbar in the Libera Words purple, and a laid-out page below it.](https://docs.liberasuite.eu/en/assets/words.png)
 
-Abilian builds the host as free software under the Apache License 2.0. The editors inside it come from [Euro-Office](https://github.com/Euro-Office) (itself an AGPL fork of ONLYOFFICE by Ascensio System SIA), running locally, with the document engine unmodified: our patch queue against them is build configuration and branding.
+Abilian builds the host as free software under the Apache License 2.0. The editors inside it come from [Euro-Office](https://github.com/Euro-Office) (itself an AGPL fork of ONLYOFFICE by Ascensio System SIA), running locally, with the document engine unmodified: our patch queue against them makes them build on every platform, brands them, sets a few of the editor's options, and fixes the converter.
 
 ## Using it
 
@@ -48,7 +48,7 @@ We implement it in Python, behind the webview your system already ships. The hos
 
 Five thousand lines is a codebase a small team can read in an afternoon and still be maintaining in ten years.
 
-**We do not fork the engine.** The patch queue makes upstream build on macOS and Windows, brands it, and fixes the converter, mostly for OpenDocument files. **None of it touches the editing engine**, so following upstream means rebasing build configuration and converter fixes. Every release records the exact revisions it was built from, so the corresponding source is a commit plus a series that provably reapplies to it, and `lb payload patches` checks that it still does.
+**We do not fork the engine.** The patch queue makes upstream build on macOS and Windows, brands it, sets a few of the editor's options (no upstream helpdesk, no macros), and fixes the converter, mostly for OpenDocument files. **None of it touches the editing engine**, so following upstream means rebasing build configuration, settings and converter fixes. Every release records the exact revisions it was built from, so the corresponding source is a commit plus a series that provably reapplies to it, and `lb payload patches` checks that it still does.
 
 Everything we ship, we build. [`build/`](build/README.md) compiles the editors and the native converter from pinned upstream sources, on all three systems, with our patch queue applied.
 

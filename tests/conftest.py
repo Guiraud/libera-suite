@@ -14,7 +14,12 @@ Run specific test types:
 
 from __future__ import annotations
 
+import atexit
+import json
 import os
+import platform
+import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -32,27 +37,27 @@ from libera.payload import fonts
 # fonts turns them back on for itself.
 os.environ.setdefault(fonts.SWITCH, "0")
 
+# No user's configuration either: a ui_language, installed_fonts or
+# payload_dir in someone's config.toml changed what the tests saw, machine by
+# machine. An empty one of the suite's own, before anything reads one (a
+# named file has to exist); the tests of the configuration name their own.
+_NO_CONFIG = Path(tempfile.mkdtemp(prefix="libera-tests-")) / "config.toml"
+_NO_CONFIG.write_text("", encoding="utf-8")
+os.environ["LIBERA_CONFIG"] = str(_NO_CONFIG)
+atexit.register(shutil.rmtree, _NO_CONFIG.parent, ignore_errors=True)
+
 
 def _built_payload() -> Path | None:
-    """The tree build/engine/payload.sh writes, if this checkout has built one.
+    """The tree `make payload` wrote from this checkout, used in place.
 
-    Tests need *a* working payload, not the one a user would be given. The
-    shipping resolution is deliberately strict -- an installed payload has to
-    match PAYLOAD_VERSION exactly -- and that strictness is right for a user
-    and pure friction here: bumping the payload version made every box that
-    had built one skip the top two tiers until somebody moved a directory,
-    regenerated its absolute paths and exported a variable. None of that is a
-    test's business, and a CI job should not have to know the sequence.
+    It records no version, so it is trusted as this checkout's own. A
+    container build's tree is not one of these: its `bin` links to
+    /build/out/core/bin and its generated files name /build, paths that exist
+    only inside the container. Its artifacts are, below.
 
-    So the suite falls back to the build tree, which is where a payload is
-    after `make payload` and needs no install step. `payload.resolve` is
-    untouched.
-
-    The candidates are build/engine/common.sh's, in its order, because a fallback
-    that only fires on one platform is worse than none: it works on the box
-    you tried it on and skips silently on the other. `support.build_roots`
-    holds that list, because the dist lookup in test_payload.py needs the same
-    one and two copies drift.
+    The candidates are build/engine/common.sh's, in its order
+    (`support.build_roots`), because a fallback that fires on one platform
+    only works on the box you tried it on and skips silently on the other.
     """
     for root in build_roots():
         tree = root / "out" / "payload"
@@ -61,39 +66,68 @@ def _built_payload() -> Path | None:
     return None
 
 
-def _installed_payload() -> Path | None:
-    """Any payload `libera --payload-install` has already put on this machine.
-
-    The same argument as `_built_payload`, one directory along, and the case it
-    does not cover: an installed payload is not a build tree, so the search
-    above walks past it. `resolve()` refuses these because it demands
-    PAYLOAD_VERSION exactly -- right for a user, friction here.
-
-    Measured on the Linux box: the checkout wanted 0.3, a complete 0.2 sat in
-    the data directory, and the whole suite finished in 0.86 seconds reporting
-    "222 passed" with every tier above a_unit skipped. A skip and a pass look
-    the same in that line, which is what made it worth automating rather than
-    documenting an `export`.
-
-    Newest first, and by number rather than by name: sorted() puts "0.10"
-    before "0.9".
-    """
-
-    def version(path: Path) -> tuple[int, ...]:
-        try:
-            return tuple(int(part) for part in path.name.split("."))
-        except ValueError:
-            return ()
-
-    root = payload.get_data_dir()
-    if not root.is_dir():
-        return None
-    installed = sorted(
-        (p for p in root.iterdir() if p.is_dir()), key=version, reverse=True
+def _built_dists() -> list[Path]:
+    """This checkout's build artifacts for the version it wants, native or
+    from the container: tarballs and their manifest, which install anywhere."""
+    arch = {"x86_64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
+        platform.machine(), platform.machine()
     )
-    for tree in installed:
-        if payload.is_complete(tree):
-            return tree
+    version = payload.PAYLOAD_VERSION
+    candidates = [
+        dist
+        for root in build_roots()
+        for dist in (
+            root / "out" / "dist" / version,
+            root / f"linux-{arch}" / "out" / "dist" / version,
+        )
+    ]
+    return [dist for dist in candidates if (dist / "manifest.json").is_file()]
+
+
+def _installed_for_the_tests() -> Path | None:
+    """The payload this tree wants, installed into the suite's own cache.
+
+    The suite brings what it needs. It used to take any payload installed on
+    the machine, whatever its version: a checkout wanting 0.4.1 ran against a
+    0.2 left over in the data directory and reported its converter's old bugs
+    as failures. Installed by the same code as `libera --payload-install`,
+    which also writes this machine's paths, from this checkout's build
+    artifacts when there are some and from the origin otherwise, checked
+    against the manifest either way, in a directory no user's install
+    shares. Installed again when the artifacts were rebuilt under the same
+    version. None when there is nothing to install from: the tiers that need
+    it then skip, and the header says why.
+    """
+    cache_home = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    cache = cache_home / "libera-tests" / "payload" / payload.PAYLOAD_VERSION
+    record = cache / "payload.json"
+    installed = (
+        json.loads(record.read_text(encoding="utf-8")).get("built")
+        if payload.is_complete(cache) and record.is_file()
+        else None
+    )
+    sources: list[Path | None] = [*_built_dists(), None]  # None: the origin
+    for source in sources:
+        if source is not None:
+            built = json.loads((source / "manifest.json").read_text(encoding="utf-8"))
+            if installed and installed == built.get("built"):
+                return cache
+        elif installed:
+            return cache
+        print(
+            f"installing payload {payload.PAYLOAD_VERSION} for the tests into"
+            f" {cache}, from {source or 'the origin'}",
+            file=sys.stderr,
+        )
+        try:
+            payload.install(
+                source=source, dest=cache, trust_manifest=True, say=lambda *_: None
+            )
+        except payload.PayloadError as e:
+            print(f"  not installed: {str(e).splitlines()[0]}", file=sys.stderr)
+            continue
+        if payload.is_complete(cache):
+            return cache
     return None
 
 
@@ -102,7 +136,7 @@ try:
 except payload.PayloadError:
     # The build tree first: it is what this checkout built, so it is the
     # closest thing to the code under test.
-    found = _built_payload() or _installed_payload()
+    found = _built_payload() or _installed_for_the_tests()
     if found is not None:
         # Ahead of any import that resolves it, so the host under test agrees
         # with the fixtures about which payload this is.
@@ -122,8 +156,8 @@ def pytest_report_header() -> list[str]:
         return [
             "libera payload: NONE -- every tier above a_unit will skip",
             (
-                f"  wanted {payload.PAYLOAD_VERSION}: `make payload`,"
-                " `libera --payload-install`, or LIBERA_PAYLOAD=DIR"
+                f"  wanted {payload.PAYLOAD_VERSION}, not installed, not built here,"
+                " and nothing to install it from: `make payload`, or LIBERA_PAYLOAD=DIR"
             ),
         ]
     found = PAYLOAD.read_record().get("payload_version", "unknown")
@@ -135,8 +169,8 @@ def pytest_report_header() -> list[str]:
 
 NEEDS_PAYLOAD = pytest.mark.skip(
     reason=(
-        "needs a payload: `make payload` builds one, or "
-        "`libera --payload-install` installs one, or set LIBERA_PAYLOAD"
+        "needs the payload this tree wants: not installed, not built here, and "
+        "nothing to install it from (see the header); `make payload`, or set LIBERA_PAYLOAD"
     )
 )
 

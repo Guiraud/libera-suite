@@ -74,6 +74,11 @@ lint.extend-ignore = [
     "S310",  # urlopen -- the URL is the one our own loopback server printed
     "S108",  # /tmp/serve.log, in a --rm container with one process in it
 ]
+# The e2e tier installs Playwright's browser the first time it needs one.
+"tests/support/browsers.py" = [
+    "S404",  # subprocess import
+    "S603",  # subprocess call -- argv form, no shell, this interpreter's playwright
+]
 # gui-smoke.py opens a real window under Xvfb and screenshots it.
 "build/test-linux/gui-smoke.py" = [
     "S404",   # subprocess import

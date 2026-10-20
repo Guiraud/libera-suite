@@ -18,11 +18,10 @@ from urllib.parse import urlparse
 
 import pytest
 from playwright.sync_api import (
-    Error,
     TimeoutError as PlaywrightTimeoutError,
     sync_playwright,
 )
-from support import find_free_port, keyed
+from support import find_free_port, keyed, launch
 
 from c_e2e.conftest import SYNC_REPORTS, flush_reports
 from libera import payload as payload_mod
@@ -229,6 +228,7 @@ def editor_with(tmp_path, sample_document, monkeypatch):
         document: Path | None = None,
         locked_by: str | None = None,
         fonts: Path | None = None,
+        init_script: str | None = None,
     ) -> Editor:
         document = document or sample_document
         httpd, port, opened = _open(owned, document, locked_by, fonts)
@@ -240,12 +240,7 @@ def editor_with(tmp_path, sample_document, monkeypatch):
         engine = os.environ.get("E2E_BROWSER", "chromium")
         if engine == "webkit" and _is_macos_before(15):
             pytest.skip(OLD_WEBKIT)
-        try:
-            browser = getattr(play, engine).launch()
-        except Error as e:  # the browser was never downloaded
-            pytest.skip(
-                f"needs Playwright's {engine}: uv run playwright install {engine} ({e})"
-            )
+        browser = launch(play, engine)
         made.append(browser)
         page = browser.new_page()
         # Before any page script, in every frame: keep the event objects so a
@@ -257,6 +252,8 @@ def editor_with(tmp_path, sample_document, monkeypatch):
             "window.addEventListener('keydown', (e) => window.__keys.push(e), true);"
         )
         page.add_init_script(SYNC_REPORTS)
+        if init_script:
+            page.add_init_script(init_script)
         editor = Editor(page, port)  # before the page loads: it watches requests
         page.goto(server.make_editor_url(port, opened, document.name))
         editor.wait_until_ready()

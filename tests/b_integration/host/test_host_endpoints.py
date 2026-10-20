@@ -266,7 +266,7 @@ def test_no_other_site_may_frame_our_pages(live: LiveHost):
     with urllib.request.urlopen(live.at("start"), timeout=30) as answer:
         policy = answer.headers["Content-Security-Policy"]
 
-    assert policy == "frame-ancestors 'self'"
+    assert "frame-ancestors 'self'" in policy.split("; ")
 
 
 def test_a_name_rebound_to_this_address_reads_nothing(live: LiveHost):

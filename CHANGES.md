@@ -15,15 +15,21 @@ The first with payload **0.5**, so the editors are downloaded again once.
 
 ### Changed
 
+- **The editor's page can reach nothing but Libera Suite itself.** A security policy stops it loading or sending anything elsewhere, whatever its code would like: upstream's bundles still carry an analytics loader, which therefore cannot run. The exception is a picture a document links to by its web address, which is fetched as in any office suite.
+- **Macros are turned off.** The editor's own macros are JavaScript against its API and run none of the VBA a document from Microsoft Office carries; the buttons are gone and a document's macros are not run. The payload leaves out Monaco, the macro dialogs' code editor, 22 MB.
+- **Old versions of the editors are removed.** Each update used to leave the previous version on disk, about 400 MB each. One that nothing has used for four weeks is now removed, at launch or after an install; Libera Suite installed another way on the same account keeps the one it runs. `libera --payload-status` lists the versions installed, with when each was last used.
+
 - **A document is on screen sooner.** Its window opens at once and the editor loads while the document is converted, where the window used to wait for the conversion: on our Mac, about a second sooner for a small Words document. A document the converter cannot read now opens its window, says so, and closes it again, the first one of a launch included, which used to say so in the terminal.
 - **The editors follow Euro-Office's own desktop release.** They are built from the revisions behind Euro-Office's Desktop Editors 9.3.5-2, of 2026-10-08, where they were from August's. A bug Euro-Office has fixed in its desktop editors is fixed here too.
 
 ### Removed
 
+- **Linux on arm64 stays on 0.4.1.** There is no arm64 build of 0.5: the install script installs 0.4.1 on those machines, and `libera --payload-install` from a 0.5 wheel there says to install 0.4.1. A later version builds arm64 again.
 - **Tables no longer saves as `.xlsb`**, Excel's binary workbook. The converter crashed writing one on Linux, with payload 0.5 as with 0.4.1. Save as `.xlsx` instead; Excel opens both.
 
 ### Fixed
 
+- **A save keeps a document's VBA.** Saving a `.docm`, `.xlsm` or `.pptm` leaves its macros byte for byte as they were, after an edit too. Words now opens and saves `.docm` and `.dotm`, where a plain save of one asked for a new file in a format with nowhere to keep them, and Slides saves `.ppsm`.
 - **On Windows, the start window's Recent list shows each document's name**, with its folder beneath, where it showed the whole path as the name.
 - **The font menu draws each name whole.** Each name was squeezed into a row two pixels shorter than its picture, and thin white lines ran through some names.
 - **An `.xlsb` file opens.** It used to open as an empty presentation, Excel's own files included.

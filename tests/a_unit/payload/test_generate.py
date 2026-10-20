@@ -101,7 +101,10 @@ def test_a_run_that_stopped_partway_through_the_thumbnails_is_a_failure(tmp_path
 def test_a_quit_stops_the_allfontsgen_still_running(tmp_path):
     """A font index builds on a daemon thread, which a quit ends, and its
     allfontsgen ran on without it."""
-    root = make_payload_with_allfontsgen(tmp_path, "sleep 30")
+    # exec, so the process killed is the one holding the pipes, as the real
+    # allfontsgen is: dash, Debian's sh, runs a last command as a child, and
+    # killing the shell left `sleep` holding them for its thirty seconds.
+    root = make_payload_with_allfontsgen(tmp_path, "exec sleep 30")
     failed: list[Exception] = []
 
     def build():

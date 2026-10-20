@@ -34,6 +34,9 @@ def build_roots() -> list[pathlib.Path]:
     roots = [os.environ["BUILD_ROOT"]] if os.environ.get("BUILD_ROOT") else []
     roots += [
         "/Volumes/T7-EXT-2T/euro-office-build",
+        # common.sh's default under Git Bash: without it, every tier above
+        # a_unit skipped on the Windows builder, its payload sitting in C:/b.
+        "C:/b",
         str(pathlib.Path.home() / "euro-office-build"),
     ]
     return [pathlib.Path(r) for r in roots]

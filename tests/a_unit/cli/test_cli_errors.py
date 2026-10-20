@@ -12,12 +12,11 @@ import urllib.error
 import pytest
 from support import repo_root
 
-from libera import cli, payload
+from libera import cli, launcher, payload
 from libera.cli import commands
 from libera.host import app
 from libera.host.session import NotReadyError
 from libera.manifest import Manifest
-from libera.payload import NoPayloadError
 
 
 def run(argv, capsys):
@@ -223,7 +222,7 @@ def test_a_launch_with_no_terminal_is_told_in_a_window(monkeypatch, capsys):
 
     assert shown, "nothing on screen, and nobody reading the terminal"
     heading, _body, command = shown[0]
-    assert "payload" in heading
+    assert "components" in heading
     assert "--payload-install" in command
     assert "--payload-install" in capsys.readouterr().err, "the printing stays too"
 
@@ -310,35 +309,25 @@ def test_outside_it_is_just_libera(monkeypatch):
     assert commands._format_install_command() == "libera --payload-install"
 
 
-def test_a_build_that_cannot_fetch_does_not_offer_to(monkeypatch, capsys):
-    """The question was being asked and then refused.
+def test_a_copy_installed_from_source_is_asked_too(monkeypatch, capsys):
+    """It used to refuse with three commands to choose from.
 
-    `Download and install it now? [Y/n]` took a yes and answered "this build
-    ships no manifest, so downloads cannot be verified" -- which reads as a
-    failure rather than as something that was never available. Only a released
-    wheel carries the hashes a download is checked against; a checkout has
-    none, and that is knowable before anybody is asked anything.
+    A checkout has no checksums of its own, and that made it say "this build
+    cannot fetch one", where the one thing wanted was a download. It now asks
+    like a release does, says first that the download site's checksums are
+    the ones it will check against, and a yes is the consent --trust-manifest
+    gives a script.
     """
-    asked = []
-    monkeypatch.setattr(
-        commands.payload_mod,
-        "resolve",
-        lambda: (_ for _ in ()).throw(NoPayloadError("nowhere it looked")),
-    )
+    installs = []
     monkeypatch.setattr(commands.payload_mod, "can_fetch", lambda: False)
-    monkeypatch.setattr(commands, "_ask_to_install", lambda: asked.append(1))
-    # capsys leaves stdin without a tty, which is the launcher case: the
-    # message goes into a window as well as onto stderr. Opening one here
-    # would block the suite on webview.start().
-    monkeypatch.setattr(commands.gui, "show_problem", lambda *_a, **_k: None)
+    monkeypatch.setattr(commands.payload_mod, "install", lambda **k: installs.append(k))
+    monkeypatch.setattr(commands.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _: "")
 
-    assert commands._resolve_payload_or_offer() is None
-    assert asked == [], "it asked a question it could not honour"
+    commands._offer_to_install()
 
-    said = capsys.readouterr().err
-    assert "cannot fetch one" in said
-    assert "LIBERA_PAYLOAD" in said, "the cheapest way out is named"
-    assert "--payload-install --from" in said
+    assert installs == [{"trust_manifest": True}]
+    assert "installed from source" in capsys.readouterr().out
 
 
 def test_payload_status_names_the_root_where_the_scripts_read_it(
@@ -361,3 +350,15 @@ def test_payload_status_names_the_root_where_the_scripts_read_it(
         if line.startswith("payload:")
     ]
     assert read == [str(tmp_path)]
+
+
+@pytest.mark.parametrize(("why", "listed"), [(None, True), ("not Linux", False)])
+def test_the_launcher_options_are_in_the_help_only_where_they_work(
+    monkeypatch, capsys, why, listed
+):
+    """A Windows or macOS user read about "the Linux launcher" in their help.
+    The options stay everywhere, so that they still say why they do nothing."""
+    monkeypatch.setattr(launcher, "explain_unsupported", lambda: why)
+    with pytest.raises(SystemExit):
+        cli.main(["--help"])
+    assert ("--launcher-install" in capsys.readouterr().out) is listed

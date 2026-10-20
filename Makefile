@@ -102,8 +102,8 @@ format: ## reformat the Python and the JavaScript
 # --- tests -------------------------------------------------------------------
 #
 # Markers come from the directory (see tests/conftest.py). The upper two levels
-# skip rather than fail when there is no payload or no browser; the e2e tier's
-# browser is `uv run playwright install chromium`, once.
+# install what they need the first time (the payload this tree wants, and
+# Playwright's Chromium), and skip only when that cannot be done.
 
 test: ## the whole suite (~4 min); `uv run pytest` takes its options
 	uv run pytest

@@ -17,8 +17,8 @@ import urllib.request
 from urllib.parse import urlparse
 
 import pytest
-from playwright.sync_api import Error, expect, sync_playwright
-from support import find_free_port, keyed
+from playwright.sync_api import expect, sync_playwright
+from support import find_free_port, keyed, launch
 
 from libera import payload as payload_mod
 from libera.host import language, recents, server, session as sessions
@@ -58,11 +58,11 @@ def start_window(tmp_path):
 
     play = sync_playwright().start()
     try:
-        browser = play.chromium.launch()
-    except Error as e:
+        browser = launch(play)
+    except pytest.skip.Exception:
         play.stop()
         httpd.shutdown()
-        pytest.skip(f"needs Playwright's chromium: playwright install chromium ({e})")
+        raise
     page = browser.new_page(viewport={"width": 720, "height": 640})
     page.goto(keyed(f"http://127.0.0.1:{port}/__host__/start"))
     page.wait_for_selector("#new button")

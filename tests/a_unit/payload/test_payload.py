@@ -12,10 +12,12 @@ import dataclasses
 import hashlib
 import io
 import json
+import os
 import re
 import stat
 import sys
 import tarfile
+import time
 import urllib.error
 from pathlib import Path, PurePath
 
@@ -211,6 +213,40 @@ def test_a_local_build_the_wheel_does_not_describe_names_both_manifests(
     payload.install(source=dist, dest=tmp_path / "dest", say=lambda *_: None)
 
 
+def test_an_install_removes_a_version_nobody_has_used_for_weeks(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(payload.installer, "read_bundled_manifest", lambda: None)
+    monkeypatch.setattr(payload.installer, "_finish", lambda _d, _say: None)
+    old = tmp_path / "0.1"
+    (old / "bin").mkdir(parents=True)
+    (old / "payload.json").write_text("{}")
+    month_ago = time.time() - 40 * 24 * 3600
+    os.utime(old / "payload.json", (month_ago, month_ago))
+    said: list[str] = []
+
+    payload.install(
+        source=_fake_dist(tmp_path, corrupt=False),
+        dest=tmp_path / "0.5",
+        say=said.append,
+    )
+
+    assert not old.exists()
+    assert said[-1] == "  removed the unused payload 0.1 (0 MB)"
+
+
+def test_a_platform_this_release_dropped_names_the_last_release_that_has_it(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """0.5 has no arm64 Linux core: say which version to install instead."""
+    monkeypatch.setattr(payload.installer, "read_bundled_manifest", lambda: None)
+    dist = _fake_dist(tmp_path, corrupt=False)
+    monkeypatch.setattr(payload.locate, "get_current_platform", lambda: "linux-arm64")
+
+    with pytest.raises(PayloadError, match=r"libera==0\.4\.1"):
+        payload.install(source=dist, dest=tmp_path / "dest", say=lambda *_: None)
+
+
 def test_install_refuses_a_mismatched_payload_version(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -260,7 +296,10 @@ def test_an_install_says_which_payload_before_anything_else(
         source=_fake_dist(tmp_path, corrupt=False), dest=tmp_path / "d", say=said.append
     )
 
-    assert said == [f"Installing payload version {payload.PAYLOAD_VERSION}", "done"]
+    assert said == [
+        f"Installing Libera Suite's components, version {payload.PAYLOAD_VERSION}",
+        "done",
+    ]
 
 
 def test_an_interrupted_install_puts_the_old_payload_back(
@@ -310,7 +349,7 @@ def test_trusting_the_origin_asks_the_default_one(tmp_path: Path, monkeypatch) -
 def test_unverifiable_download_is_refused(tmp_path: Path, monkeypatch) -> None:
     """Without a manifest in the wheel, the origin would decide what we install."""
     monkeypatch.setattr(payload.installer, "read_bundled_manifest", lambda: None)
-    with pytest.raises(PayloadError, match="cannot be verified"):
+    with pytest.raises(PayloadError, match="no checksums of its own"):
         payload.install(
             source="https://example.invalid/libera",
             dest=tmp_path / "d",
