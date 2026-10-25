@@ -24,8 +24,10 @@ does not include `~/.local/bin`, so shipping the template as-is would have
 produced an icon that silently does nothing -- the same class of failure as a
 launch with no terminal to print to.
 
-Linux only. Callers ask `explain_unsupported()`, which says so; none tests
-the platform itself.
+On macOS the same command builds `~/Applications/Libera.app` instead; that
+is `macos_app`, and the public functions here hand over to it. Callers ask
+`explain_unsupported()`, which says where neither applies; none tests the
+platform itself.
 """
 
 from __future__ import annotations
@@ -38,6 +40,7 @@ import sys
 from importlib import resources
 from pathlib import Path
 
+from libera import macos_app
 from libera.payload.locate import get_xdg_data_home
 
 logger = logging.getLogger(__name__)
@@ -47,14 +50,19 @@ APP_ID = "eu.liberasuite.Libera"
 
 def explain_unsupported() -> str | None:
     """None when a launcher entry makes sense here; otherwise what to say."""
+    if sys.platform == "darwin":
+        return macos_app.explain_unsupported()
     if not sys.platform.startswith("linux"):
-        return "a desktop entry is a Linux thing; macOS has Libera.app"
+        return "the Windows installer puts Libera Suite in the Start menu itself"
     if os.environ.get("FLATPAK_ID"):
         return "the Flatpak installs its own desktop entry"
     return None
 
 
 def get_entry_path() -> Path:
+    """What `--launcher-install` writes: the desktop entry, or Libera.app."""
+    if sys.platform == "darwin":
+        return macos_app.get_app_path()
     return get_xdg_data_home() / "applications" / f"{APP_ID}.desktop"
 
 
@@ -70,6 +78,8 @@ def get_icon_path() -> Path:
 
 
 def is_installed() -> bool:
+    if sys.platform == "darwin":
+        return macos_app.is_installed()
     return get_entry_path().is_file()
 
 
@@ -137,6 +147,8 @@ def _refresh(applications: Path) -> None:
 
 def install() -> list[Path]:
     """Write the entry and the icon. Returns what was written."""
+    if sys.platform == "darwin":
+        return macos_app.install()
     entry, icon = get_entry_path(), get_icon_path()
     for path in (entry, icon):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -152,6 +164,8 @@ def install() -> list[Path]:
 
 def remove() -> list[Path]:
     """Take both away. Returns what was there."""
+    if sys.platform == "darwin":
+        return macos_app.remove()
     gone = []
     for path in (get_entry_path(), get_icon_path()):
         if path.is_file():

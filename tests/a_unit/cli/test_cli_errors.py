@@ -140,7 +140,7 @@ def test_the_app_launcher_invokes_a_command_that_exists(capsys, no_window):
     """
     import re
 
-    launcher = (repo_root() / "build/macos/launcher.m").read_text()
+    launcher = (repo_root() / "src/libera/launcher.m").read_text()
     marker = 'addObject:@"libera"];'
     block = launcher[launcher.index(marker) + len(marker) :]
     block = block[: block.index("addObjectsFromArray:gDocuments")]

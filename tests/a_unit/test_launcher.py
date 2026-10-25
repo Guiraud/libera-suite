@@ -118,9 +118,17 @@ def test_an_ordinary_linux_install_is_told_yes(data_home, monkeypatch):
     assert launcher.explain_unsupported() is None
 
 
-@pytest.mark.skipif(sys.platform.startswith("linux"), reason="the Linux answer is yes")
-def test_it_declines_where_there_is_no_launcher():
-    assert launcher.explain_unsupported() is not None
+def test_windows_is_told_its_installer_does_this(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert "Start menu" in (launcher.explain_unsupported() or "")
+
+
+def test_macos_is_handed_to_the_bundle_builder(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+    assert launcher.get_entry_path() == tmp_path / "Applications" / "Libera.app"
+    assert not launcher.is_installed()
+    assert launcher.remove() == []
 
 
 @pytest.mark.skipif(

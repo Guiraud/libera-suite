@@ -18,7 +18,7 @@ There is one directory per kind of thing:
 | `docker/` | the image for `lb payload container`: the engine in a pinned Ubuntu 22.04 container, the reproducible Linux build, and the only way to build Linux from the Mac |
 | `test-linux/` | the test image and its two smoke scripts, for `lb linux` |
 | `flatpak/` | the Flatpak's manifest and image, for `lb app flatpak`: the Linux install channel |
-| `macos/` | the `.app`: `macos-app.sh`, `macos-icon.py`, `launcher.m` |
+| `macos/` | the `.app`: `macos-app.sh`, `macos-icon.py` (the launcher itself is `src/libera/launcher.m`, shipped in the wheel for `libera --launcher-install`) |
 | `windows/` | the installer and its toolchain: `windows-app.sh`, `windows-setup.ps1`, `msvc-env.sh`, `vcpkg.sh`, and what PyInstaller and Inno Setup read |
 | `install/` | what runs on users' machines: `install.sh` (`curl … \| sh`) and `install.ps1` (`irm … \| iex`), published at the origin's root, and `released-gui.sh`, which opens a window from the *published* artifact on a machine it is installed on |
 | `builders.toml.example` | the template for `builders.toml`, the machines `lb release ship` drives; that copy is gitignored, as is `out/` |

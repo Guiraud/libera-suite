@@ -678,7 +678,7 @@ def _accept_documents_from_finder() -> None:
     """Open the documents Finder sends while Libera.app is already running.
 
     Finder launches Libera.app only when it is not running, and that launch
-    reaches the launcher (build/macos/launcher.m), which hands the documents to
+    reaches the launcher (src/libera/launcher.m), which hands the documents to
     this process as arguments. Once it runs, the launcher has become this
     process, so a double-click sends it an "open documents" Apple Event instead,
     and nothing here answered one. AppKit's fallback then asked the document

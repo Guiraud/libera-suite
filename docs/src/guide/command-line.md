@@ -33,7 +33,7 @@ The command is `libera`, on Linux and macOS. Installed as a Flatpak it is `flatp
 
 | | |
 | :--- | :--- |
-| `libera --launcher-install` | put Libera Suite in the applications menu, with *Open With*. [More](../main/alt-install.md#a-launcher-entry-on-linux) |
+| `libera --launcher-install` | put Libera Suite in the applications menu on Linux, or `~/Applications` on macOS, with *Open With*. [Linux](../main/alt-install.md#a-launcher-entry-on-linux), [macOS](../main/alt-install.md#a-double-clickable-application-on-macos) |
 | `libera --launcher-remove` | take it out again |
 
 The Flatpak does this itself.

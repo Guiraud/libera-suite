@@ -94,7 +94,7 @@ def install_payload(args: argparse.Namespace) -> int:
     # command is called payload-install, and writing to the desktop's own
     # directories is not what that name promises.
     if launcher.explain_unsupported() is None and not launcher.is_installed():
-        print("  for an icon in the launcher, and Open With: libera --launcher-install")
+        print("  for an icon, and Open With: libera --launcher-install")
     return 0
 
 
@@ -102,9 +102,19 @@ def install_launcher(_args: argparse.Namespace) -> int:
     why = launcher.explain_unsupported()
     if why:
         return _fail(why)
-    for path in launcher.install():
+    try:
+        written = launcher.install()
+    except (OSError, RuntimeError) as e:
+        return _fail(f"could not install the launcher: {e}")
+    for path in written:
         print(f"wrote {path}")
-    print("Libera Suite is in the launcher, and offers to open the formats it reads.")
+    if sys.platform == "darwin":
+        print("Libera Suite is in Applications and Launchpad, and in Open With.")
+        print("  first launch: in Finder, right-click it and choose Open (not signed)")
+    else:
+        print(
+            "Libera Suite is in the launcher, and offers to open the formats it reads."
+        )
     return 0
 
 
@@ -114,7 +124,7 @@ def remove_launcher(_args: argparse.Namespace) -> int:
         return _fail(why)
     gone = launcher.remove()
     if not gone:
-        print("no desktop entry installed")
+        print("no launcher installed")
         return 0
     for path in gone:
         print(f"removed {path}")

@@ -99,7 +99,16 @@ libera --launcher-remove     # to take it out again
 
 ## A double-clickable application on macOS
 
-There is no ready-made one yet. From a source checkout you can build one for yourself:
+After a Homebrew, `pipx` or `uv tool` install, this builds `~/Applications/Libera.app` for your account: an icon in Launchpad and the Dock, *Open With* in Finder, and documents that open on a double-click.
+
+```sh
+libera --launcher-install
+libera --launcher-remove     # to take it out again
+```
+
+It compiles a small launcher, so it needs the Command Line Tools (`xcode-select --install`), which Homebrew already installed. The application runs the Python of the install that built it: after reinstalling Libera Suite somewhere else, run `libera --launcher-install` again. A Homebrew upgrade needs nothing.
+
+From a source checkout you can also build one with the build script:
 
 ```sh
 build/macos/macos-app.sh          # builds build/out/Libera.app

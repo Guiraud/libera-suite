@@ -84,7 +84,7 @@ fi
 echo "==> launcher"
 # Compiled, not a shell script: the bundle's executable has to be the process
 # that stays, or the open-document Apple Event is delivered to a bundle that
-# exec() has already replaced. See build/macos/launcher.m.
+# exec() has already replaced. See src/libera/launcher.m.
 command -v clang >/dev/null || { echo "FATAL: clang not found (Xcode command line tools)" >&2; exit 1; }
 # The interpreter runs inside the launcher, so the launcher links the base
 # interpreter's library: the framework's own binary for a framework build
@@ -117,7 +117,7 @@ else
 fi
 clang -O2 -Wall -Werror -framework Cocoa -I"$PY_INCLUDE" "$PY_LIB" \
     -DLIBERA_PYTHON="\"$LAUNCH_AS\"" \
-    -o "$APP/Contents/MacOS/Libera" "$HERE/launcher.m"
+    -o "$APP/Contents/MacOS/Libera" "$REPO/src/libera/launcher.m"
 # The library records its install name, not the path it was linked from, and
 # Homebrew's names the configured prefix too. Load the file that was linked,
 # or its copy in the bundle.

@@ -115,6 +115,17 @@ lint.extend-ignore = [
     "S404",  # subprocess import
     "S603",  # subprocess call -- argv form, no shell, a path from `which`
 ]
+# macos_app.py builds a Libera.app: clang, otool, install_name_tool, codesign,
+# iconutil and lsregister are the job, all from the system or the Command Line
+# Tools. AppKit is imported where the icon is drawn, which is macOS alone, and
+# the payload where x2t is asked its minimum macOS.
+"src/libera/macos_app.py" = [
+    "S404",    # subprocess import
+    "S603",    # subprocess call -- argv form, no shell, the system's own tools
+    "S607",    # otool, iconutil, codesign by name, from /usr/bin
+    "PLC0415", # AppKit and the payload, imported where they are used
+    "E501",    # one pyobjc selector longer than a line
+]
 # docs/ carries two generators for the site's images: shots.py drives the
 # shipped CLI and a browser, figures/ builds diagrams with svg-plus. Tools, not
 # shipped code, and each figure is run on its own rather than imported.
