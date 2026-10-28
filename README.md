@@ -95,6 +95,12 @@ uv tool install libera                            # macOS
 libera --payload-install
 ```
 
+**On macOS**, also run this once, and again after an update. It writes `Libera.app` into `~/Applications`, so that Spotlight and Finder's *Open With* find it:
+
+```sh
+libera --launcher-install
+```
+
 > **Linux works on both architectures.** Payload 0.2 is built on Ubuntu 22.04, so the converter needs glibc 2.34 and GLIBCXX 3.4.26: Ubuntu 22.04, Debian 12 and anything newer, measured in a clean container of each. The Flatpak needs none of that, since the editors inside it run against the GNOME runtime.
 >
 > **macOS is Apple Silicon**, on macOS 14 or later. There is no Intel build.
